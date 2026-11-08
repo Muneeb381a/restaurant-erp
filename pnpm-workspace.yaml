@@ -1,0 +1,8 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+allowBuilds:
+  esbuild: true # tsx / vite / vitest binary
+  cpu-features: false # optional native accel for ssh2 (testcontainers) — not needed
+  ssh2: false # optional native build; pure-JS fallback is fine
+  protobufjs: false # postinstall only prints a notice

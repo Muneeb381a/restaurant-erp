@@ -1,0 +1,34 @@
+{
+  "name": "restaurant-erp",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "packageManager": "pnpm@11.1.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm db:up && pnpm db:migrate && pnpm -r --parallel --filter \"./apps/*\" dev",
+    "db:up": "docker compose --env-file .env -f ops/docker-compose.yml -f ops/docker-compose.dev.yml up -d --wait db",
+    "db:migrate": "pnpm --filter @erp/api db:migrate",
+    "db:migrate:phase2": "pnpm --filter @erp/api db:migrate:phase2",
+    "db:reset": "pnpm db:up && pnpm --filter @erp/api db:reset",
+    "db:codegen": "pnpm --filter @erp/api db:codegen",
+    "test": "pnpm -r --workspace-concurrency=1 test",
+    "test:e2e": "echo \"Playwright e2e is added in M3 (first UI flow)\"",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "pnpm -r typecheck",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.0",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.19.0"
+  }
+}

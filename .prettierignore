@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+pnpm-lock.yaml
+*.sql
+db
+apps/api/src/db/types.ts
+docs
+CLAUDE.md
+README.md
