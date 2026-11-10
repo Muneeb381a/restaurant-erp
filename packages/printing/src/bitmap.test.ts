@@ -162,4 +162,16 @@ describe('renderReceiptBitmap', () => {
     const onlyNtn = readable(renderReceiptBitmap({ ...doc, taxPaisa: 16000, ntn: '1-2' }, 80));
     expect(onlyNtn).toMatch(/<RASTER/);
   });
+
+  it('shows the fiscal state of the bill (bitmap)', () => {
+    const rows = (t: string): number =>
+      [...t.matchAll(/<RASTER:576x(\d+)>/g)].reduce((n, m) => n + Number(m[1]), 0);
+    const plain = rows(readable(renderReceiptBitmap(doc, 80)));
+    expect(
+      rows(readable(renderReceiptBitmap({ ...doc, fiscalPending: true }, 80))),
+    ).toBeGreaterThan(plain);
+    expect(rows(readable(renderReceiptBitmap({ ...doc, fiscalNo: 'PRA-1' }, 80)))).toBeGreaterThan(
+      plain,
+    );
+  });
 });

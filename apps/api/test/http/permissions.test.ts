@@ -412,6 +412,19 @@ const probes: Probe[] = [
     call: (a) => a.patch(`/tax/rules/${uuid()}`, { verifiedBy: 'x' }),
   },
   { name: 'GET /tax/readiness', perm: 'tax.manage', call: (a) => a.get('/tax/readiness') },
+  // ── fiscal (M7)
+  { name: 'GET /fiscal/summary', perm: 'report.financial', call: (a) => a.get('/fiscal/summary') },
+  { name: 'GET /fiscal/jobs', perm: 'report.financial', call: (a) => a.get('/fiscal/jobs') },
+  {
+    name: 'GET /fiscal/reconciliation',
+    perm: 'report.financial',
+    call: (a) => a.get('/fiscal/reconciliation?businessDate=2020-01-01'),
+  },
+  {
+    name: 'POST /fiscal/jobs/:id/retry',
+    perm: 'tax.manage',
+    call: (a) => a.post(`/fiscal/jobs/${uuid()}/retry`),
+  },
 ];
 
 let t: TestApp;

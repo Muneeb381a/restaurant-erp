@@ -34,6 +34,8 @@ export function OrderPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   const apply = (o: Order): void => {
+    // an older fetch that is still in flight must not overwrite this newer version (If-Match!)
+    void qc.cancelQueries({ queryKey: ['order', id] });
     qc.setQueryData(['order', id], o);
     qc.removeQueries({ queryKey: ['floor'] }); // not invalidate: no stale floor may flash up
     setMessage(null);

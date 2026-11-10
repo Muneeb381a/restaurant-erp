@@ -87,6 +87,18 @@ export class EscPos {
     return this;
   }
 
+  /** QR code (GS ( k, model 2): stored then printed. `size` is the module size in dots (1-16). */
+  qr(data: string, size = 6): this {
+    const payload = [...toAscii(data)].map((c) => c.charCodeAt(0));
+    const len = payload.length + 3;
+    this.bytes.push(GS, 0x28, 0x6b, 4, 0, 0x31, 0x41, 0x32, 0); // model 2
+    this.bytes.push(GS, 0x28, 0x6b, 3, 0, 0x31, 0x43, Math.min(16, Math.max(1, size))); // module size
+    this.bytes.push(GS, 0x28, 0x6b, 3, 0, 0x31, 0x45, 0x31); // error correction M
+    this.bytes.push(GS, 0x28, 0x6b, len & 0xff, len >> 8, 0x31, 0x50, 0x30, ...payload); // store
+    this.bytes.push(GS, 0x28, 0x6b, 3, 0, 0x31, 0x51, 0x30); // print
+    return this;
+  }
+
   /**
    * Raster image (GS v 0), sent in bands of at most 255 rows so small printer buffers cope.
    * `data` is `widthBytes * height` packed bytes, MSB = leftmost dot, 1 = black.
@@ -189,6 +201,17 @@ export function describe(bytes: Uint8Array): string {
     } else if (b === GS && cmd === 0x56) {
       tag = '<CUT>';
       extra = 2;
+    } else if (b === GS && cmd === 0x28 && arg === 0x6b) {
+      // GS ( k pL pH cn fn data...: only the "store QR data" and "print QR" calls are described
+      const n = bytes[i + 3]! + (bytes[i + 4]! << 8);
+      const fn = bytes[i + 6];
+      tag =
+        bytes[i + 5] === 0x31 && fn === 0x50
+          ? `<QR:${String.fromCharCode(...bytes.slice(i + 8, i + 3 + n + 2))}>`
+          : bytes[i + 5] === 0x31 && fn === 0x51
+            ? '<QR-PRINT>'
+            : '';
+      extra = 2 + n;
     } else if (b === GS && cmd === 0x76 && arg === 0x30) {
       // GS v 0 m xL xH yL yH data...
       const wBytes = bytes[i + 4]! + (bytes[i + 5]! << 8);

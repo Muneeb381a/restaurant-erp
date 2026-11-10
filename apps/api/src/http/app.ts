@@ -11,6 +11,7 @@ import { authRouter } from '../modules/auth/auth.routes';
 import { billingRouter } from '../modules/billing/billing.routes';
 import { shiftRouter } from '../modules/day/shift.routes';
 import { khataRouter } from '../modules/khata/khata.routes';
+import { fiscalRouter } from '../modules/fiscal/fiscal.routes';
 import { taxRouter } from '../modules/tax/tax.routes';
 import { kitchenRouter } from '../modules/kitchen/kitchen.routes';
 import { menuRouter } from '../modules/menu/menu.routes';
@@ -61,6 +62,7 @@ export function createApp(ctx: AppContext): Express {
   for (const [path, router] of Object.entries(configRouters(ctx))) v1.use(path, router);
   v1.use('/', ordersRouter(ctx)); // /business-days /shifts /floor /orders
   v1.use('/', khataRouter(ctx)); // /khata/accounts…
+  v1.use('/', fiscalRouter(ctx)); // /fiscal/summary /fiscal/jobs /fiscal/reconciliation
   v1.use('/', taxRouter(ctx)); // /tax/categories /tax/rules /tax/readiness
   v1.use('/', shiftRouter(ctx)); // shift close/reopen, cash movements, day close, Z-report
   v1.use('/', billingRouter(ctx)); // /orders/:id/bill /bills/…

@@ -195,3 +195,21 @@ describe('tax on the receipt', () => {
     );
   });
 });
+
+describe('fiscal invoice on the receipt', () => {
+  it('shows "pending" until reported, then the number and a QR code', () => {
+    const pending = describeBytes(renderReceipt({ ...base, fiscalPending: true }, 80));
+    expect(pending).toContain('Fiscal invoice: pending');
+    expect(pending).not.toContain('<QR');
+    const done = describeBytes(
+      renderReceipt({ ...base, fiscalNo: 'PRA-123', fiscalQr: 'PRA|123|456' }, 80),
+    );
+    expect(done).toContain('Fiscal invoice: PRA-123');
+    expect(done).toContain('<QR:PRA|123|456>');
+    expect(done).toContain('<QR-PRINT>');
+    expect(done).not.toContain('pending');
+    const noQr = describeBytes(renderReceipt({ ...base, fiscalNo: 'PRA-123' }, 80));
+    expect(noQr).toContain('Fiscal invoice: PRA-123');
+    expect(noQr).not.toContain('<QR');
+  });
+});

@@ -76,6 +76,8 @@ export const useBill = (orderId: string, enabled: boolean) =>
     queryKey: ['bill', orderId],
     queryFn: () => api<Bill>(`/orders/${orderId}/bill`),
     enabled,
+    // the fiscal number arrives from a background worker, not from a user action
+    refetchInterval: (q) => (q.state.data?.fiscalStatus === 'PENDING' ? 4000 : false),
   });
 
 export const usePaymentMethods = () =>

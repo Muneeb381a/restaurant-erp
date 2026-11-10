@@ -166,7 +166,9 @@ export interface CreditNotes {
   created_at: Generated<Timestamp>;
   created_by: string;
   fiscal_invoice_no: string | null;
+  fiscal_qr: string | null;
   fiscal_status: Generated<string>;
+  fiscal_submitted_at: Timestamp | null;
   id: Generated<string>;
   idempotency_key: string | null;
   net_paisa: Int8;
@@ -267,6 +269,7 @@ export interface FiscalJobs {
   idempotency_key: string;
   last_error: string | null;
   next_attempt_at: Generated<Timestamp>;
+  permanent: Generated<boolean>;
   provider: string;
   request: Json | null;
   response: Json | null;

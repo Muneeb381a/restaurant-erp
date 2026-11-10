@@ -21,6 +21,7 @@ import { clockTime } from '../kitchen/tickets';
 import { bumpVersion, lockOrder, nextDocNo } from '../orders/orders.repo';
 import { assertEditable, checkVersion, type Actor } from '../orders/orders.service';
 import { chargeKhata, khataForBill } from '../khata/khata.service';
+import { enqueueFiscal } from '../fiscal/fiscal.service';
 import { loadTaxContext, taxFor, type TaxContext } from '../tax/tax.service';
 import { creditNotesOf } from './credit.service';
 import { enqueuePrintJob } from '../printing/print.service';
@@ -110,6 +111,9 @@ export async function getBillView(q: Queryable, branchId: string, billId: string
     taxablePaisa: bill.taxable_paisa,
     taxPaisa: bill.tax_paisa,
     taxRateBps: bill.tax_rate_bps,
+    fiscalStatus: bill.fiscal_status,
+    fiscalInvoiceNo: bill.fiscal_invoice_no,
+    fiscalQr: bill.fiscal_qr,
     roundOffPaisa: bill.round_off_paisa,
     totalPaisa: bill.total_paisa,
     taxPaymentClass: bill.tax_payment_class,
@@ -742,6 +746,9 @@ async function receiptDoc(
     ntn: branch.ntn,
     strn: branch.strn,
     taxLabel: bill.taxRateBps ? `Sales tax ${bill.taxRateBps / 100}%` : null,
+    fiscalNo: bill.fiscalInvoiceNo,
+    fiscalQr: bill.fiscalQr,
+    fiscalPending: bill.fiscalStatus === 'PENDING' || bill.fiscalStatus === 'FAILED',
     billNo: bill.billNo,
     orderNo: bill.orderNo,
     orderType: bill.orderType as ReceiptDoc['orderType'],
@@ -993,6 +1000,8 @@ export async function settleBill(
       .execute();
     await bumpVersion(trx, order.id);
 
+    // reported to the tax authority later by the fiscal worker; the sale never waits for it
+    await enqueueFiscal(trx, a.branchId, 'BILL', billId, now);
     const view = await getBillView(trx, a.branchId, billId);
     const receipts = await queueReceipts(trx, a, view, 0, now);
     if (receipts > 0)

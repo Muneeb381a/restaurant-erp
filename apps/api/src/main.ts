@@ -2,6 +2,7 @@ import { loadEnv } from './config/env';
 import { buildContext } from './http/build-context';
 import { createApp } from './http/app';
 import { TcpTransport } from './modules/printing/print.service';
+import { startFiscalWorker } from './modules/fiscal/fiscal.worker';
 import { startPrintWorker } from './modules/printing/print.worker';
 import { createLogger } from './shared/logger';
 
@@ -16,7 +17,8 @@ if (env.NODE_ENV === 'production' && env.JWT_SECRET.startsWith('dev-only')) {
 // In development one process does everything. In production the separate `worker` service
 // (ops/docker-compose.yml) runs the queue, so the API does not.
 const embeddedWorker = (env.EMBEDDED_WORKER ?? String(env.NODE_ENV !== 'production')) === 'true';
-const stopWorker = embeddedWorker ? startPrintWorker(ctx, new TcpTransport()) : null;
+const stopPrint = embeddedWorker ? startPrintWorker(ctx, new TcpTransport()) : null;
+const stopFiscal = embeddedWorker ? startFiscalWorker(ctx) : null;
 
 const server = createApp(ctx).listen(env.PORT, () => {
   logger.info({ port: env.PORT, embeddedWorker }, 'api listening');
@@ -25,7 +27,8 @@ const server = createApp(ctx).listen(env.PORT, () => {
 async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'shutting down');
   server.close();
-  await stopWorker?.();
+  await stopPrint?.();
+  await stopFiscal?.();
   await ctx.db.destroy();
   process.exit(0);
 }

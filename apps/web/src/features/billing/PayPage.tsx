@@ -52,6 +52,7 @@ export function PayPage() {
 
   const b = bill.data;
   const apply = (next: Bill): void => {
+    void qc.cancelQueries({ queryKey: ['bill', id] });
     qc.setQueryData(['bill', id], next);
     void qc.invalidateQueries({ queryKey: ['order', id] });
     qc.removeQueries({ queryKey: ['floor'] }); // not invalidate: no stale floor may flash up
@@ -227,6 +228,15 @@ export function PayPage() {
             {change > 0 ? ltr(formatRs(change)) : t('bill.changeNone')}
           </div>
         </div>
+        {b.fiscalInvoiceNo ? (
+          <p className="text-sm text-slate-600" data-testid="fiscal-no">
+            {t('bill.fiscalNo')}: {ltr(b.fiscalInvoiceNo)}
+          </p>
+        ) : b.fiscalStatus === 'PENDING' || b.fiscalStatus === 'FAILED' ? (
+          <p className="text-sm text-amber-800" data-testid="fiscal-pending">
+            {t('bill.fiscalPending')}
+          </p>
+        ) : null}
         {(b.creditNotes?.length ?? 0) > 0 && (
           <div className="card space-y-1 p-3 text-start" data-testid="credit-notes">
             <div className="font-semibold">{t('refund.history')}</div>

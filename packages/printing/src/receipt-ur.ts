@@ -95,6 +95,8 @@ export function renderReceiptBitmap(doc: ReceiptDoc, paperMm: PaperMm = 80): Uin
   if (doc.tipPaisa && doc.tipPaisa > 0) b.row(UR.tip, money(doc.tipPaisa), R);
   if (doc.khataCustomer) b.text(`${UR.khata}: ${doc.khataCustomer}`, R, 'right');
 
+  if (doc.fiscalNo) b.rule().text(`Fiscal invoice: ${doc.fiscalNo}`, { size: 22 }, 'center');
+  else if (doc.fiscalPending) b.rule().text('Fiscal invoice: pending', { size: 22 }, 'center');
   b.rule().text(UR.thanks, { size: 28, bold: true, rtl: true }, 'center');
   return b.toEscPos({ openDrawer: !!doc.openDrawer && !(doc.duplicate && doc.duplicate > 0) });
 }

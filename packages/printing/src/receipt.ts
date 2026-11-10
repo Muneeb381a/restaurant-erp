@@ -28,6 +28,11 @@ export interface ReceiptDoc {
   strn?: string | null;
   /** Label of the tax row, e.g. "Sales tax 16%". */
   taxLabel?: string | null;
+  /** Fiscal invoice number and QR payload from the tax authority (after it was reported). */
+  fiscalNo?: string | null;
+  fiscalQr?: string | null;
+  /** Queued for reporting but not confirmed yet. */
+  fiscalPending?: boolean;
   billNo: number;
   orderNo: number;
   orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
@@ -139,6 +144,13 @@ export function renderReceipt(doc: ReceiptDoc, paperMm: PaperMm = 80): Uint8Arra
   if (doc.tipPaisa && doc.tipPaisa > 0) row('Tip', doc.tipPaisa);
   if (doc.khataCustomer) for (const l of wrap(`Khata a/c: ${doc.khataCustomer}`, cols)) p.line(l);
 
+  if (doc.fiscalNo) {
+    p.rule(cols).align('center').line(`Fiscal invoice: ${doc.fiscalNo}`);
+    if (doc.fiscalQr) p.qr(doc.fiscalQr, 5).feed(0);
+    p.align('left');
+  } else if (doc.fiscalPending) {
+    p.rule(cols).align('center').line('Fiscal invoice: pending').align('left');
+  }
   p.rule(cols).align('center').line('Thank you! Visit again').feed(3).cut();
   return p.build();
 }

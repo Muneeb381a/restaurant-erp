@@ -31,6 +31,8 @@ export const SETTING_SCHEMAS: Record<string, z.ZodType> = {
   'tax.mixed_tender_policy': z.enum(['HIGHEST_RATE_IF_ANY_NON_DIGITAL', 'PROPORTIONAL']),
   /** Master switch of the tax engine; can only be turned on when `taxReadiness` is clean. */
   'tax.enabled': z.boolean(),
+  /** Where bills and credit notes are reported: OFF, or a provider driver (MOCK until a real one exists). */
+  'fiscal.provider': z.enum(['OFF', 'MOCK']),
   'billing.round_to_rupee': z.boolean(),
   'billing.service_charge_bps': z.number().int().min(0).max(10_000),
   'kot.print_on_send': z.boolean(),
@@ -123,7 +125,8 @@ export function branchRouter(ctx: AppContext): Router {
       const key = z.string().parse(req.params.key);
       const schema = SETTING_SCHEMAS[key];
       if (!schema) throw new AppError(400, 'VALIDATION_FAILED', `Unknown setting: ${key}`);
-      const needed = key.startsWith('tax.') ? 'tax.manage' : 'settings.manage';
+      const needed =
+        key.startsWith('tax.') || key.startsWith('fiscal.') ? 'tax.manage' : 'settings.manage';
       const perms = await ctx.permissions.get(req.principal!.roleId);
       if (!perms.has(needed))
         throw new AppError(403, 'PERMISSION_DENIED', 'You do not have permission for this action', {

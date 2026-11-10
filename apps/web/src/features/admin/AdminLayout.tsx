@@ -9,6 +9,7 @@ export const ADMIN_SECTIONS = [
   { path: 'tables', label: 'admin.tables', permission: 'settings.manage' },
   { path: 'users', label: 'admin.users', permission: 'user.manage' },
   { path: 'tax', label: 'admin.tax', permission: 'tax.manage' },
+  { path: 'fiscal', label: 'admin.fiscal', permission: 'report.financial' },
   { path: 'roles', label: 'admin.roles', permission: 'user.manage' },
   { path: 'settings', label: 'admin.settings', permission: 'settings.manage' },
 ] as const;

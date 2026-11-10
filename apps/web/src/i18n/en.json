@@ -152,7 +152,8 @@
       "edit": "Edit contents"
     },
     "roles": "Roles",
-    "tax": "Tax"
+    "tax": "Tax",
+    "fiscal": "Fiscal"
   },
   "order": {
     "title": "Order",
@@ -229,7 +230,9 @@
     "settleFailed": "Payment failed",
     "notPayable": "This bill can no longer be changed",
     "receiptSent": "Receipt printing",
-    "noMethods": "No payment methods are set up"
+    "noMethods": "No payment methods are set up",
+    "fiscalPending": "Fiscal invoice: pending",
+    "fiscalNo": "Fiscal invoice"
   },
   "cash": {
     "drawer": "Cash drawer",
@@ -422,5 +425,28 @@
     "addRule": "Add rate",
     "pickAuthority": "Choose the tax authority above first.",
     "saved": "Saved"
+  },
+  "fiscalPage": {
+    "notice": "Bills and credit notes are reported to the tax authority in the background, so a sale never waits for the internet. Anything stuck shows up here. Real authority connections (PRA, SRB, ...) need the authority's API details; until then use the test provider.",
+    "provider": "Reporting",
+    "off": "Off",
+    "mock": "Test provider (no real authority)",
+    "providerHint": "Reporting only runs while tax is switched on (Admin > Tax).",
+    "done": "Reported",
+    "pending": "Waiting",
+    "retrying": "Retrying",
+    "rejected": "Rejected",
+    "queue": "Not yet reported",
+    "empty": "Nothing is waiting.",
+    "bill": "Bill",
+    "creditNote": "Credit note",
+    "attempts": "{{n}} tries",
+    "reconciliation": "Daily check",
+    "day": "Business day",
+    "noDay": "There is no business day on that date.",
+    "balanced": "Everything sold was reported.",
+    "unbalanced": "Some documents are not reported yet.",
+    "taxSold": "Tax on bills",
+    "taxReported": "Tax already reported"
   }
 }

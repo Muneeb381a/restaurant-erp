@@ -10,6 +10,7 @@ import type { AppContext } from '../../http/context';
 import { AppError } from '../../http/errors';
 import { withTx, type Queryable } from '../../shared/tx';
 import { writeAudit } from '../audit/audit.service';
+import { enqueueFiscal } from '../fiscal/fiscal.service';
 import { refundToKhata } from '../khata/khata.service';
 import { nextDocNo, openBusinessDay } from '../orders/orders.repo';
 import type { Actor } from '../orders/orders.service';
@@ -278,6 +279,7 @@ export function createCreditNote(
       )
       .execute();
 
+    await enqueueFiscal(trx, a.branchId, 'CREDIT_NOTE', cn.id, now);
     let khata: { customer: string; balancePaisa: number } | null = null;
     if (method.code === 'KHATA')
       khata = await refundToKhata(trx, a, {

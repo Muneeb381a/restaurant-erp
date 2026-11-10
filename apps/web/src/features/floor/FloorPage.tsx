@@ -25,6 +25,7 @@ export function FloorPage() {
     mutationFn: (body: { type: Order['type']; tableId?: string }) =>
       api<Order>('/orders', { method: 'POST', body }),
     onSuccess: (order) => {
+      void qc.cancelQueries({ queryKey: ['order', order.id] });
       qc.setQueryData(['order', order.id], order);
       void qc.invalidateQueries({ queryKey: ['floor'] });
       nav(`/order/${order.id}`);

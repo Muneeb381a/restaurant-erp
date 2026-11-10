@@ -312,6 +312,8 @@ export interface Bill {
   creditNotes?: CreditNoteSummary[];
   refundedPaisa?: number;
   taxRateBps?: number | null;
+  fiscalStatus?: 'NOT_REQUIRED' | 'PENDING' | 'SUBMITTED' | 'FAILED';
+  fiscalInvoiceNo?: string | null;
 }
 
 export interface SettleResult {
