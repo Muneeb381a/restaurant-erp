@@ -1,5 +1,7 @@
 {
-  "app": { "title": "Restaurant POS" },
+  "app": {
+    "title": "Restaurant POS"
+  },
   "common": {
     "back": "Back",
     "cancel": "Cancel",
@@ -164,6 +166,53 @@
     "sentOk": "Sent to the kitchen: {{stations}}",
     "noPrinter": "No printer for: {{stations}}",
     "missingStation": "No kitchen station set for: {{items}}",
-    "nothingToSend": "Nothing new to send"
+    "nothingToSend": "Nothing new to send",
+    "billIt": "Bill",
+    "payIt": "Payment"
+  },
+  "bill": {
+    "bill": "Bill",
+    "pay": "Payment",
+    "billNo": "Bill",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "service": "Service charge",
+    "tax": "Tax",
+    "roundOff": "Round off",
+    "total": "Total",
+    "due": "Remaining",
+    "paid": "Paid",
+    "addDiscount": "Discount",
+    "discountReason": "Reason (required)",
+    "discountPct": "{{pct}}%",
+    "apply": "Apply",
+    "removeDiscount": "Remove discount",
+    "approverTitle": "Manager approval needed",
+    "approverUser": "Manager username",
+    "approverPin": "Manager PIN",
+    "approverWrong": "Approver username or PIN is wrong",
+    "method": "Payment method",
+    "amount": "Amount",
+    "tendered": "Cash received",
+    "reference": "Reference (card RRN / txn id)",
+    "exact": "Exact",
+    "remove": "Remove",
+    "settle": "Settle bill",
+    "change": "Change to return",
+    "changeNone": "No change",
+    "done": "Done",
+    "reprint": "Reprint receipt",
+    "reprinted": "Receipt sent to printer",
+    "voidBill": "Cancel bill",
+    "voidReason": "Why is the bill cancelled?",
+    "voided": "Bill cancelled, order reopened",
+    "settled": "Paid",
+    "noShift": "Open your shift before taking payment",
+    "unsent": "Send new items to the kitchen first",
+    "short": "Amounts do not add up to the total",
+    "settleFailed": "Payment failed",
+    "notPayable": "This bill can no longer be changed",
+    "receiptSent": "Receipt printing",
+    "noMethods": "No payment methods are set up"
   }
 }

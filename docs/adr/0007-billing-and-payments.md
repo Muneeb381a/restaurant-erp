@@ -1,0 +1,21 @@
+# ADR 0007 — Billing, payments and receipts (M6a, tax-free)
+
+**Status:** accepted (tax = 0 until M5; shift close / Z-report are M6b)
+
+## Decisions
+
+- **Pre-bill freezes the order.** `POST /orders/:id/bill` (needs `bill.create`, `If-Match`) requires every live line to have been sent to the kitchen (`UNSENT_ITEMS`), copies the live top-level lines into `bill_lines`, prices the bill with the pure `computeBill` (discount → service charge → tax slot → optional round-to-rupee) and moves the order to `BILLED`. Bill numbers come from `next_doc_no(..., 'BILL')` (gap-free per business day). A partial unique index allows only **one live (non-VOID) bill per order**.
+- **All arithmetic is in `packages/domain`** (integer paisa, half-up). The API stores what the domain returns; the web app only formats server numbers. The only UI-side arithmetic is the "remaining" hint while typing tenders — the server re-validates everything.
+- **Settings:** `billing.service_charge_bps` (default 0) and `billing.round_to_rupee` (default off). Tax is deliberately 0 and its slot in `computeBill` stays in place for M5; nothing about tax rates is hard-coded.
+- **Discounts** (`bill.discount`): percent or amount, a **reason is mandatory**, and the user's `discount_limit_bps` applies. Above the limit the cashier must supply a manager's username + PIN (a user with `bill.discount.unlimited`). The approver check runs in its **own transaction** so wrong PINs count towards the 5-tries lockout even though the discount is refused; the approver is stored in `discount_approved_by`. Every change writes `BILL_DISCOUNT` to `audit_log`.
+- **Settle = one transaction** (`POST /bills/:id/settle`, needs `bill.settle`): lock order → lock bill → check the cashier's **own open shift in the bill's day** (`SHIFT_NOT_OPEN`) → `validateTenders` → insert one `payments` row per tender (key `<Idempotency-Key>:<i>`) → flip the bill to `SETTLED` with `tax_payment_class` → order `SETTLED` → queue the receipt → audit. The database backs this up: trigger `bills_settle_guard` refuses `SETTLED` unless the payments sum to the total exactly, and the older `guard_payment_total` trigger refuses over-payment.
+- **Idempotency (rule 4):** `Idempotency-Key` is mandatory. The same key on a settled bill returns the original result with `200 replayed: true` and writes nothing; a different key on a paid bill is `409 BILL_ALREADY_SETTLED`. Parallel double-clicks are serialised by the row locks (tested with 4 simultaneous requests: one payment). The web app generates one key per payment screen.
+- **Tenders:** non-cash tenders must equal the amount applied; cash may be tendered above it and the change is recorded per payment row (`tendered_paisa`, `change_paisa`); tip is stored separately and is not part of the bill; methods that need a reference (card RRN, wallet txn id) refuse an empty one. The bill's `tax_payment_class` is `DIGITAL` only if **every** tender is digital (policy `HIGHEST_RATE_IF_ANY_NON_DIGITAL`, the safe choice until the CA confirms Q-tax answers). **Khata is rejected** (`TENDER_UNSUPPORTED`) until the customer-credit ledger exists.
+- **Void** (`bill.void`, reason, audited) only for an unpaid PRE_BILLED bill; the order goes back to `OPEN` so items can be added; the bill row stays as `VOID` (history is never deleted). A settled bill can only be corrected by a credit note (later milestone).
+- **Receipts** are rendered at settle time from the stored bill and queued through the M4 print outbox on every active RECEIPT printer (idempotency key `receipt:<bill>:p<copy>:<printer>`). Cash tenders put the drawer-kick bytes first so the drawer opens even if the paper jams. **Reprint** (`bill.reprint`, reason, audited) prints "DUPLICATE #n", never kicks the drawer, and increments `print_count`. Text-mode English for now; the Urdu bitmap receipt replaces the layout later without changing the data.
+
+## Consequences / limits
+
+- No tax, no fiscal submission, no khata, no refunds/credit notes, no tips-pool yet.
+- Printing failure never blocks a sale: the receipt waits in the outbox and the bill is already paid.
+- A cashier can only settle in their own shift, so every payment is attributable to one drawer (needed for the Z-report in M6b).

@@ -1,11 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { localName } from '../../i18n';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
-import { useMenu, useOrder } from '../../lib/queries';
+import { can, useMe, useMenu, useOrder } from '../../lib/queries';
 import type { MenuItem, Order, OrderLine, SendResult } from '../../lib/types';
 import { ItemSheet, type AddBody } from './ItemSheet';
 
@@ -101,6 +101,25 @@ export function OrderPage() {
         setMessage(t('order.nothingToSend'));
       else if (e instanceof ApiError && e.code === 'STATION_MISSING')
         setMessage(t('order.missingStation', { items: String(e.body.items ?? '') }));
+      else onError(e);
+    },
+  });
+
+  const nav = useNavigate();
+  const me = useMe();
+  const makeBill = useMutation({
+    mutationFn: () =>
+      api<{ id: string }>(`/orders/${id}/bill`, {
+        method: 'POST',
+        ifMatch: order.data?.version,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['order', id] });
+      void qc.invalidateQueries({ queryKey: ['floor'] });
+      nav(`/order/${id}/pay`);
+    },
+    onError: (e) => {
+      if (e instanceof ApiError && e.code === 'UNSENT_ITEMS') setMessage(t('bill.unsent'));
       else onError(e);
     },
   });
@@ -324,6 +343,23 @@ export function OrderPage() {
                 {t('order.send')}
               </button>
             </div>
+          )}
+          {o.status === 'OPEN' &&
+            !o.held &&
+            can(me.data, 'bill.create') &&
+            lines.some((l) => l.status !== 'VOID') && (
+              <button
+                className="btn-secondary h-14 w-full text-lg"
+                disabled={makeBill.isPending || lines.some((l) => l.status === 'NEW')}
+                onClick={() => makeBill.mutate()}
+              >
+                {t('order.billIt')}
+              </button>
+            )}
+          {(o.status === 'BILLED' || o.status === 'SETTLED') && (
+            <Link to={`/order/${id}/pay`} className="btn-primary h-14 w-full text-lg">
+              {t('order.payIt')}
+            </Link>
           )}
         </div>
       </aside>

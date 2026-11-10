@@ -64,6 +64,8 @@ export interface RequestOptions {
   /** "text" returns the body as a string (CSV export). */
   responseType?: 'json' | 'text';
   auth?: boolean;
+  /** Extra request headers, e.g. `Idempotency-Key` for payments. */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -75,6 +77,7 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
     fetch(`${BASE}${path}`, {
       method: opts.method ?? 'GET',
       headers: {
+        ...opts.headers,
         ...(opts.rawText
           ? { 'content-type': opts.rawText.contentType }
           : opts.body !== undefined

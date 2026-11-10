@@ -263,3 +263,51 @@ export interface RoleRow {
   code: string;
   name: string;
 }
+
+export interface PaymentMethod {
+  id: string;
+  code: string;
+  name: string;
+  tender_class: 'CASH_OTHER' | 'DIGITAL';
+  opens_drawer: boolean;
+  needs_reference: boolean;
+  is_active: boolean;
+}
+
+export interface BillPayment {
+  id: string;
+  methodId: string;
+  method: string;
+  methodCode: string;
+  amountPaisa: number;
+  tenderedPaisa: number | null;
+  changePaisa: number;
+  tipPaisa: number;
+  reference: string | null;
+}
+
+export interface Bill {
+  id: string;
+  billNo: number;
+  orderId: string;
+  orderNo: number;
+  status: 'PRE_BILLED' | 'SETTLED' | 'VOID' | 'DRAFT';
+  subtotalPaisa: number;
+  discountPaisa: number;
+  discountReason: string | null;
+  serviceChargePaisa: number;
+  taxPaisa: number;
+  roundOffPaisa: number;
+  totalPaisa: number;
+  printCount: number;
+  lines: { id: string; description: string; qty: number; netPaisa: number }[];
+  payments: BillPayment[];
+  changeDuePaisa: number;
+}
+
+export interface SettleResult {
+  bill: Bill;
+  changeDuePaisa: number;
+  receipts: number;
+  replayed: boolean;
+}

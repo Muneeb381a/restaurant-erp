@@ -1,6 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
-import type { BusinessDay, Floor, Me, Menu, Order, PrinterHealth, Shift } from './types';
+import type {
+  Bill,
+  BusinessDay,
+  Floor,
+  Me,
+  Menu,
+  Order,
+  PaymentMethod,
+  PrinterHealth,
+  Shift,
+} from './types';
 
 /** Polling interval until the WebSocket events of M3b-2 replace it. */
 const LIVE_MS = 3000;
@@ -52,4 +62,19 @@ export const usePrinterHealth = () =>
     queryKey: ['printers-health'],
     queryFn: async () => (await api<{ items: PrinterHealth[] }>('/printers/health')).items,
     refetchInterval: 5000,
+  });
+
+export const useBill = (orderId: string, enabled: boolean) =>
+  useQuery({
+    queryKey: ['bill', orderId],
+    queryFn: () => api<Bill>(`/orders/${orderId}/bill`),
+    enabled,
+  });
+
+export const usePaymentMethods = () =>
+  useQuery({
+    queryKey: ['payment-methods'],
+    queryFn: async () =>
+      (await api<{ items: PaymentMethod[] }>('/payment-methods')).items.filter((m) => m.is_active),
+    staleTime: 60_000,
   });

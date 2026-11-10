@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatRs } from './money';
+import { formatRs, parseRs } from './money';
 
 describe('formatRs', () => {
   it.each([
@@ -17,5 +17,18 @@ describe('formatRs', () => {
 
   it('refuses non-integers instead of rounding silently', () => {
     expect(() => formatRs(10.5)).toThrow();
+  });
+});
+
+describe('parseRs', () => {
+  it('parses rupees to integer paisa without floats', () => {
+    expect(parseRs('1500')).toBe(150000);
+    expect(parseRs('1,500.5')).toBe(150050);
+    expect(parseRs('0.07')).toBe(7);
+    expect(parseRs('19.99')).toBe(1999);
+  });
+  it('rejects anything that is not an amount', () => {
+    for (const bad of ['', 'abc', '-5', '1.234', '1e3', '1.', '.5'])
+      expect(parseRs(bad)).toBeNull();
   });
 });

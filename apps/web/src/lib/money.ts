@@ -18,3 +18,13 @@ export function formatRs(paisa: number): string {
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return `${negative ? '-' : ''}Rs ${grouped}${frac === '00' ? '' : `.${frac}`}`;
 }
+
+/**
+ * Parses what a cashier types ("1500", "1,500.5") into integer paisa without floats.
+ * Returns null for anything that is not a plain amount with at most two decimals.
+ */
+export function parseRs(text: string): number | null {
+  const m = /^(\d{1,9})(?:\.(\d{1,2}))?$/.exec(text.replace(/,/g, '').trim());
+  if (!m) return null;
+  return Number(m[1]) * 100 + Number((m[2] ?? '').padEnd(2, '0') || '0');
+}
