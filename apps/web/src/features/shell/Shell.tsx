@@ -5,10 +5,12 @@ import { useTranslation } from 'react-i18next';
 import { Link, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { ApiError, api } from '../../lib/api';
 import { useAuth } from '../../lib/auth-store';
+import type { Shift } from '../../lib/types';
 import { ltr } from '../../lib/money';
 import { can, useDay, useMe, usePrinterHealth, useShift } from '../../lib/queries';
 import { ADMIN_SECTIONS } from '../admin/AdminLayout';
 import { LanguageToggle } from './LanguageToggle';
+import { DayCloseDialog, ShiftDialog } from './ShiftDialogs';
 
 /** Auth guard + top bar (business day, shift, user, language) around every signed-in screen. */
 export function Shell() {
@@ -28,6 +30,9 @@ function SignedIn() {
   const printers = usePrinterHealth();
   const offline = (printers.data ?? []).filter((p) => p.state === 'OFFLINE');
   const [floatOpen, setFloatOpen] = useState(false);
+  // the dialog keeps its own copy: closing the shift empties the 'current shift' query
+  const [drawerShift, setDrawerShift] = useState<Shift | null>(null);
+  const [closingDay, setClosingDay] = useState(false);
 
   const openDay = useMutation({
     mutationFn: () => api('/business-days/open', { method: 'POST', body: {} }),
@@ -73,9 +78,17 @@ function SignedIn() {
 
         {day.data &&
           (shift.data ? (
-            <span className="rounded-full bg-emerald-700 px-3 py-1 text-sm">
-              {t('shell.shift')} ✓
-            </span>
+            <>
+              <span className="rounded-full bg-emerald-700 px-3 py-1 text-sm">
+                {t('shell.shift')} ✓
+              </span>
+              <button
+                className="btn-secondary text-slate-900"
+                onClick={() => setDrawerShift(shift.data ?? null)}
+              >
+                {t('cash.drawer')}
+              </button>
+            </>
           ) : (
             can(me.data, 'shift.open') && (
               <button className="btn-secondary text-slate-900" onClick={() => setFloatOpen(true)}>
@@ -84,6 +97,11 @@ function SignedIn() {
             )
           ))}
 
+        {day.data && can(me.data, 'day.close') && (
+          <button className="btn-secondary text-slate-900" onClick={() => setClosingDay(true)}>
+            {t('cash.closeDay')}
+          </button>
+        )}
         {ADMIN_SECTIONS.some((s) => can(me.data, s.permission)) && (
           <Link to="/admin" className="btn-secondary text-slate-900">
             {t('admin.title')}
@@ -109,6 +127,8 @@ function SignedIn() {
       </main>
 
       {floatOpen && <OpenShiftDialog onClose={() => setFloatOpen(false)} />}
+      {drawerShift && <ShiftDialog shift={drawerShift} onClose={() => setDrawerShift(null)} />}
+      {closingDay && <DayCloseDialog onClose={() => setClosingDay(false)} />}
     </div>
   );
 }
