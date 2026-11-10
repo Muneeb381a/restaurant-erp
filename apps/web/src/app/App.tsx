@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminIndex, AdminLayout } from '../features/admin/AdminLayout';
 import { MenuAdmin } from '../features/admin/MenuAdmin';
 import { PrintersAdmin } from '../features/admin/PrintersAdmin';
+import { RolesAdmin } from '../features/admin/RolesAdmin';
 import { SettingsAdmin } from '../features/admin/SettingsAdmin';
 import { TablesAdmin } from '../features/admin/TablesAdmin';
 import { UsersAdmin } from '../features/admin/UsersAdmin';
@@ -30,6 +31,7 @@ export function App() {
           <Route path="printers" element={<PrintersAdmin />} />
           <Route path="tables" element={<TablesAdmin />} />
           <Route path="users" element={<UsersAdmin />} />
+          <Route path="roles" element={<RolesAdmin />} />
           <Route path="settings" element={<SettingsAdmin />} />
         </Route>
       </Route>

@@ -126,4 +126,21 @@ describe('renderReceiptBitmap', () => {
     });
     expect(full).toBeGreaterThan(base);
   });
+
+  it('handles takeaway bills without table or staff names, and item modifiers', () => {
+    const text = readable(
+      renderReceiptBitmap(
+        {
+          ...doc,
+          orderType: 'TAKEAWAY',
+          tableCode: null,
+          waiter: null,
+          cashier: null,
+          lines: [{ qty: 1, name: 'Karahi', amountPaisa: 100000, modifiers: ['Extra hot'] }],
+        },
+        80,
+      ),
+    );
+    expect(text).toMatch(/<RASTER:576x\d+>/);
+  });
 });

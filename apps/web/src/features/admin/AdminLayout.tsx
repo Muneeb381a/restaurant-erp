@@ -8,6 +8,7 @@ export const ADMIN_SECTIONS = [
   { path: 'printers', label: 'admin.printers', permission: 'settings.manage' },
   { path: 'tables', label: 'admin.tables', permission: 'settings.manage' },
   { path: 'users', label: 'admin.users', permission: 'user.manage' },
+  { path: 'roles', label: 'admin.roles', permission: 'user.manage' },
   { path: 'settings', label: 'admin.settings', permission: 'settings.manage' },
 ] as const;
 

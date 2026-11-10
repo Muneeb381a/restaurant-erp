@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { localName } from '../../i18n';
 import { api } from '../../lib/api';
 import type { AdminItem, AdminMenu, AdminVariant, ImportResult } from '../../lib/types';
+import { DealEditor } from './DealEditor';
 import { Dialog, ErrorText, Field, Toggle, td, th } from './ui';
 
 const ADMIN_MENU_KEY = ['admin-menu'];
@@ -27,6 +28,7 @@ export function MenuAdmin() {
   const [category, setCategory] = useState('');
   const [editing, setEditing] = useState<AdminItem | 'new' | null>(null);
   const [addingVariantTo, setAddingVariantTo] = useState<AdminItem | null>(null);
+  const [editingDeal, setEditingDeal] = useState<AdminItem | null>(null);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
@@ -212,9 +214,14 @@ export function MenuAdmin() {
                           </button>
                         )}
                         {item.kind === 'DEAL' && (
-                          <div className="mt-1 text-xs text-slate-500">
-                            {t('admin.menuPage.dealNote')}
-                          </div>
+                          <>
+                            <button className="btn-secondary" onClick={() => setEditingDeal(item)}>
+                              {t('admin.dealEditor.edit')}
+                            </button>
+                            <div className="mt-1 text-xs text-slate-500">
+                              {t('admin.menuPage.dealNote')}
+                            </div>
+                          </>
                         )}
                       </td>
                     </>
@@ -231,6 +238,14 @@ export function MenuAdmin() {
           data={data}
           item={editing === 'new' ? null : editing}
           onClose={() => setEditing(null)}
+          onDone={() => void refresh()}
+        />
+      )}
+      {editingDeal && (
+        <DealEditor
+          item={editingDeal}
+          menu={data}
+          onClose={() => setEditingDeal(null)}
           onDone={() => void refresh()}
         />
       )}

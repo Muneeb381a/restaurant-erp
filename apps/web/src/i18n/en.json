@@ -137,7 +137,21 @@
       "locked": "Locked",
       "unlock": "Unlock"
     },
-    "settings": "Settings"
+    "settings": "Settings",
+    "dealEditor": {
+      "title": "Deal contents",
+      "help": "A deal is made of slots, for example \"Choose a karahi\" (1) or \"Naan\" (4). Each slot lists the items that may fill it; an upcharge (can be negative) is added to the deal price when that item is chosen.",
+      "slotName": "Slot name",
+      "qty": "How many",
+      "removeSlot": "Remove slot",
+      "option": "Item",
+      "upcharge": "Upcharge (Rs)",
+      "default": "Default",
+      "addOption": "Add item",
+      "addSlot": "Add slot",
+      "edit": "Edit contents"
+    },
+    "roles": "Roles"
   },
   "order": {
     "title": "Order",
@@ -358,5 +372,14 @@
     "occupied": "That table already has an order",
     "hasSent": "Items were already sent to the kitchen: void them first",
     "cancelHint": "The whole order is cancelled and the table is freed. It cannot be undone."
+  },
+  "rolesPage": {
+    "pick": "Choose a role on the left.",
+    "locked": "Fixed",
+    "saved": "Saved",
+    "newRole": "New role",
+    "code": "Code",
+    "name": "Name",
+    "create": "Create"
   }
 }
