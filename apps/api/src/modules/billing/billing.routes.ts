@@ -6,11 +6,13 @@ import { AppError } from '../../http/errors';
 import { idParam } from '../admin/crud';
 import { authenticate, requirePermission, resolveBranch } from '../auth/middleware';
 import type { Actor } from '../orders/orders.service';
+import { createCreditNote, refundableView } from './credit.service';
 import {
   applyDiscount,
   createBill,
   getBillForOrder,
   getBillView,
+  listBills,
   reprintBill,
   settleBill,
   voidBill,
@@ -59,6 +61,72 @@ export function billingRouter(ctx: AppContext): Router {
       res
         .status(201)
         .json(await createBill(ctx, await actor(req), idParam.parse(req.params).id, ifMatch(req)));
+    }),
+  );
+  r.get(
+    '/bills',
+    ...read,
+    requirePermission(ctx, 'report.view'),
+    asyncHandler(async (req, res) => {
+      const q = z
+        .object({
+          businessDate: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/)
+            .optional(),
+          billNo: z.coerce.number().int().positive().optional(),
+          limit: z.coerce.number().int().min(1).max(200).default(50),
+        })
+        .parse(req.query);
+      res.json({ items: await listBills(ctx.db, req.branchId!, q) });
+    }),
+  );
+  r.get(
+    '/bills/:id/refundable',
+    ...read,
+    requirePermission(ctx, 'bill.refund'),
+    asyncHandler(async (req, res) => {
+      res.json(await refundableView(ctx, req.branchId!, idParam.parse(req.params).id));
+    }),
+  );
+  r.post(
+    '/bills/:id/credit-notes',
+    ...read,
+    requirePermission(ctx, 'bill.refund'),
+    asyncHandler(async (req, res) => {
+      const body = z
+        .object({
+          all: z.boolean().optional(),
+          lines: z
+            .array(z.object({ billLineId: uuid, qty: z.number().positive().max(100000) }).strict())
+            .max(100)
+            .optional(),
+          reason,
+          methodId: uuid,
+          reference: z.string().trim().max(100).optional(),
+        })
+        .strict()
+        .refine(
+          (b) => (b.all === true) !== (b.lines !== undefined),
+          'Give either all: true or lines',
+        )
+        .parse(req.body);
+      const dryRun = req.query.dryRun === 'true';
+      const key = req.header('idempotency-key');
+      if (!dryRun && (!key || !/^[A-Za-z0-9._:-]{8,80}$/.test(key)))
+        throw new AppError(
+          400,
+          'VALIDATION_FAILED',
+          'Send an Idempotency-Key header (8–80 characters: letters, digits, . _ : -)',
+        );
+      const out = await createCreditNote(
+        ctx,
+        await actor(req),
+        idParam.parse(req.params).id,
+        body,
+        dryRun ? null : key!,
+      );
+      res.status(dryRun || out.replayed ? 200 : 201).json(out);
     }),
   );
   r.get(

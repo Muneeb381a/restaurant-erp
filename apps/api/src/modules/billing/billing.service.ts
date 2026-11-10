@@ -18,6 +18,7 @@ import { clockTime } from '../kitchen/tickets';
 import { bumpVersion, lockOrder, nextDocNo } from '../orders/orders.repo';
 import { assertEditable, checkVersion, type Actor } from '../orders/orders.service';
 import { chargeKhata, khataForBill } from '../khata/khata.service';
+import { creditNotesOf } from './credit.service';
 import { enqueuePrintJob } from '../printing/print.service';
 
 const bad = (message: string, extra?: Record<string, unknown>): AppError =>
@@ -65,6 +66,7 @@ export async function getBillView(q: Queryable, branchId: string, billId: string
     .where('bills.branch_id', '=', branchId)
     .executeTakeFirst();
   if (!bill) throw new AppError(404, 'NOT_FOUND', 'bill not found');
+  const creditNotes = await creditNotesOf(q, billId);
   const [lines, payments] = await Promise.all([
     q.selectFrom('bill_lines').selectAll().where('bill_id', '=', billId).orderBy('id').execute(),
     q
@@ -129,8 +131,38 @@ export async function getBillView(q: Queryable, branchId: string, billId: string
     })),
     changeDuePaisa: payments.reduce((n, p) => n + p.change, 0),
     khata: await khataForBill(q, billId),
+    creditNotes,
+    refundedPaisa: creditNotes.reduce((n, c) => n + c.totalPaisa, 0),
   };
 }
+/** Bills of a business day (default: the open one) for look-up: re-printing, refunds. */
+export async function listBills(
+  q: Queryable,
+  branchId: string,
+  opts: { businessDate?: string | undefined; billNo?: number | undefined; limit: number },
+) {
+  let query = q
+    .selectFrom('bills')
+    .innerJoin('business_days', 'business_days.id', 'bills.business_day_id')
+    .select([
+      'bills.id as id',
+      'bills.order_id as orderId',
+      'bills.bill_no as billNo',
+      'bills.status as status',
+      'bills.total_paisa as totalPaisa',
+      'bills.settled_at as settledAt',
+      'business_days.business_date as businessDate',
+    ])
+    .where('bills.branch_id', '=', branchId)
+    .where('bills.status', 'in', ['SETTLED', 'PRE_BILLED'])
+    .orderBy('business_days.business_date', 'desc')
+    .orderBy('bills.bill_no', 'desc')
+    .limit(opts.limit);
+  if (opts.businessDate) query = query.where('business_days.business_date', '=', opts.businessDate);
+  if (opts.billNo !== undefined) query = query.where('bills.bill_no', '=', opts.billNo);
+  return query.execute();
+}
+
 export type BillView = Awaited<ReturnType<typeof getBillView>>;
 
 export async function getBillForOrder(

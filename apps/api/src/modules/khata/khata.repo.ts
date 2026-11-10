@@ -97,8 +97,7 @@ export async function entriesOf(q: Queryable, accountId: string, limit: number) 
       'users.full_name as by',
     ])
     .where('khata_entries.account_id', '=', accountId)
-    .orderBy('khata_entries.created_at', 'desc')
-    .orderBy('khata_entries.id', 'desc')
+    .orderBy('khata_entries.seq', 'desc')
     .limit(limit)
     .execute();
 }

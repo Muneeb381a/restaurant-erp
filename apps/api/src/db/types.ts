@@ -164,9 +164,11 @@ export interface CreditNotes {
   fiscal_invoice_no: string | null;
   fiscal_status: Generated<string>;
   id: Generated<string>;
+  idempotency_key: string | null;
   net_paisa: Int8;
   reason: string;
   refund_method_id: string | null;
+  refund_reference: string | null;
   shift_id: string;
   tax_paisa: Int8;
   total_paisa: Int8;
@@ -332,6 +334,7 @@ export interface KhataEntries {
   note: string | null;
   payment_id: string | null;
   reference: string | null;
+  seq: Generated<Int8>;
   shift_id: string | null;
 }
 

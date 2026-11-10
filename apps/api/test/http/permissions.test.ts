@@ -378,6 +378,21 @@ const probes: Probe[] = [
         reason: 'probe',
       }),
   },
+  // ── credit notes (M6d)
+  { name: 'GET /bills', perm: 'report.view', call: (a) => a.get('/bills') },
+  {
+    name: 'GET /bills/:id/refundable',
+    perm: 'bill.refund',
+    call: (a) => a.get(`/bills/${uuid()}/refundable`),
+  },
+  {
+    name: 'POST /bills/:id/credit-notes',
+    perm: 'bill.refund',
+    call: (a) =>
+      a
+        .post(`/bills/${uuid()}/credit-notes`, { all: true, methodId: uuid(), reason: 'probe' })
+        .set('Idempotency-Key', 'probe-key-0005'),
+  },
 ];
 
 let t: TestApp;

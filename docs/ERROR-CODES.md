@@ -36,6 +36,9 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | `APPROVER_INVALID`    | 403  | Approver username/PIN wrong, or that user cannot approve discounts (failed PINs count towards the lockout)                                  |
 | `SHIFT_NOT_OPEN`      | 409  | The cashier has no open shift in the bill's business day                                                                                    |
 | `VARIANCE_NOTE_REQUIRED` | 400 | Shift close: counted cash differs from expected; send `notes` (the body has `variancePaisa`)                                           |
+| `NOTHING_TO_REFUND`   | 409  | Credit note refused: every line of the bill was already returned                                                                            |
+| `KHATA_NOT_ON_BILL`   | 409  | Refund to khata on a bill that was not put on khata                                                                                         |
+| `KHATA_REFUND_EXCEEDS`| 409  | Refund to khata is more than the bill charged to khata (`maxPaisa` says what is left)                                                       |
 | `KHATA_LIMIT_EXCEEDED` | 409 | Credit sale would pass the customer's limit; body has `balancePaisa`, `limitPaisa`, `availablePaisa`                                      |
 | `KHATA_OVERPAYMENT`   | 409  | A khata payment is larger than the balance (advance deposits are not supported); body has `balancePaisa`                                    |
 | `KHATA_ACCOUNT_INACTIVE` | 409 | The khata account is switched off and takes no new credit sales                                                                          |
@@ -48,6 +51,6 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | `PRECONDITION_REQUIRED`| 428 | A structural change needs the order version in `If-Match`                                                                                   |
 | `INTERNAL_ERROR`      | 500  | Unexpected error (details only in server logs, correlate with `requestId`)                                                                  |
 
-Domain rule violations (bad deal pick, modifier min/max, missing weight, …) return `VALIDATION_FAILED` (400) with a `reason` such as `DEAL_SLOT_COUNT`, `MODIFIER_GROUP_MIN`, `LINE_WEIGHT_REQUIRED`, `TENDER_SUM_MISMATCH` or `DRAWER_INSUFFICIENT_CASH` (paid-out/drop larger than the cash in the drawer).
+Domain rule violations (bad deal pick, modifier min/max, missing weight, …) return `VALIDATION_FAILED` (400) with a `reason` such as `DEAL_SLOT_COUNT`, `MODIFIER_GROUP_MIN`, `LINE_WEIGHT_REQUIRED`, `TENDER_SUM_MISMATCH` or `DRAWER_INSUFFICIENT_CASH` (paid-out/drop or cash refund larger than the cash in the drawer) or `REFUND_QTY_EXCEEDS` / `REFUND_UNKNOWN_LINE` (credit notes).
 
 Planned (added with their milestones): `TAX_RULE_MISSING`, `TAX_RULE_AMBIGUOUS`, `DISCOUNT_LIMIT`, `IDEMPOTENCY_CONFLICT`.

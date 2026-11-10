@@ -4,6 +4,7 @@ import { MenuAdmin } from '../features/admin/MenuAdmin';
 import { PrintersAdmin } from '../features/admin/PrintersAdmin';
 import { TablesAdmin } from '../features/admin/TablesAdmin';
 import { UsersAdmin } from '../features/admin/UsersAdmin';
+import { BillsPage } from '../features/billing/BillsPage';
 import { PayPage } from '../features/billing/PayPage';
 import { FloorPage } from '../features/floor/FloorPage';
 import { KhataDetail, KhataPage } from '../features/khata/KhataPage';
@@ -19,6 +20,7 @@ export function App() {
         <Route index element={<FloorPage />} />
         <Route path="order/:id" element={<OrderPage />} />
         <Route path="order/:id/pay" element={<PayPage />} />
+        <Route path="bills" element={<BillsPage />} />
         <Route path="khata" element={<KhataPage />} />
         <Route path="khata/:id" element={<KhataDetail />} />
         <Route path="admin" element={<AdminLayout />}>

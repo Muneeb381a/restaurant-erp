@@ -35,6 +35,8 @@ export interface CashFlows {
   cashInPaisa: number;
   /** Cash received against khata balances (it goes into the drawer). */
   khataCashPaisa: number;
+  /** Cash handed back through credit notes. */
+  refundsCashPaisa: number;
   paidOutPaisa: number;
   dropsPaisa: number;
   noSaleCount: number;
@@ -54,6 +56,8 @@ export interface ShiftReport {
   cash: CashFlows;
   /** All khata payments received in this shift, any method. */
   khataCollectedPaisa: number;
+  /** Credit notes paid out in this shift, any method. */
+  refunds: { count: number; totalPaisa: number };
   /** Cash that should be in the drawer right now (or at close). */
   expectedCashPaisa: number;
   countedCashPaisa: number | null;
@@ -148,7 +152,7 @@ export async function shiftReport(
     .executeTakeFirst();
   if (!s) throw new AppError(404, 'NOT_FOUND', 'shift not found');
 
-  const [sales, byMethod, moves, khataRows] = await Promise.all([
+  const [sales, byMethod, moves, khataRows, refundRows] = await Promise.all([
     salesTotals(q, { shiftId }),
     methodTotals(q, { shiftId }),
     q
@@ -172,12 +176,24 @@ export async function shiftReport(
       .where('khata_entries.kind', '=', 'PAYMENT')
       .groupBy('payment_methods.opens_drawer')
       .execute(),
+    q
+      .selectFrom('credit_notes')
+      .leftJoin('payment_methods', 'payment_methods.id', 'credit_notes.refund_method_id')
+      .select([
+        sql<boolean>`COALESCE(payment_methods.opens_drawer, false)`.as('isCash'),
+        sql<number>`count(*)::int`.as('n'),
+        big(sql`sum(credit_notes.total_paisa)`).as('amount'),
+      ])
+      .where('credit_notes.shift_id', '=', shiftId)
+      .groupBy(sql`COALESCE(payment_methods.opens_drawer, false)`)
+      .execute(),
   ]);
   const sum = (k: string): number => moves.find((m) => m.kind === k)?.amount ?? 0;
   const cash: CashFlows = {
     openingFloatPaisa: s.float,
     cashSalesPaisa: byMethod.filter((m) => m.isCash).reduce((n, m) => n + m.amountPaisa, 0),
     cashInPaisa: sum('CASH_IN'),
+    refundsCashPaisa: refundRows.filter((k) => k.isCash).reduce((n, k) => n + k.amount, 0),
     khataCashPaisa: khataRows.filter((k) => k.isCash).reduce((n, k) => n + k.amount, 0),
     paidOutPaisa: sum('PAID_OUT'),
     dropsPaisa: sum('DROP'),
@@ -198,6 +214,10 @@ export async function shiftReport(
     byMethod,
     cash,
     khataCollectedPaisa: khataRows.reduce((n, k) => n + k.amount, 0),
+    refunds: {
+      count: refundRows.reduce((n, k) => n + k.n, 0),
+      totalPaisa: refundRows.reduce((n, k) => n + k.amount, 0),
+    },
     expectedCashPaisa: expected,
     countedCashPaisa: s.counted,
     variancePaisa: s.counted === null ? null : cashVariance(s.counted, expected),
@@ -221,6 +241,8 @@ export interface DayReport {
   cancelledOrders: number;
   varianceTotalPaisa: number;
   khata: { chargedPaisa: number; collectedPaisa: number };
+  refunds: { count: number; totalPaisa: number };
+  netAfterRefundsPaisa: number;
 }
 
 export async function dayReport(q: Queryable, branchId: string, dayId: string): Promise<DayReport> {
@@ -231,7 +253,7 @@ export async function dayReport(q: Queryable, branchId: string, dayId: string): 
     .where('branch_id', '=', branchId)
     .executeTakeFirst();
   if (!d) throw new AppError(404, 'NOT_FOUND', 'business day not found');
-  const [sales, byMethod, byType, shifts, voided, cancelled, charged, collected] =
+  const [sales, byMethod, byType, shifts, voided, cancelled, charged, collected, refunded] =
     await Promise.all([
       salesTotals(q, { dayId }),
       methodTotals(q, { dayId }),
@@ -288,6 +310,11 @@ export async function dayReport(q: Queryable, branchId: string, dayId: string): 
         .where('shifts.business_day_id', '=', dayId)
         .where('khata_entries.kind', '=', 'PAYMENT')
         .executeTakeFirstOrThrow(),
+      q
+        .selectFrom('credit_notes')
+        .select([sql<number>`count(*)::int`.as('n'), big(sql`sum(total_paisa)`).as('amount')])
+        .where('business_day_id', '=', dayId)
+        .executeTakeFirstOrThrow(),
     ]);
   return {
     day: {
@@ -311,6 +338,8 @@ export async function dayReport(q: Queryable, branchId: string, dayId: string): 
     voidedBills: voided.n,
     cancelledOrders: cancelled.n,
     khata: { chargedPaisa: charged.n, collectedPaisa: collected.n },
+    refunds: { count: refunded.n, totalPaisa: refunded.amount },
+    netAfterRefundsPaisa: sales.totalPaisa - refunded.amount,
     varianceTotalPaisa: shifts.reduce((n, s) => n + (s.variance ?? 0), 0),
   };
 }
@@ -361,6 +390,17 @@ export function shiftReportDoc(
     ],
     sections: [
       { heading: 'Sales', rows: salesRows(r.sales) },
+      ...(r.refunds.count
+        ? [
+            {
+              heading: 'Refunds',
+              rows: [
+                ['Credit notes', String(r.refunds.count)],
+                ['Refunded', -r.refunds.totalPaisa],
+              ] as [string, number | string][],
+            },
+          ]
+        : []),
       { heading: 'Payments', rows: methodRows(r.byMethod) },
       {
         heading: 'Cash drawer',
@@ -369,6 +409,7 @@ export function shiftReportDoc(
           ['Cash sales', c.cashSalesPaisa],
           ['Cash in', c.cashInPaisa],
           ['Khata cash received', c.khataCashPaisa],
+          ['Cash refunds', -c.refundsCashPaisa],
           ['Paid out', -c.paidOutPaisa],
           ['Drops to safe', -c.dropsPaisa],
           ['No-sale opens', String(c.noSaleCount)],
@@ -410,6 +451,15 @@ export function dayReportDoc(r: DayReport, restaurant: string, tz: string, copy 
     ],
     sections: [
       { heading: 'Sales', rows: salesRows(r.sales) },
+      {
+        heading: 'Refunds',
+        rows: [
+          ['Credit notes', String(r.refunds.count)],
+          ['Refunded', -r.refunds.totalPaisa],
+          ['Net after refunds', r.netAfterRefundsPaisa],
+        ],
+        boldLast: true,
+      },
       { heading: 'Payments', rows: methodRows(r.byMethod) },
       {
         heading: 'By order type',

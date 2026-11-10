@@ -15,6 +15,7 @@ const base = {
   cashSalesPaisa: 0,
   cashInPaisa: 0,
   khataCashPaisa: 0,
+  refundsCashPaisa: 0,
   paidOutPaisa: 0,
   dropsPaisa: 0,
 };
@@ -27,26 +28,28 @@ describe('expectedCash', () => {
         cashSalesPaisa: 1250000,
         cashInPaisa: 20000,
         khataCashPaisa: 40000,
+        refundsCashPaisa: 15000,
         paidOutPaisa: 35000,
         dropsPaisa: 1000000,
       }),
-    ).toBe(775000);
+    ).toBe(760000);
     expect(expectedCash(base)).toBe(500000);
   });
 
   it('matches the arithmetic for any non-negative flows (property)', () => {
     const n = fc.integer({ min: 0, max: 1_000_000_000 });
     fc.assert(
-      fc.property(n, n, n, n, n, n, (a, b, c, k, d, e) => {
+      fc.property(n, n, n, n, n, n, n, (a, b, c, k, r, d, e) => {
         const got = expectedCash({
           openingFloatPaisa: a,
           cashSalesPaisa: b,
           cashInPaisa: c,
           khataCashPaisa: k,
+          refundsCashPaisa: r,
           paidOutPaisa: d,
           dropsPaisa: e,
         });
-        expect(got).toBe(a + b + c + k - d - e);
+        expect(got).toBe(a + b + c + k - r - d - e);
       }),
     );
   });
@@ -56,6 +59,7 @@ describe('expectedCash', () => {
     'cashSalesPaisa',
     'cashInPaisa',
     'khataCashPaisa',
+    'refundsCashPaisa',
     'paidOutPaisa',
     'dropsPaisa',
   ] as const)('rejects a negative or fractional %s', (field) => {

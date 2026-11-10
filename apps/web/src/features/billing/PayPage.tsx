@@ -7,6 +7,7 @@ import { formatRs, ltr, parseRs } from '../../lib/money';
 import { can, useBill, useMe, usePaymentMethods } from '../../lib/queries';
 import type { Bill, KhataAccount, PaymentMethod, SettleResult } from '../../lib/types';
 import { KhataPicker } from '../khata/KhataPicker';
+import { RefundDialog } from './RefundDialog';
 
 interface TenderRow {
   key: number;
@@ -38,6 +39,7 @@ export function PayPage() {
   );
   const [approverWrong, setApproverWrong] = useState(false);
   const [voiding, setVoiding] = useState(false);
+  const [refunding, setRefunding] = useState(false);
   const seq = useRef(0);
   // One key per payment attempt: a retry after a network drop can never charge twice.
   const idemKey = useRef(`pay-${crypto.randomUUID()}`);
@@ -194,6 +196,19 @@ export function PayPage() {
             {change > 0 ? ltr(formatRs(change)) : t('bill.changeNone')}
           </div>
         </div>
+        {(b.creditNotes?.length ?? 0) > 0 && (
+          <div className="card space-y-1 p-3 text-start" data-testid="credit-notes">
+            <div className="font-semibold">{t('refund.history')}</div>
+            {b.creditNotes!.map((c) => (
+              <div key={c.id} className="flex justify-between text-sm">
+                <span>
+                  {t('refund.note')} {ltr(`#${c.cnNo}`)} · {c.reason}
+                </span>
+                <span>{ltr(formatRs(-c.totalPaisa))}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {message && (
           <p role="status" className="rounded-lg bg-emerald-50 p-2 text-emerald-900">
             {message}
@@ -209,10 +224,16 @@ export function PayPage() {
               {t('bill.reprint')}
             </button>
           )}
+          {can(me.data, 'bill.refund') && (b.refundedPaisa ?? 0) < b.totalPaisa && (
+            <button className="btn-secondary flex-1" onClick={() => setRefunding(true)}>
+              {t('refund.button')}
+            </button>
+          )}
           <Link to="/" className="btn-primary flex-1">
             {t('bill.done')}
           </Link>
         </div>
+        {refunding && <RefundDialog bill={b} onClose={() => setRefunding(false)} />}
       </div>
     );
   }

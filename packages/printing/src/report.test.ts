@@ -46,6 +46,15 @@ describe('renderReport', () => {
   });
 });
 
+describe('cash refund slips', () => {
+  it('kicks the drawer first when asked', () => {
+    const bytes = renderReport({ ...doc, openDrawer: true }, 80);
+    expect([...bytes].slice(0, 2)).toEqual([0x1b, 0x40]);
+    expect(Buffer.from(bytes.slice(0, 12)).includes(Buffer.from([0x1b, 0x70]))).toBe(true);
+    expect(Buffer.from(renderReport(doc, 80)).includes(Buffer.from([0x1b, 0x70]))).toBe(false);
+  });
+});
+
 describe('renderDrawerKick', () => {
   it('is init + drawer pulse and nothing printable', () => {
     const bytes = renderDrawerKick();

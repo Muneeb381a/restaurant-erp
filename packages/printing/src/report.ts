@@ -18,6 +18,8 @@ export interface ReportDoc {
   sections: ReportSection[];
   /** 0 = first print, n = reprint #n */
   copy?: number;
+  /** Pulse the cash drawer first (a cash refund is paid out of it). */
+  openDrawer?: boolean;
 }
 
 const cell = (v: number | string): string => (typeof v === 'number' ? money(v) : v);
@@ -25,7 +27,9 @@ const cell = (v: number | string): string => (typeof v === 'number' ? money(v) :
 /** Shift close slip and the day's Z-report: titled sections of label/value rows. */
 export function renderReport(doc: ReportDoc, paperMm: PaperMm = 80): Uint8Array {
   const cols = COLUMNS[paperMm];
-  const p = new EscPos().init().align('center').bold(true).size(2, 2);
+  const p = new EscPos().init();
+  if (doc.openDrawer) p.drawerKick();
+  p.align('center').bold(true).size(2, 2);
   for (const l of wrap(doc.restaurant, Math.floor(cols / 2))) p.line(l);
   p.size(1, 2).line(doc.title).size(1, 1).bold(false);
   for (const s of doc.subtitle) p.line(s);

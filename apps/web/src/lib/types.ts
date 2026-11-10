@@ -309,6 +309,8 @@ export interface Bill {
     chargedPaisa: number;
     balancePaisa: number;
   } | null;
+  creditNotes?: CreditNoteSummary[];
+  refundedPaisa?: number;
 }
 
 export interface SettleResult {
@@ -339,4 +341,45 @@ export interface KhataEntry {
   method: string | null;
   billNo: number | null;
   by: string | null;
+}
+
+export interface CreditNoteSummary {
+  id: string;
+  cnNo: number;
+  totalPaisa: number;
+  reason: string;
+  createdAt: string;
+  method: string | null;
+}
+
+export interface Refundable {
+  billId: string;
+  billNo: number;
+  totalPaisa: number;
+  refundedPaisa: number;
+  lines: {
+    id: string;
+    description: string;
+    qty: number;
+    refundedQty: number;
+    remainingQty: number;
+    netPaisa: number;
+  }[];
+  creditNotes: CreditNoteSummary[];
+}
+
+export interface RefundPreview {
+  totalPaisa: number;
+  completesBill: boolean;
+  lines: { billLineId: string; description: string; qty: number; paisa: number }[];
+}
+
+export interface BillListItem {
+  id: string;
+  orderId: string;
+  billNo: number;
+  status: 'SETTLED' | 'PRE_BILLED';
+  totalPaisa: number;
+  settledAt: string | null;
+  businessDate: string;
 }

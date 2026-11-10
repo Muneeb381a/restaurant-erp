@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import { assertCanCharge, assertCanReceivePayment, availableCredit, KhataError } from '@erp/domain';
 import type { AppContext } from '../../http/context';
 import { AppError } from '../../http/errors';
@@ -353,4 +354,56 @@ export function adjustBalance(
     );
     return { balancePaisa: after };
   });
+}
+
+/**
+ * A credit note on a khata-paid bill can be returned to the customer's account (their balance falls)
+ * up to what the bill charged to khata, less what earlier credit notes already returned there.
+ */
+export async function refundToKhata(
+  trx: Queryable,
+  a: Actor,
+  input: { billId: string; creditNoteId: string; amountPaisa: number; at: Date },
+): Promise<{ customer: string; balancePaisa: number }> {
+  const charge = await chargeOfBill(trx, input.billId);
+  if (!charge) throw new AppError(409, 'KHATA_NOT_ON_BILL', 'This bill was not put on khata');
+  const prior = await trx
+    .selectFrom('khata_entries')
+    .innerJoin('credit_notes', 'credit_notes.id', 'khata_entries.credit_note_id')
+    .select(sql<number>`COALESCE(SUM(khata_entries.amount_paisa), 0)::bigint`.as('n'))
+    .where('credit_notes.bill_id', '=', input.billId)
+    .where('khata_entries.kind', '=', 'REFUND')
+    .executeTakeFirstOrThrow();
+  const room = charge.chargedPaisa - prior.n;
+  if (input.amountPaisa > room)
+    throw new AppError(409, 'KHATA_REFUND_EXCEEDS', 'More than this bill charged to khata', {
+      maxPaisa: Math.max(0, room),
+    });
+  const acct = await accountWithCustomer(trx, a.branchId, charge.accountId, true);
+  const balance = await balanceOf(trx, acct.id);
+  await trx
+    .insertInto('khata_entries')
+    .values({
+      account_id: acct.id,
+      kind: 'REFUND',
+      amount_paisa: input.amountPaisa,
+      bill_id: input.billId,
+      credit_note_id: input.creditNoteId,
+      created_by: a.userId,
+      created_at: input.at,
+    })
+    .execute();
+  await audit(
+    trx,
+    a,
+    'KHATA_REFUND',
+    acct.id,
+    { balancePaisa: balance },
+    {
+      balancePaisa: balance - input.amountPaisa,
+      billId: input.billId,
+      amountPaisa: input.amountPaisa,
+    },
+  );
+  return { customer: acct.name, balancePaisa: balance - input.amountPaisa };
 }

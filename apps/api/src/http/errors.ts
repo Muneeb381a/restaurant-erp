@@ -6,6 +6,7 @@ import {
   ModifierError,
   MoneyError,
   PriceError,
+  RefundError,
   TenderError,
 } from '@erp/domain';
 import type { ErrorRequestHandler, RequestHandler } from 'express';
@@ -46,6 +47,9 @@ export type ErrorCode =
   | 'APPROVER_INVALID'
   | 'SHIFT_NOT_OPEN'
   | 'VARIANCE_NOTE_REQUIRED'
+  | 'NOTHING_TO_REFUND'
+  | 'KHATA_NOT_ON_BILL'
+  | 'KHATA_REFUND_EXCEEDS'
   | 'KHATA_LIMIT_EXCEEDED'
   | 'KHATA_OVERPAYMENT'
   | 'KHATA_ACCOUNT_INACTIVE'
@@ -88,6 +92,7 @@ function isDomainError(err: unknown): err is Error & { code: string } {
     err instanceof DealError ||
     err instanceof LineError ||
     err instanceof BillError ||
+    err instanceof RefundError ||
     err instanceof DrawerError ||
     err instanceof TenderError ||
     err instanceof ModifierError ||

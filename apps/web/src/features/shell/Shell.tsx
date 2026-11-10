@@ -102,6 +102,11 @@ function SignedIn() {
             {t('cash.closeDay')}
           </button>
         )}
+        {can(me.data, 'report.view') && (
+          <Link to="/bills" className="btn-secondary text-slate-900">
+            {t('refund.nav')}
+          </Link>
+        )}
         {can(me.data, 'khata.collect') && (
           <Link to="/khata" className="btn-secondary text-slate-900">
             {t('khata.nav')}

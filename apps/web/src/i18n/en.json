@@ -296,5 +296,35 @@
       "ADJUST_DOWN": "Decrease",
       "REFUND": "Refund"
     }
+  },
+  "refund": {
+    "title": "Refund / return",
+    "button": "Refund",
+    "history": "Credit notes",
+    "note": "Credit note",
+    "returnAll": "Return everything left",
+    "qtyLeft": "left: {{n}}",
+    "reason": "Reason (required)",
+    "method": "Refund to",
+    "total": "Refund total",
+    "confirm": "Refund",
+    "done": "Refund recorded",
+    "nothing": "Choose what to return",
+    "reference": "Reference (card RRN / txn id)",
+    "drawerShort": "There is not enough cash in your drawer for this refund",
+    "khataOnly": "More than this bill charged to khata",
+    "needShift": "Open your shift before paying out a refund",
+    "already": "Everything on this bill was already returned",
+    "billsTitle": "Bills",
+    "nav": "Bills",
+    "date": "Business day",
+    "billNo": "Bill no.",
+    "find": "Find",
+    "none": "No bills found",
+    "refunded": "Refunded",
+    "status": {
+      "SETTLED": "Paid",
+      "PRE_BILLED": "Unpaid"
+    }
   }
 }

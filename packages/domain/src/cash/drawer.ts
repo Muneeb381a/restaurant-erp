@@ -19,6 +19,8 @@ export interface DrawerFlows {
   cashInPaisa: number;
   /** Cash received from customers against their khata balance. */
   khataCashPaisa: number;
+  /** Cash handed back to customers through credit notes. */
+  refundsCashPaisa: number;
   paidOutPaisa: number;
   /** Cash taken out of the drawer to the safe. */
   dropsPaisa: number;
@@ -30,7 +32,7 @@ const whole = (n: number, what: string): void => {
 };
 
 /**
- * Cash that should be in the drawer: float + cash sales + cash in + khata cash − paid out − drops.
+ * Cash that should be in the drawer: float + cash sales + cash in + khata cash − cash refunds − paid out − drops.
  * Tips are deliberately not part of it (OPEN-QUESTIONS #30: whether tips pass through the drawer).
  */
 export function expectedCash(f: DrawerFlows): Paisa {
@@ -38,6 +40,7 @@ export function expectedCash(f: DrawerFlows): Paisa {
   whole(f.cashSalesPaisa, 'cash sales');
   whole(f.cashInPaisa, 'cash in');
   whole(f.khataCashPaisa, 'khata cash');
+  whole(f.refundsCashPaisa, 'cash refunds');
   whole(f.paidOutPaisa, 'paid out');
   whole(f.dropsPaisa, 'drops');
   return asPaisa(
@@ -45,6 +48,7 @@ export function expectedCash(f: DrawerFlows): Paisa {
       f.cashSalesPaisa +
       f.cashInPaisa +
       f.khataCashPaisa -
+      f.refundsCashPaisa -
       f.paidOutPaisa -
       f.dropsPaisa,
   );
