@@ -49,3 +49,44 @@ test('capture the main screens', async ({ page }) => {
   await expect(page.locator('aside')).toContainText('Rs');
   await page.screenshot({ path: `${OUT}/07-order-tablet-portrait.png` });
 });
+
+test('capture the admin screens', async ({ page }) => {
+  mkdirSync(OUT, { recursive: true });
+  await login(page, 'owner');
+  await page.goto('/admin/menu');
+  await expect(page.getByRole('row').filter({ hasText: 'Chicken Tikka (Leg)' })).toBeVisible();
+  await page.screenshot({ path: `${OUT}/08-admin-menu.png` });
+
+  await page.getByRole('button', { name: /New item/ }).click();
+  await page.getByLabel('Name', { exact: true }).fill('Chicken Seekh');
+  await page.getByLabel('price DINE_IN').fill('300');
+  await page.screenshot({ path: `${OUT}/09-admin-new-item.png` });
+  await page.getByRole('button', { name: 'Cancel' }).click();
+
+  await page.getByRole('button', { name: 'Import CSV' }).click();
+  await page.getByLabel('Choose a CSV file').setInputFiles({
+    name: 'menu.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      'item_code,item_name,price_dine_in\nOK1,Fine item,100\nBAD1,Bad price,12.345\n,No code,5\n',
+    ),
+  });
+  await page.getByRole('button', { name: 'Check file' }).click();
+  await expect(page.getByText('Problems found')).toBeVisible();
+  await page.screenshot({ path: `${OUT}/10-admin-import.png` });
+  await page.getByRole('button', { name: 'Cancel' }).click();
+
+  await page.goto('/admin/printers');
+  await expect(page.getByRole('heading', { name: 'Printers' })).toBeVisible();
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${OUT}/11-admin-printers.png` });
+
+  await page.goto('/admin/users');
+  await expect(page.getByRole('row').filter({ hasText: 'cashier' }).first()).toBeVisible();
+  await page.screenshot({ path: `${OUT}/12-admin-users.png` });
+
+  await page.goto('/admin/menu');
+  await page.getByRole('button', { name: 'اردو' }).click();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${OUT}/13-admin-menu-urdu.png` });
+});

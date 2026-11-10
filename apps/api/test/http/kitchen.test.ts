@@ -752,3 +752,26 @@ describe('database guarantees', () => {
     ).rejects.toMatchObject({ code: '23001' });
   });
 });
+
+describe('print test page', () => {
+  it('queues a test page for an active printer (settings.manage) and it prints', async () => {
+    const before = bbq.jobs.length;
+    const res = await api(owner).post(`/printers/${P.bbq}/test`);
+    expect(res.status).toBe(202);
+    expect(await run()).toMatchObject({ printed: 1 });
+    expect(bbq.jobs.length).toBe(before + 1);
+    expect(bbq.tickets().at(-1)).toContain('TEST PAGE');
+    expect(bbq.tickets().at(-1)).toContain('BBQ printer');
+    expect((await jobs()).at(-1)).toMatchObject({ kind: 'TEST', status: 'DONE' });
+  });
+
+  it('is refused for staff without settings.manage, unknown printers and deactivated printers', async () => {
+    expect((await api(captain).post(`/printers/${P.bbq}/test`)).status).toBe(403);
+    expect(
+      (await api(owner).post('/printers/00000000-0000-4000-8000-000000000000/test')).status,
+    ).toBe(404);
+    await api(owner).patch(`/printers/${P.backup}`, { is_active: false });
+    expect((await api(owner).post(`/printers/${P.backup}/test`)).status).toBe(404);
+    await api(owner).patch(`/printers/${P.backup}`, { is_active: true });
+  });
+});

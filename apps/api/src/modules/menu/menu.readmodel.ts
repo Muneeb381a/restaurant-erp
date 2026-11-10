@@ -260,6 +260,108 @@ export async function getMenu(
   return value;
 }
 
+/**
+ * Everything the menu admin screen needs in ONE payload: all items (active or not) with every
+ * variant's current price per price list (null = not sold on that channel), plus the lookup
+ * lists for the edit forms.
+ */
+export async function getAdminMenu(ctx: AppContext, branchId: string, date?: string) {
+  const { db } = ctx;
+  const day = date ?? (await currentBusinessDate(db, branchId, ctx.clock.now()));
+  const [lists, stations, categories, items] = await Promise.all([
+    db
+      .selectFrom('price_lists')
+      .select(['id', 'code', 'name'])
+      .where('branch_id', '=', branchId)
+      .orderBy('code')
+      .execute(),
+    db
+      .selectFrom('stations')
+      .select(['id', 'code', 'name'])
+      .where('branch_id', '=', branchId)
+      .orderBy('code')
+      .execute(),
+    db
+      .selectFrom('categories')
+      .selectAll()
+      .where('branch_id', '=', branchId)
+      .orderBy('sort')
+      .orderBy('name')
+      .execute(),
+    db
+      .selectFrom('items')
+      .selectAll()
+      .where('branch_id', '=', branchId)
+      .orderBy('sort')
+      .orderBy('name')
+      .execute(),
+  ]);
+  const ids = items.map((i) => i.id);
+  const variants = ids.length
+    ? await db
+        .selectFrom('item_variants')
+        .selectAll()
+        .where('item_id', 'in', ids)
+        .orderBy('sort')
+        .orderBy('name')
+        .execute()
+    : [];
+  const prices = variants.length
+    ? await db
+        .selectFrom('item_prices')
+        .select(['variant_id', 'price_list_id', 'price_paisa'])
+        .where(
+          'variant_id',
+          'in',
+          variants.map((v) => v.id),
+        )
+        .where('effective_from', '<=', day)
+        .where((eb) => eb.or([eb('effective_to', 'is', null), eb('effective_to', '>=', day)]))
+        .execute()
+    : [];
+  const listCode = new Map(lists.map((l) => [l.id, l.code]));
+  return {
+    date: day,
+    priceLists: lists,
+    stations,
+    categories: categories.map((c) => ({
+      id: c.id,
+      parentId: c.parent_id,
+      name: c.name,
+      nameUr: c.name_ur,
+      isActive: c.is_active,
+    })),
+    items: items.map((i) => ({
+      id: i.id,
+      code: i.code,
+      name: i.name,
+      nameUr: i.name_ur,
+      kind: i.kind,
+      categoryId: i.category_id,
+      stationId: i.station_id,
+      isAvailable: i.is_available,
+      isActive: i.is_active,
+      searchTerms: i.search_terms,
+      variants: variants
+        .filter((v) => v.item_id === i.id)
+        .map((v) => ({
+          id: v.id,
+          name: v.name,
+          nameUr: v.name_ur,
+          isDefault: v.is_default,
+          isActive: v.is_active,
+          prices: Object.fromEntries(
+            lists.map((l) => [
+              l.code,
+              prices.find((p) => p.variant_id === v.id && listCode.get(p.price_list_id) === l.code)
+                ?.price_paisa ?? null,
+            ]),
+          ),
+        })),
+    })),
+  };
+}
+
 /** Admin helper: active items with no price on a channel (they are hidden there). */
 export async function getMenuWarnings(ctx: AppContext, branchId: string, date?: string) {
   const { db } = ctx;

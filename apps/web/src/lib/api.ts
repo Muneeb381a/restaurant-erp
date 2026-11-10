@@ -59,6 +59,10 @@ export interface RequestOptions {
   body?: unknown;
   /** Order version for optimistic locking → `If-Match` */
   ifMatch?: number;
+  /** Send this text as the body (CSV import) instead of JSON. */
+  rawText?: { content: string; contentType: string };
+  /** "text" returns the body as a string (CSV export). */
+  responseType?: 'json' | 'text';
   auth?: boolean;
 }
 
@@ -71,11 +75,19 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
     fetch(`${BASE}${path}`, {
       method: opts.method ?? 'GET',
       headers: {
-        ...(opts.body !== undefined ? { 'content-type': 'application/json' } : {}),
+        ...(opts.rawText
+          ? { 'content-type': opts.rawText.contentType }
+          : opts.body !== undefined
+            ? { 'content-type': 'application/json' }
+            : {}),
         ...(opts.auth !== false && tokens ? { authorization: `Bearer ${tokens.accessToken}` } : {}),
         ...(opts.ifMatch !== undefined ? { 'if-match': String(opts.ifMatch) } : {}),
       },
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      body: opts.rawText
+        ? opts.rawText.content
+        : opts.body !== undefined
+          ? JSON.stringify(opts.body)
+          : undefined,
     });
 
   let res = await send(useAuth.getState().tokens);
@@ -89,5 +101,6 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
   }
   if (!res.ok) throw await toError(res);
   if (res.status === 204) return undefined as T;
+  if (opts.responseType === 'text') return (await res.text()) as T;
   return (await res.json()) as T;
 }

@@ -833,3 +833,28 @@ describe('scale', () => {
     expect(performance.now() - warmStart).toBeLessThan(500);
   });
 });
+
+describe('admin menu payload', () => {
+  it("lists every item (active or not) with each variant's price per price list, and needs menu.manage", async () => {
+    const lists = (await o().get('/price-lists')).body.items as Json[];
+    const item = await mkItem({ name: 'Admin Item', stationId: S.BBQ });
+    await o().put(
+      `/variants/${item.variantId}/prices/${lists.find((l) => l.code === 'DINE_IN').id}`,
+      { pricePaisa: 12345 },
+    );
+    await o().patch(`/items/${item.id}`, { isActive: false });
+
+    const res = await o().get('/menu/admin');
+    expect(res.status).toBe(200);
+    expect(res.body.priceLists.map((l: Json) => l.code)).toEqual([
+      'DELIVERY',
+      'DINE_IN',
+      'TAKEAWAY',
+    ]);
+    expect(res.body.stations.map((s: Json) => s.code)).toContain('BBQ');
+    const found = res.body.items.find((i: Json) => i.id === item.id);
+    expect(found).toMatchObject({ name: 'Admin Item', isActive: false, stationId: S.BBQ });
+    expect(found.variants[0].prices).toEqual({ DELIVERY: null, DINE_IN: 12345, TAKEAWAY: null }); // null = not sold there
+    expect((await t.as(cashier).get('/menu/admin')).status).toBe(403);
+  });
+});

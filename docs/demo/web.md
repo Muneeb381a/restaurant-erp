@@ -25,11 +25,31 @@ Captured by `SCREENSHOTS=1 pnpm test:e2e` (`e2e/screenshots.spec.ts`).
 | Floor in Urdu | ![floor urdu](../screenshots/06-floor-urdu.png) |
 | Tablet portrait | ![portrait](../screenshots/07-order-tablet-portrait.png) |
 
+## Admin area (owner / manager)
+
+The **Admin** button (top bar) opens four sections, each visible only to roles that have the permission (the API enforces it too):
+
+| Section | Needs | What you can do |
+| --- | --- | --- |
+| **Menu** | `menu.manage` | search/filter; edit prices inline (Enter saves, invalid amounts are flagged); 86 toggle; activate/deactivate; **New item** (variants + prices per channel), edit, add variant; **Import CSV** (*Check file* lists problems by line, then *Apply import*); **Export CSV** |
+| **Printers** | `settings.manage` | add/edit printers, live status (OK / offline / not used yet), queue length, **Test page**, which printer prints which station, failed print jobs with *Retry* |
+| **Tables** | `settings.manage` | areas and tables, activate/deactivate (the floor updates) |
+| **Users** | `user.manage` | create users (PIN and/or password), reset a PIN, activate/deactivate, unlock a locked account |
+
+| | |
+| --- | --- |
+| Menu admin | ![menu](../screenshots/08-admin-menu.png) |
+| New item | ![new item](../screenshots/09-admin-new-item.png) |
+| CSV import problems | ![import](../screenshots/10-admin-import.png) |
+| Printers | ![printers](../screenshots/11-admin-printers.png) |
+| Users | ![users](../screenshots/12-admin-users.png) |
+| Menu admin in Urdu | ![menu urdu](../screenshots/13-admin-menu-urdu.png) |
+
 ## Tests
 
 ```bash
 pnpm --filter @erp/web test      # 31 unit/component tests
-pnpm test:e2e                    # 4 browser tests against a fresh e2e database (needs Docker running)
+pnpm test:e2e                    # 10 browser tests against a fresh e2e database (needs Docker running)
 ```
 
 Design: [ADR 0005](../adr/0005-web-app.md).

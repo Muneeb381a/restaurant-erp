@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { renderTestPage } from '@erp/printing';
 import { Router, type Request } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../http/async-handler';
@@ -7,7 +9,8 @@ import { writeAudit } from '../audit/audit.service';
 import { idParam } from '../admin/crud';
 import { authenticate, requirePermission, resolveBranch } from '../auth/middleware';
 import type { Actor } from '../orders/orders.service';
-import { getPrinterHealth } from '../printing/print.service';
+import { enqueuePrintJob, getPrinterHealth } from '../printing/print.service';
+import { clockTime } from './tickets';
 import { getKot, listKots, reprintKot, sendToKitchen } from './kitchen.service';
 
 const uuid = z.string().uuid();
@@ -92,6 +95,47 @@ export function kitchenRouter(ctx: AppContext): Router {
     ...read,
     asyncHandler(async (req, res) => {
       res.json({ items: await getPrinterHealth(ctx, req.branchId!) });
+    }),
+  );
+  /** "Print test page": checks wiring, paper width and the cutter without making an order. */
+  r.post(
+    '/printers/:id/test',
+    ...read,
+    requirePermission(ctx, 'settings.manage'),
+    asyncHandler(async (req, res) => {
+      const id = idParam.parse(req.params).id;
+      const printer = await ctx.db
+        .selectFrom('printers')
+        .innerJoin('branches', 'branches.id', 'printers.branch_id')
+        .select([
+          'printers.id as id',
+          'printers.name as name',
+          'printers.paper_mm as paper_mm',
+          'branches.timezone as tz',
+        ])
+        .where('printers.id', '=', id)
+        .where('printers.branch_id', '=', req.branchId!)
+        .where('printers.is_active', '=', true)
+        .executeTakeFirst();
+      if (!printer) throw new AppError(404, 'NOT_FOUND', 'active printer not found');
+      const now = ctx.clock.now();
+      await enqueuePrintJob(ctx.db, {
+        branchId: req.branchId!,
+        printerId: id,
+        kind: 'TEST',
+        refType: 'printer',
+        refId: id,
+        title: `Test page ${printer.name}`,
+        payload: renderTestPage(
+          printer.name,
+          clockTime(now, printer.tz),
+          printer.paper_mm as 58 | 80,
+        ),
+        idempotencyKey: `test:${randomUUID()}`,
+        createdBy: req.principal!.userId,
+        at: now,
+      });
+      res.status(202).json({ queued: true });
     }),
   );
   r.get(

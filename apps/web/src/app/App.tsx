@@ -1,4 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { AdminIndex, AdminLayout } from '../features/admin/AdminLayout';
+import { MenuAdmin } from '../features/admin/MenuAdmin';
+import { PrintersAdmin } from '../features/admin/PrintersAdmin';
+import { TablesAdmin } from '../features/admin/TablesAdmin';
+import { UsersAdmin } from '../features/admin/UsersAdmin';
 import { FloorPage } from '../features/floor/FloorPage';
 import { LoginPage } from '../features/login/LoginPage';
 import { OrderPage } from '../features/order/OrderPage';
@@ -11,6 +16,13 @@ export function App() {
       <Route element={<Shell />}>
         <Route index element={<FloorPage />} />
         <Route path="order/:id" element={<OrderPage />} />
+        <Route path="admin" element={<AdminLayout />}>
+          <Route index element={<AdminIndex />} />
+          <Route path="menu" element={<MenuAdmin />} />
+          <Route path="printers" element={<PrintersAdmin />} />
+          <Route path="tables" element={<TablesAdmin />} />
+          <Route path="users" element={<UsersAdmin />} />
+        </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

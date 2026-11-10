@@ -7,6 +7,7 @@ import { ApiError, api } from '../../lib/api';
 import { useAuth } from '../../lib/auth-store';
 import { ltr } from '../../lib/money';
 import { can, useDay, useMe, usePrinterHealth, useShift } from '../../lib/queries';
+import { ADMIN_SECTIONS } from '../admin/AdminLayout';
 import { LanguageToggle } from './LanguageToggle';
 
 /** Auth guard + top bar (business day, shift, user, language) around every signed-in screen. */
@@ -83,6 +84,11 @@ function SignedIn() {
             )
           ))}
 
+        {ADMIN_SECTIONS.some((s) => can(me.data, s.permission)) && (
+          <Link to="/admin" className="btn-secondary text-slate-900">
+            {t('admin.title')}
+          </Link>
+        )}
         <span className="text-sm text-slate-300">{me.data?.fullName}</span>
         <LanguageToggle />
         <button className="btn-secondary text-slate-900" onClick={() => void logout()}>

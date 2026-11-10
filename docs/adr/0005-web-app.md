@@ -12,6 +12,10 @@
 - **Urdu/RTL:** `<html lang dir>` follows the language; layout uses Tailwind logical utilities (`ms-`, `me-`, `border-e`, `text-start`) so it mirrors without per-component work; item names use `name_ur` when present; the PIN pad stays LTR; a test checks that every English string has an Urdu one.
 - **Tests:** Vitest + Testing Library for the API client (refresh single-flight, error mapping), login, item sheet rules, i18n; **Playwright** (`pnpm test:e2e`) drives the real stack against its own database (`erp_e2e`, ports 18081/15174): cashier opens day + shift and takes an order, a second tablet sees the table occupied, Urdu RTL, sign-out guard.
 
+## Admin area
+
+A permission-gated section (`/admin`): menu (inline price edit, new item, CSV import with a dry-run step, export), printers (status, test page, station mapping, failed jobs), tables, users. It reads one purpose-built payload (`GET /menu/admin`: every item with its price per channel) and uses the same endpoints as the API tests, so the UI adds no rules of its own: prices are parsed with the domain's `parseRupees` (invalid input is flagged and never sent), clearing a price is not offered (history is kept), and the import shows the server's validation by line number. Checkboxes that change server state update optimistically and roll back on error.
+
 ## Not yet
 
-PWA install/offline shell, WebSocket push, admin screens (menu editor, CSV upload, users), table transfer/merge/cancel UI, KOT send (M4), billing (M5/M6), idle auto-lock.
+PWA install/offline shell, WebSocket push, deal editor, role/permission editor, settings screen, table transfer/merge/cancel UI, receipts and billing (M5/M6), idle auto-lock.

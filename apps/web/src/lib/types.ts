@@ -156,3 +156,110 @@ export interface Menu {
   }[];
   items: MenuItem[];
 }
+
+// ───────────────────────────────── admin ─────────────────────────────────
+
+export interface AdminVariant {
+  id: string;
+  name: string;
+  nameUr: string | null;
+  isDefault: boolean;
+  isActive: boolean;
+  /** price in paisa by price-list code; null = not sold on that channel */
+  prices: Record<string, number | null>;
+}
+
+export interface AdminItem {
+  id: string;
+  code: string | null;
+  name: string;
+  nameUr: string | null;
+  kind: 'STANDARD' | 'WEIGHT' | 'DEAL';
+  categoryId: string | null;
+  stationId: string | null;
+  isAvailable: boolean;
+  isActive: boolean;
+  searchTerms: string | null;
+  variants: AdminVariant[];
+}
+
+export interface AdminMenu {
+  date: string;
+  priceLists: { id: string; code: string; name: string }[];
+  stations: { id: string; code: string; name: string }[];
+  categories: {
+    id: string;
+    parentId: string | null;
+    name: string;
+    nameUr: string | null;
+    isActive: boolean;
+  }[];
+  items: AdminItem[];
+}
+
+export interface ImportResult {
+  dryRun: boolean;
+  ok: boolean;
+  effectiveFrom: string;
+  summary: {
+    categoriesCreated: number;
+    itemsCreated: number;
+    itemsUpdated: number;
+    itemsUnchanged: number;
+    variantsCreated: number;
+    variantsUpdated: number;
+    pricesSet: number;
+    pricesUnchanged: number;
+  };
+  warnings: string[];
+  errors: { line: number; message: string }[];
+}
+
+export interface PrinterRow {
+  id: string;
+  name: string;
+  kind: 'RECEIPT' | 'KOT';
+  conn_type: 'NETWORK' | 'USB' | 'SERIAL';
+  host: string | null;
+  port: number | null;
+  paper_mm: 58 | 80;
+  is_active: boolean;
+}
+
+export interface PrintJobRow {
+  id: string;
+  printer_id: string;
+  kind: string;
+  title: string;
+  status: string;
+  attempts: number;
+  last_error: string | null;
+  created_at: string;
+}
+
+export interface TableRow {
+  id: string;
+  code: string;
+  area_id: string | null;
+  seats: number;
+  is_active: boolean;
+}
+
+export interface UserRow {
+  id: string;
+  username: string;
+  full_name: string;
+  role_id: string;
+  role_code: string;
+  discount_limit_bps: number;
+  is_active: boolean;
+  locked_until: string | null;
+  has_pin: boolean;
+  has_password: boolean;
+}
+
+export interface RoleRow {
+  id: string;
+  code: string;
+  name: string;
+}

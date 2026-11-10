@@ -8,7 +8,7 @@ import { idParam } from '../admin/crud';
 import { authenticate, requirePermission, resolveBranch } from '../auth/middleware';
 import { importMenu, exportMenuCsv } from './menu.import';
 import { getItemFull } from './menu.repo';
-import { getMenu, getMenuWarnings } from './menu.readmodel';
+import { getAdminMenu, getMenu, getMenuWarnings } from './menu.readmodel';
 import * as svc from './menu.service';
 
 const text = (max = 200) => z.string().trim().min(1).max(max);
@@ -451,6 +451,14 @@ export function menuRouter(ctx: AppContext): Router {
       res.setHeader('Cache-Control', 'private, no-cache'); // always revalidate; 304 keeps it cheap
       if (req.header('if-none-match') === etag) return void res.status(304).end();
       res.type('application/json').send(body);
+    }),
+  );
+  r.get(
+    '/menu/admin',
+    ...manage,
+    asyncHandler(async (req, res) => {
+      const q = z.object({ date: isoDate.optional() }).parse(req.query);
+      res.json(await getAdminMenu(ctx, req.branchId!, q.date));
     }),
   );
   r.get(
