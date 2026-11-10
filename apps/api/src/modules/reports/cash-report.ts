@@ -33,6 +33,8 @@ export interface CashFlows {
   openingFloatPaisa: number;
   cashSalesPaisa: number;
   cashInPaisa: number;
+  /** Cash received against khata balances (it goes into the drawer). */
+  khataCashPaisa: number;
   paidOutPaisa: number;
   dropsPaisa: number;
   noSaleCount: number;
@@ -50,6 +52,8 @@ export interface ShiftReport {
   sales: SalesTotals;
   byMethod: MethodTotal[];
   cash: CashFlows;
+  /** All khata payments received in this shift, any method. */
+  khataCollectedPaisa: number;
   /** Cash that should be in the drawer right now (or at close). */
   expectedCashPaisa: number;
   countedCashPaisa: number | null;
@@ -144,7 +148,7 @@ export async function shiftReport(
     .executeTakeFirst();
   if (!s) throw new AppError(404, 'NOT_FOUND', 'shift not found');
 
-  const [sales, byMethod, moves] = await Promise.all([
+  const [sales, byMethod, moves, khataRows] = await Promise.all([
     salesTotals(q, { shiftId }),
     methodTotals(q, { shiftId }),
     q
@@ -157,12 +161,24 @@ export async function shiftReport(
       .where('shift_id', '=', shiftId)
       .groupBy('kind')
       .execute(),
+    q
+      .selectFrom('khata_entries')
+      .innerJoin('payment_methods', 'payment_methods.id', 'khata_entries.method_id')
+      .select([
+        'payment_methods.opens_drawer as isCash',
+        big(sql`sum(khata_entries.amount_paisa)`).as('amount'),
+      ])
+      .where('khata_entries.shift_id', '=', shiftId)
+      .where('khata_entries.kind', '=', 'PAYMENT')
+      .groupBy('payment_methods.opens_drawer')
+      .execute(),
   ]);
   const sum = (k: string): number => moves.find((m) => m.kind === k)?.amount ?? 0;
   const cash: CashFlows = {
     openingFloatPaisa: s.float,
     cashSalesPaisa: byMethod.filter((m) => m.isCash).reduce((n, m) => n + m.amountPaisa, 0),
     cashInPaisa: sum('CASH_IN'),
+    khataCashPaisa: khataRows.filter((k) => k.isCash).reduce((n, k) => n + k.amount, 0),
     paidOutPaisa: sum('PAID_OUT'),
     dropsPaisa: sum('DROP'),
     noSaleCount: moves.find((m) => m.kind === 'NO_SALE_OPEN')?.n ?? 0,
@@ -181,6 +197,7 @@ export async function shiftReport(
     sales,
     byMethod,
     cash,
+    khataCollectedPaisa: khataRows.reduce((n, k) => n + k.amount, 0),
     expectedCashPaisa: expected,
     countedCashPaisa: s.counted,
     variancePaisa: s.counted === null ? null : cashVariance(s.counted, expected),
@@ -203,6 +220,7 @@ export interface DayReport {
   voidedBills: number;
   cancelledOrders: number;
   varianceTotalPaisa: number;
+  khata: { chargedPaisa: number; collectedPaisa: number };
 }
 
 export async function dayReport(q: Queryable, branchId: string, dayId: string): Promise<DayReport> {
@@ -213,49 +231,64 @@ export async function dayReport(q: Queryable, branchId: string, dayId: string): 
     .where('branch_id', '=', branchId)
     .executeTakeFirst();
   if (!d) throw new AppError(404, 'NOT_FOUND', 'business day not found');
-  const [sales, byMethod, byType, shifts, voided, cancelled] = await Promise.all([
-    salesTotals(q, { dayId }),
-    methodTotals(q, { dayId }),
-    q
-      .selectFrom('bills')
-      .innerJoin('orders', 'orders.id', 'bills.order_id')
-      .select([
-        'orders.type as type',
-        sql<number>`count(*)::int`.as('count'),
-        big(sql`sum(bills.total_paisa)`).as('total'),
-      ])
-      .where('bills.business_day_id', '=', dayId)
-      .where('bills.status', '=', 'SETTLED')
-      .groupBy('orders.type')
-      .orderBy('orders.type')
-      .execute(),
-    q
-      .selectFrom('shifts')
-      .innerJoin('users', 'users.id', 'shifts.opened_by')
-      .select([
-        'shifts.id as id',
-        'users.full_name as cashier',
-        'shifts.status as status',
-        'shifts.expected_cash_paisa as expected',
-        'shifts.counted_cash_paisa as counted',
-        'shifts.variance_paisa as variance',
-      ])
-      .where('shifts.business_day_id', '=', dayId)
-      .orderBy('shifts.opened_at')
-      .execute(),
-    q
-      .selectFrom('bills')
-      .select(sql<number>`count(*)::int`.as('n'))
-      .where('business_day_id', '=', dayId)
-      .where('status', '=', 'VOID')
-      .executeTakeFirstOrThrow(),
-    q
-      .selectFrom('orders')
-      .select(sql<number>`count(*)::int`.as('n'))
-      .where('business_day_id', '=', dayId)
-      .where('status', '=', 'CANCELLED')
-      .executeTakeFirstOrThrow(),
-  ]);
+  const [sales, byMethod, byType, shifts, voided, cancelled, charged, collected] =
+    await Promise.all([
+      salesTotals(q, { dayId }),
+      methodTotals(q, { dayId }),
+      q
+        .selectFrom('bills')
+        .innerJoin('orders', 'orders.id', 'bills.order_id')
+        .select([
+          'orders.type as type',
+          sql<number>`count(*)::int`.as('count'),
+          big(sql`sum(bills.total_paisa)`).as('total'),
+        ])
+        .where('bills.business_day_id', '=', dayId)
+        .where('bills.status', '=', 'SETTLED')
+        .groupBy('orders.type')
+        .orderBy('orders.type')
+        .execute(),
+      q
+        .selectFrom('shifts')
+        .innerJoin('users', 'users.id', 'shifts.opened_by')
+        .select([
+          'shifts.id as id',
+          'users.full_name as cashier',
+          'shifts.status as status',
+          'shifts.expected_cash_paisa as expected',
+          'shifts.counted_cash_paisa as counted',
+          'shifts.variance_paisa as variance',
+        ])
+        .where('shifts.business_day_id', '=', dayId)
+        .orderBy('shifts.opened_at')
+        .execute(),
+      q
+        .selectFrom('bills')
+        .select(sql<number>`count(*)::int`.as('n'))
+        .where('business_day_id', '=', dayId)
+        .where('status', '=', 'VOID')
+        .executeTakeFirstOrThrow(),
+      q
+        .selectFrom('orders')
+        .select(sql<number>`count(*)::int`.as('n'))
+        .where('business_day_id', '=', dayId)
+        .where('status', '=', 'CANCELLED')
+        .executeTakeFirstOrThrow(),
+      q
+        .selectFrom('khata_entries')
+        .innerJoin('bills', 'bills.id', 'khata_entries.bill_id')
+        .select(big(sql`sum(khata_entries.amount_paisa)`).as('n'))
+        .where('bills.business_day_id', '=', dayId)
+        .where('khata_entries.kind', '=', 'CHARGE')
+        .executeTakeFirstOrThrow(),
+      q
+        .selectFrom('khata_entries')
+        .innerJoin('shifts', 'shifts.id', 'khata_entries.shift_id')
+        .select(big(sql`sum(khata_entries.amount_paisa)`).as('n'))
+        .where('shifts.business_day_id', '=', dayId)
+        .where('khata_entries.kind', '=', 'PAYMENT')
+        .executeTakeFirstOrThrow(),
+    ]);
   return {
     day: {
       id: d.id,
@@ -277,6 +310,7 @@ export async function dayReport(q: Queryable, branchId: string, dayId: string): 
     })),
     voidedBills: voided.n,
     cancelledOrders: cancelled.n,
+    khata: { chargedPaisa: charged.n, collectedPaisa: collected.n },
     varianceTotalPaisa: shifts.reduce((n, s) => n + (s.variance ?? 0), 0),
   };
 }
@@ -334,6 +368,7 @@ export function shiftReportDoc(
           ['Opening float', c.openingFloatPaisa],
           ['Cash sales', c.cashSalesPaisa],
           ['Cash in', c.cashInPaisa],
+          ['Khata cash received', c.khataCashPaisa],
           ['Paid out', -c.paidOutPaisa],
           ['Drops to safe', -c.dropsPaisa],
           ['No-sale opens', String(c.noSaleCount)],
@@ -392,6 +427,13 @@ export function dayReportDoc(r: DayReport, restaurant: string, tz: string, copy 
           ['Total variance', r.varianceTotalPaisa],
         ],
         boldLast: true,
+      },
+      {
+        heading: 'Khata',
+        rows: [
+          ['Charged (credit sales)', r.khata.chargedPaisa],
+          ['Collected', r.khata.collectedPaisa],
+        ],
       },
       {
         heading: 'Exceptions',

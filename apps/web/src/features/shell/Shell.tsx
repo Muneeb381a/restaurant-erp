@@ -102,6 +102,11 @@ function SignedIn() {
             {t('cash.closeDay')}
           </button>
         )}
+        {can(me.data, 'khata.collect') && (
+          <Link to="/khata" className="btn-secondary text-slate-900">
+            {t('khata.nav')}
+          </Link>
+        )}
         {ADMIN_SECTIONS.some((s) => can(me.data, s.permission)) && (
           <Link to="/admin" className="btn-secondary text-slate-900">
             {t('admin.title')}

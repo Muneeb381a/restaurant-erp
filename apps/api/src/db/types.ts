@@ -323,10 +323,16 @@ export interface KhataEntries {
   bill_id: string | null;
   created_at: Generated<Timestamp>;
   created_by: string;
+  credit_note_id: string | null;
+  delta_paisa: Generated<Int8 | null>;
   id: Generated<string>;
+  idempotency_key: string | null;
   kind: string;
+  method_id: string | null;
   note: string | null;
   payment_id: string | null;
+  reference: string | null;
+  shift_id: string | null;
 }
 
 export interface Kots {

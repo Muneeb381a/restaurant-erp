@@ -27,6 +27,7 @@ const tenderSchema = z
     tenderedPaisa: money.optional(),
     tipPaisa: money.optional(),
     reference: z.string().trim().max(100).optional(),
+    khataAccountId: uuid.optional(),
   })
   .strict();
 

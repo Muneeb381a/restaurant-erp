@@ -148,3 +148,27 @@ describe('receipt (80 mm)', () => {
     expect(renderReceipt({ ...base, restaurant: 'دیسی ڈیرہ' }).some((b) => b > 0x7f)).toBe(false);
   });
 });
+
+describe('khata receipts', () => {
+  it('names the customer whose account carries the bill', () => {
+    const text = describeBytes(
+      renderReceipt({
+        restaurant: 'R',
+        billNo: 1,
+        orderNo: 1,
+        orderType: 'TAKEAWAY',
+        dateTime: '01/08/2026 19:42',
+        lines: [{ qty: 1, name: 'Karahi', amountPaisa: 100000 }],
+        subtotalPaisa: 100000,
+        discountPaisa: 0,
+        serviceChargePaisa: 0,
+        taxPaisa: 0,
+        roundOffPaisa: 0,
+        totalPaisa: 100000,
+        payments: [{ method: 'Khata', amountPaisa: 100000, changePaisa: 0 }],
+        khataCustomer: 'Haji Sahib',
+      }),
+    );
+    expect(text).toContain('Khata a/c: Haji Sahib');
+  });
+});

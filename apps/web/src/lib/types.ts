@@ -303,6 +303,12 @@ export interface Bill {
   lines: { id: string; description: string; qty: number; netPaisa: number }[];
   payments: BillPayment[];
   changeDuePaisa: number;
+  khata?: {
+    accountId: string;
+    customer: string;
+    chargedPaisa: number;
+    balancePaisa: number;
+  } | null;
 }
 
 export interface SettleResult {
@@ -310,4 +316,27 @@ export interface SettleResult {
   changeDuePaisa: number;
   receipts: number;
   replayed: boolean;
+}
+
+export interface KhataAccount {
+  id: string;
+  name: string;
+  phone: string | null;
+  creditLimitPaisa: number;
+  balancePaisa: number;
+  availableCreditPaisa: number;
+  isActive: boolean;
+}
+
+export interface KhataEntry {
+  id: string;
+  kind: 'CHARGE' | 'PAYMENT' | 'ADJUST_UP' | 'ADJUST_DOWN' | 'REFUND';
+  amountPaisa: number;
+  deltaPaisa: number;
+  note: string | null;
+  reference: string | null;
+  createdAt: string;
+  method: string | null;
+  billNo: number | null;
+  by: string | null;
 }

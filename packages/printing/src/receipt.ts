@@ -37,6 +37,8 @@ export interface ReceiptDoc {
   totalPaisa: number;
   payments: ReceiptPayment[];
   tipPaisa?: number;
+  /** Credit sale: whose khata account carries (part of) the bill. */
+  khataCustomer?: string | null;
   /** 0 = original, n = duplicate copy #n. */
   duplicate?: number;
   /** Open the cash drawer (cash tender). */
@@ -121,6 +123,7 @@ export function renderReceipt(doc: ReceiptDoc, paperMm: PaperMm = 80): Uint8Arra
     if (pay.changePaisa > 0) row('  Change', pay.changePaisa);
   }
   if (doc.tipPaisa && doc.tipPaisa > 0) row('Tip', doc.tipPaisa);
+  if (doc.khataCustomer) for (const l of wrap(`Khata a/c: ${doc.khataCustomer}`, cols)) p.line(l);
 
   p.rule(cols).align('center').line('Thank you! Visit again').feed(3).cut();
   return p.build();

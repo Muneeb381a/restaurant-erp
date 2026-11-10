@@ -35,8 +35,10 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | `DISCOUNT_APPROVAL_REQUIRED` | 403 | Discount above the user's `discount_limit_bps`; send `approver: {username, pin}` of a user with `bill.discount.unlimited`           |
 | `APPROVER_INVALID`    | 403  | Approver username/PIN wrong, or that user cannot approve discounts (failed PINs count towards the lockout)                                  |
 | `SHIFT_NOT_OPEN`      | 409  | The cashier has no open shift in the bill's business day                                                                                    |
-| `TENDER_UNSUPPORTED`  | 409  | Payment method not available yet (customer credit / khata)                                                                                  |
 | `VARIANCE_NOTE_REQUIRED` | 400 | Shift close: counted cash differs from expected; send `notes` (the body has `variancePaisa`)                                           |
+| `KHATA_LIMIT_EXCEEDED` | 409 | Credit sale would pass the customer's limit; body has `balancePaisa`, `limitPaisa`, `availablePaisa`                                      |
+| `KHATA_OVERPAYMENT`   | 409  | A khata payment is larger than the balance (advance deposits are not supported); body has `balancePaisa`                                    |
+| `KHATA_ACCOUNT_INACTIVE` | 409 | The khata account is switched off and takes no new credit sales                                                                          |
 | `SHIFTS_STILL_OPEN`   | 409  | Day close refused: some shifts are open (`cashiers` lists them)                                                                             |
 | `ORDERS_STILL_OPEN`   | 409  | Day close refused: orders still OPEN or BILLED (`orders` lists number and status)                                                           |
 | `NOTHING_TO_SEND`     | 409  | Send/reprint found nothing to print (no NEW lines, or every line of the KOT was voided)                                                      |

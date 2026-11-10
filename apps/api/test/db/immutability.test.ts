@@ -211,7 +211,7 @@ describe('other append-only ledgers', () => {
       [b.branchId, cust.rows[0].id],
     );
     const entry = await db.pool.query(
-      `INSERT INTO khata_entries(account_id,kind,amount_paisa,created_by) VALUES ($1,'CHARGE',500,$2) RETURNING id`,
+      `INSERT INTO khata_entries(account_id,kind,amount_paisa,note,created_by) VALUES ($1,'ADJUST_UP',500,'opening balance',$2) RETURNING id`,
       [acct.rows[0].id, b.userId],
     );
     const id = entry.rows[0].id as string;

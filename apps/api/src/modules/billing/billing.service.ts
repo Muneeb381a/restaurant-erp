@@ -17,6 +17,7 @@ import { CLEAN_STATE, isLocked, onFailure } from '../auth/lockout';
 import { clockTime } from '../kitchen/tickets';
 import { bumpVersion, lockOrder, nextDocNo } from '../orders/orders.repo';
 import { assertEditable, checkVersion, type Actor } from '../orders/orders.service';
+import { chargeKhata, khataForBill } from '../khata/khata.service';
 import { enqueuePrintJob } from '../printing/print.service';
 
 const bad = (message: string, extra?: Record<string, unknown>): AppError =>
@@ -127,6 +128,7 @@ export async function getBillView(q: Queryable, branchId: string, billId: string
       receivedAt: p.received_at,
     })),
     changeDuePaisa: payments.reduce((n, p) => n + p.change, 0),
+    khata: await khataForBill(q, billId),
   };
 }
 export type BillView = Awaited<ReturnType<typeof getBillView>>;
@@ -477,6 +479,8 @@ export interface TenderBody {
   tenderedPaisa?: number | undefined;
   tipPaisa?: number | undefined;
   reference?: string | undefined;
+  /** Required for (and only for) the khata method: whose account carries the credit. */
+  khataAccountId?: string | undefined;
 }
 
 export interface SettleResult {
@@ -555,6 +559,7 @@ async function receiptDoc(
     taxPaisa: bill.taxPaisa,
     roundOffPaisa: bill.roundOffPaisa,
     totalPaisa: bill.totalPaisa,
+    khataCustomer: bill.khata?.customer ?? null,
     payments: bill.payments.map((p) => ({
       method: p.method,
       amountPaisa: p.amountPaisa,
@@ -671,8 +676,22 @@ export async function settleBill(
       .execute();
     if (methods.length !== new Set(tenders.map((t) => t.methodId)).size)
       throw bad('Unknown or inactive payment method');
-    if (methods.some((m) => m.code === 'KHATA'))
-      throw new AppError(409, 'TENDER_UNSUPPORTED', 'Customer credit (khata) is not available yet');
+    const isKhata = (t: TenderBody): boolean =>
+      methods.find((m) => m.id === t.methodId)?.code === 'KHATA';
+    const khataTenders = tenders.filter(isKhata);
+    if (khataTenders.length > 1) throw bad('Only one khata tender per bill');
+    if (tenders.some((t) => !isKhata(t) && t.khataAccountId))
+      throw bad('khataAccountId only belongs on the khata tender');
+    const khataTender = khataTenders[0];
+    if (khataTender) {
+      if (!a.permissions.has('khata.collect'))
+        throw new AppError(403, 'PERMISSION_DENIED', 'You do not have permission for this action', {
+          permission: 'khata.collect',
+        });
+      if (!khataTender.khataAccountId)
+        throw new AppError(400, 'VALIDATION_FAILED', 'Choose the customer’s khata account');
+      if (khataTender.tipPaisa) throw bad('A tip cannot be put on khata');
+    }
     const result = validateTenders(
       asPaisa(bill.total_paisa),
       tenders.map((t) => {
@@ -692,7 +711,7 @@ export async function settleBill(
 
     const now = ctx.clock.now();
     for (const [i, t] of result.applied.entries()) {
-      await trx
+      const paid = await trx
         .insertInto('payments')
         .values({
           bill_id: billId,
@@ -708,7 +727,18 @@ export async function settleBill(
           received_by: a.userId,
           received_at: now,
         })
-        .execute();
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      if (khataTender && t.methodId === khataTender.methodId) {
+        // credit sale: the customer's ledger takes the charge in this same transaction
+        await chargeKhata(trx, a, {
+          accountId: khataTender.khataAccountId!,
+          billId,
+          paymentId: paid.id,
+          amountPaisa: t.amountPaisa,
+          at: now,
+        });
+      }
     }
     await trx
       .updateTable('bills')

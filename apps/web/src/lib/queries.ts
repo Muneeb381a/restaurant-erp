@@ -4,6 +4,8 @@ import type {
   Bill,
   BusinessDay,
   Floor,
+  KhataAccount,
+  KhataEntry,
   Me,
   Menu,
   Order,
@@ -77,4 +79,22 @@ export const usePaymentMethods = () =>
     queryFn: async () =>
       (await api<{ items: PaymentMethod[] }>('/payment-methods')).items.filter((m) => m.is_active),
     staleTime: 60_000,
+  });
+
+export const useKhataAccounts = (search: string, owingOnly = false) =>
+  useQuery({
+    queryKey: ['khata', 'list', search, owingOnly],
+    queryFn: async () =>
+      (
+        await api<{ items: KhataAccount[] }>(
+          `/khata/accounts?search=${encodeURIComponent(search)}${owingOnly ? '&owing=true' : ''}`,
+        )
+      ).items,
+    placeholderData: (prev) => prev,
+  });
+
+export const useKhataAccount = (id: string) =>
+  useQuery({
+    queryKey: ['khata', 'one', id],
+    queryFn: () => api<KhataAccount & { entries: KhataEntry[] }>(`/khata/accounts/${id}`),
   });

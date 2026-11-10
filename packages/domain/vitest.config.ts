@@ -24,6 +24,7 @@ export default defineConfig({
         'src/billing/bill.ts': full,
         'src/billing/tender.ts': full,
         'src/cash/drawer.ts': full,
+        'src/khata/ledger.ts': full,
         'src/menu/import.ts': { branches: 85, functions: 95, lines: 95, statements: 95 },
       },
     },

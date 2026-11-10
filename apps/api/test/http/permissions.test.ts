@@ -37,6 +37,8 @@ const ALL_PERMISSIONS = [
   'stock.manage',
   'settings.manage',
   'device.manage',
+  'khata.collect',
+  'customer.manage',
 ];
 const NOT_MANAGER = ['user.manage', 'tax.manage', 'settings.manage', 'device.manage'];
 
@@ -58,6 +60,7 @@ const GRANTS: Record<RoleCode, string[]> = {
     'drawer.open',
     'menu.availability',
     'report.view',
+    'khata.collect',
   ],
   CAPTAIN: ['order.create', 'order.transfer', 'kot.reprint', 'bill.create'],
   KITCHEN: ['menu.availability'],
@@ -339,6 +342,41 @@ const probes: Probe[] = [
     name: 'POST /reports/reprint (day)',
     perm: 'day.close',
     call: (a) => a.post('/reports/reprint', { dayId: uuid(), reason: 'probe' }),
+  },
+  // ── khata (M6c)
+  { name: 'GET /khata/accounts', perm: 'khata.collect', call: (a) => a.get('/khata/accounts') },
+  {
+    name: 'GET /khata/accounts/:id',
+    perm: 'khata.collect',
+    call: (a) => a.get(`/khata/accounts/${uuid()}`),
+  },
+  {
+    name: 'POST /khata/accounts',
+    perm: 'customer.manage',
+    call: (a) => a.post('/khata/accounts', { name: 'Probe', creditLimitPaisa: 0 }),
+  },
+  {
+    name: 'PATCH /khata/accounts/:id',
+    perm: 'customer.manage',
+    call: (a) => a.patch(`/khata/accounts/${uuid()}`, { isActive: false }),
+  },
+  {
+    name: 'POST /khata/accounts/:id/payments',
+    perm: 'khata.collect',
+    call: (a) =>
+      a
+        .post(`/khata/accounts/${uuid()}/payments`, { methodId: uuid(), amountPaisa: 1 })
+        .set('Idempotency-Key', 'probe-key-0004'),
+  },
+  {
+    name: 'POST /khata/accounts/:id/adjustments',
+    perm: 'customer.manage',
+    call: (a) =>
+      a.post(`/khata/accounts/${uuid()}/adjustments`, {
+        direction: 'UP',
+        amountPaisa: 1,
+        reason: 'probe',
+      }),
   },
 ];
 

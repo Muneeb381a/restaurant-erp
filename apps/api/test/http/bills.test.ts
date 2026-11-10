@@ -352,11 +352,9 @@ describe('settle', () => {
     expect(view.body.payments).toHaveLength(0);
   });
 
-  it('refuses khata for now and unknown methods', async () => {
+  it('a khata tender needs the customer’s account (see khata.test.ts), unknown methods are refused', async () => {
     const bill = await preBill();
-    expect((await settle(bill.id, [{ methodId: M.KHATA, amountPaisa: 100000 }])).body.code).toBe(
-      'TENDER_UNSUPPORTED',
-    );
+    expect((await settle(bill.id, [{ methodId: M.KHATA, amountPaisa: 100000 }])).status).toBe(400);
     expect(
       (
         await settle(bill.id, [

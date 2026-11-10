@@ -5,7 +5,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr, parseRs } from '../../lib/money';
 import { can, useBill, useMe, usePaymentMethods } from '../../lib/queries';
-import type { Bill, PaymentMethod, SettleResult } from '../../lib/types';
+import type { Bill, KhataAccount, PaymentMethod, SettleResult } from '../../lib/types';
+import { KhataPicker } from '../khata/KhataPicker';
 
 interface TenderRow {
   key: number;
@@ -13,6 +14,8 @@ interface TenderRow {
   amount: string;
   tendered: string;
   reference: string;
+  /** Khata tender only: the chosen customer account. */
+  khata: KhataAccount | null;
 }
 
 const QUICK_CASH = [500, 1000, 5000];
@@ -90,6 +93,7 @@ export function PayPage() {
             ? { tenderedPaisa: parseRs(r.tendered) ?? amountPaisa }
             : {}),
           ...(r.reference.trim() ? { reference: r.reference.trim() } : {}),
+          ...(r.khata ? { khataAccountId: r.khata.id } : {}),
         };
       });
       return api<SettleResult>(`/bills/${b!.id}/settle`, {
@@ -104,7 +108,15 @@ export function PayPage() {
       setMessage(null);
     },
     onError: (e) => {
-      if (e instanceof ApiError && e.status === 400) setMessage(t('bill.short'));
+      if (e instanceof ApiError && e.code === 'KHATA_LIMIT_EXCEEDED')
+        setMessage(
+          t('khata.limitExceeded', {
+            available: ltr(formatRs(Number(e.body.availablePaisa ?? 0))),
+          }),
+        );
+      else if (e instanceof ApiError && e.code === 'KHATA_ACCOUNT_INACTIVE')
+        setMessage(t('khata.inactiveAcct'));
+      else if (e instanceof ApiError && e.status === 400) setMessage(t('bill.short'));
       else fail(e);
     },
   });
@@ -145,6 +157,7 @@ export function PayPage() {
         amount: rest > 0 ? (rest / 100).toFixed(2) : '',
         tendered: '',
         reference: '',
+        khata: null,
       },
     ]);
   };
@@ -158,6 +171,7 @@ export function PayPage() {
       const amt = parseRs(r.amount);
       if (!amt || amt <= 0) return false;
       if (m?.needs_reference && r.reference.trim().length === 0) return false;
+      if (m?.code === 'KHATA' && !r.khata) return false;
       if (m?.opens_drawer && r.tendered) {
         const tn = parseRs(r.tendered);
         if (tn === null || tn < amt) return false;
@@ -267,7 +281,7 @@ export function PayPage() {
         )}
         <div className="flex flex-wrap gap-2">
           {(methods.data ?? [])
-            .filter((m) => m.code !== 'KHATA')
+            .filter((m) => m.code !== 'KHATA' || can(me.data, 'khata.collect'))
             .map((m) => (
               <button
                 key={m.id}
@@ -336,6 +350,18 @@ export function PayPage() {
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+              {m.code === 'KHATA' && (
+                <div className="space-y-1">
+                  <KhataPicker selected={r.khata} onSelect={(a) => patch(r.key, { khata: a })} />
+                  {r.khata && (parseRs(r.amount) ?? 0) > r.khata.availableCreditPaisa && (
+                    <p className="text-sm text-amber-800">
+                      {t('khata.limitExceeded', {
+                        available: ltr(formatRs(r.khata.availableCreditPaisa)),
+                      })}
+                    </p>
+                  )}
                 </div>
               )}
               {m.needs_reference && (
