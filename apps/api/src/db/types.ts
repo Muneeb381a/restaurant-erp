@@ -105,6 +105,7 @@ export interface Branches {
   id: Generated<string>;
   is_active: Generated<boolean>;
   name: string;
+  name_ur: string | null;
   ntn: string | null;
   phone: string | null;
   strn: string | null;

@@ -8,7 +8,7 @@ import {
   type Discount,
   type Paisa,
 } from '@erp/domain';
-import { renderReceipt, type ReceiptDoc } from '@erp/printing';
+import { renderReceipt, renderReceiptBitmap, type ReceiptDoc } from '@erp/printing';
 import type { AppContext } from '../../http/context';
 import { AppError } from '../../http/errors';
 import { withTx, type Queryable } from '../../shared/tx';
@@ -532,7 +532,7 @@ async function receiptDoc(
   const [branch, order, cashier] = await Promise.all([
     q
       .selectFrom('branches')
-      .select(['name', 'address', 'phone', 'timezone'])
+      .select(['name', 'name_ur', 'address', 'phone', 'timezone'])
       .where('id', '=', branchId)
       .executeTakeFirstOrThrow(),
     q
@@ -551,7 +551,11 @@ async function receiptDoc(
   const itemLines = await q
     .selectFrom('bill_lines')
     .innerJoin('order_items', 'order_items.id', 'bill_lines.order_item_id')
-    .select(['bill_lines.id as id', 'order_items.id as item_id'])
+    .select([
+      'bill_lines.id as id',
+      'order_items.id as item_id',
+      'order_items.name_ur_snapshot as name_ur',
+    ])
     .where('bill_lines.bill_id', '=', bill.id)
     .execute();
   const mods = itemLines.length
@@ -568,6 +572,7 @@ async function receiptDoc(
   const at = bill.settledAt ?? new Date();
   const doc: ReceiptDoc = {
     restaurant: branch.name,
+    restaurantUr: branch.name_ur,
     address: branch.address,
     phone: branch.phone,
     billNo: bill.billNo,
@@ -580,6 +585,7 @@ async function receiptDoc(
     lines: bill.lines.map((l) => ({
       qty: l.qty,
       name: l.description,
+      nameUr: itemLines.find((x) => x.id === l.id)?.name_ur ?? null,
       amountPaisa: l.netPaisa,
       modifiers: mods
         .filter((m) => m.order_item_id === itemLines.find((x) => x.id === l.id)?.item_id)
@@ -622,6 +628,13 @@ async function queueReceipts(
     .execute();
   if (printers.length === 0) return 0;
   const { doc } = await receiptDoc(q, a.branchId, bill, duplicate);
+  const lang = await q
+    .selectFrom('settings')
+    .select('value')
+    .where('branch_id', '=', a.branchId)
+    .where('key', '=', 'receipt.language')
+    .executeTakeFirst();
+  const urdu = lang?.value === 'ur';
   let n = 0;
   for (const p of printers) {
     const inserted = await enqueuePrintJob(q, {
@@ -631,7 +644,9 @@ async function queueReceipts(
       refType: 'bill',
       refId: bill.id,
       title: `${duplicate ? `DUPLICATE #${duplicate} ` : ''}Bill #${bill.billNo}`,
-      payload: renderReceipt(doc, p.paper_mm as 58 | 80),
+      payload: urdu
+        ? renderReceiptBitmap(doc, p.paper_mm as 58 | 80)
+        : renderReceipt(doc, p.paper_mm as 58 | 80),
       idempotencyKey: `receipt:${bill.id}:p${duplicate}:${p.id}`,
       createdBy: a.userId,
       at,

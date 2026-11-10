@@ -10,6 +10,7 @@ import { authenticate, requirePermission, resolveBranch } from '../auth/middlewa
 const branchPatch = z
   .object({
     name: z.string().trim().min(1).max(200),
+    name_ur: z.string().trim().max(200).nullable(),
     address: z.string().trim().max(500).nullable(),
     phone: z.string().trim().max(50).nullable(),
     timezone: z.string().trim().min(1).max(60),
@@ -30,6 +31,8 @@ export const SETTING_SCHEMAS: Record<string, z.ZodType> = {
   'billing.round_to_rupee': z.boolean(),
   'billing.service_charge_bps': z.number().int().min(0).max(10_000),
   'kot.print_on_send': z.boolean(),
+  /** Customer receipt language: English text mode, or Urdu as a bitmap. */
+  'receipt.language': z.enum(['en', 'ur']),
 };
 
 export function branchRouter(ctx: AppContext): Router {

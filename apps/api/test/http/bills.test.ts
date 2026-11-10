@@ -492,6 +492,31 @@ describe('void', () => {
   });
 });
 
+describe('Urdu receipts', () => {
+  it('with receipt.language = ur the receipt is a bitmap (no text), still opens the drawer for cash', async () => {
+    await setSetting('receipt.language', 'ur');
+    try {
+      await processPrintJobs(t.ctx, new TcpTransport());
+      const before = receiptSim.jobs.length;
+      const bill = await preBill();
+      await settle(bill.id, [cash(100000, 150000)]);
+      await processPrintJobs(t.ctx, new TcpTransport());
+      expect(receiptSim.jobs.length).toBe(before + 1);
+      const bytes = receiptSim.jobs.at(-1)!;
+      expect(bytes.includes(Buffer.from([0x1d, 0x76, 0x30, 0x00]))).toBe(true); // GS v 0 raster
+      expect(bytes.includes(Buffer.from([0x1b, 0x70]))).toBe(true); // drawer kick
+      expect(bytes.toString('latin1')).not.toContain('TOTAL');
+      expect(bytes.length).toBeGreaterThan(5000);
+    } finally {
+      await t.kdb.deleteFrom('settings').where('key', '=', 'receipt.language').execute();
+    }
+  });
+
+  it('only en and ur are accepted', async () => {
+    expect((await api(owner).put('/settings/receipt.language', { value: 'fr' })).status).toBe(400);
+  });
+});
+
 describe('reprint', () => {
   it('prints a DUPLICATE copy with a reason, counts it, audits it', async () => {
     const bill = await preBill();

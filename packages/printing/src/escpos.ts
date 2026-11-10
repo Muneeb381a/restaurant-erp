@@ -87,6 +87,30 @@ export class EscPos {
     return this;
   }
 
+  /**
+   * Raster image (GS v 0), sent in bands of at most 255 rows so small printer buffers cope.
+   * `data` is `widthBytes * height` packed bytes, MSB = leftmost dot, 1 = black.
+   */
+  raster(widthBytes: number, height: number, data: Uint8Array): this {
+    const BAND = 255;
+    for (let y = 0; y < height; y += BAND) {
+      const rows = Math.min(BAND, height - y);
+      this.bytes.push(
+        GS,
+        0x76,
+        0x30,
+        0x00,
+        widthBytes & 0xff,
+        widthBytes >> 8,
+        rows & 0xff,
+        rows >> 8,
+      );
+      for (let i = y * widthBytes; i < (y + rows) * widthBytes; i++)
+        this.bytes.push(data[i] as number);
+    }
+    return this;
+  }
+
   build(): Uint8Array {
     return Uint8Array.from(this.bytes);
   }
@@ -165,6 +189,12 @@ export function describe(bytes: Uint8Array): string {
     } else if (b === GS && cmd === 0x56) {
       tag = '<CUT>';
       extra = 2;
+    } else if (b === GS && cmd === 0x76 && arg === 0x30) {
+      // GS v 0 m xL xH yL yH data...
+      const wBytes = bytes[i + 4]! + (bytes[i + 5]! << 8);
+      const rows = bytes[i + 6]! + (bytes[i + 7]! << 8);
+      tag = `<RASTER:${wBytes * 8}x${rows}>`;
+      extra = 6 + wBytes * rows;
     }
 
     if (tag !== null) {

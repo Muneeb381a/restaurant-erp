@@ -3,6 +3,8 @@ import { COLUMNS, EscPos, twoColumns, wrap, type PaperMm } from './escpos';
 export interface ReceiptLine {
   qty: number;
   name: string;
+  /** Urdu name (printed instead of `name` on Urdu bitmap receipts when present). */
+  nameUr?: string | null;
   weightG?: number | null;
   modifiers?: string[];
   amountPaisa: number;
@@ -18,6 +20,7 @@ export interface ReceiptPayment {
 
 export interface ReceiptDoc {
   restaurant: string;
+  restaurantUr?: string | null;
   address?: string | null;
   phone?: string | null;
   billNo: number;
