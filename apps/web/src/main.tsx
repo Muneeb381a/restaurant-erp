@@ -1,25 +1,30 @@
-import { StrictMode, useEffect, useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { I18nextProvider } from 'react-i18next';
+import { BrowserRouter } from 'react-router-dom';
+import { App } from './app/App';
+import { initI18n } from './i18n';
+import './index.css';
+import { ApiError } from './lib/api';
 
-type Health = 'checking' | 'ok' | 'down';
-
-function App() {
-  const [health, setHealth] = useState<Health>('checking');
-  useEffect(() => {
-    fetch('/health')
-      .then((r) => setHealth(r.ok ? 'ok' : 'down'))
-      .catch(() => setHealth('down'));
-  }, []);
-  return (
-    <main style={{ fontFamily: 'system-ui', padding: 24 }}>
-      <h1>Restaurant ERP</h1>
-      <p>API: {health}</p>
-    </main>
-  );
-}
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (count, error) => !(error instanceof ApiError && error.status < 500) && count < 2,
+      refetchOnWindowFocus: true,
+    },
+  },
+});
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <I18nextProvider i18n={initI18n()}>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </I18nextProvider>
   </StrictMode>,
 );

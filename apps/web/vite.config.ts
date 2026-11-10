@@ -7,7 +7,7 @@ const apiUrl = `http://localhost:${process.env.PORT ?? 18080}`;
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 15173,
+    port: Number(process.env.WEB_PORT ?? 15173),
     strictPort: true,
     proxy: { '/api': apiUrl, '/health': apiUrl },
   },

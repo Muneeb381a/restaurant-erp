@@ -15,7 +15,7 @@
     "db:reset": "pnpm db:up && pnpm --filter @erp/api db:reset",
     "db:codegen": "pnpm --filter @erp/api db:codegen",
     "test": "pnpm -r --workspace-concurrency=1 test",
-    "test:e2e": "echo \"Playwright e2e is added in M3 (first UI flow)\"",
+    "test:e2e": "playwright test",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "pnpm -r typecheck",
@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.65.0",
     "@types/node": "^22.10.0",
     "eslint": "^9.17.0",
     "globals": "^15.14.0",

@@ -1,0 +1,70 @@
+{
+  "app": { "title": "Restaurant POS" },
+  "common": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "reason": "Reason",
+    "language": "اردو",
+    "search": "Search items",
+    "all": "All",
+    "close": "Close"
+  },
+  "login": {
+    "title": "Sign in",
+    "username": "Username",
+    "pin": "Enter PIN",
+    "submit": "Sign in",
+    "wrong": "Wrong username or PIN",
+    "locked": "Account locked. Try again in {{minutes}} min",
+    "network": "Cannot reach the server"
+  },
+  "shell": {
+    "day": "Business day",
+    "noDay": "No open day",
+    "openDay": "Open day",
+    "shift": "Shift",
+    "noShift": "No open shift",
+    "openShift": "Open shift",
+    "float": "Opening float (Rs)",
+    "logout": "Log out"
+  },
+  "floor": {
+    "title": "Tables",
+    "free": "Free",
+    "occupied": "Occupied",
+    "billed": "Billed",
+    "takeaway": "New takeaway",
+    "delivery": "New delivery",
+    "openOrders": "Open orders",
+    "noDay": "Open the business day to take orders",
+    "items": "{{count}} items",
+    "guests": "{{count}} guests"
+  },
+  "order": {
+    "title": "Order",
+    "table": "Table",
+    "takeaway": "Takeaway",
+    "delivery": "Delivery",
+    "empty": "No items yet",
+    "subtotal": "Subtotal",
+    "void": "Void",
+    "hold": "Hold",
+    "resume": "Resume",
+    "held": "On hold",
+    "add": "Add",
+    "soldOut": "Sold out",
+    "quantity": "Quantity",
+    "weight": "Weight (grams)",
+    "note": "Note",
+    "choose": "Choose",
+    "deal": "Deal",
+    "sent": "Sent",
+    "voidReason": "Reason for voiding",
+    "needReason": "This item was already sent. Enter a reason.",
+    "conflict": "Someone else changed this order. It was reloaded.",
+    "notEditable": "This order can no longer be changed"
+  }
+}
