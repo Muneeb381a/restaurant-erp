@@ -28,6 +28,9 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | `ITEM_NOT_EDITABLE`   | 409  | The line was already sent (edit = void + re-add) or is already void                                                                         |
 | `ITEM_UNAVAILABLE`    | 409  | The item (or a deal component) is sold out (86) or no longer offered                                                                        |
 | `ITEM_NOT_ON_MENU`    | 409  | The item has no price in this order's price list for the business date                                                                      |
+| `NOTHING_TO_SEND`     | 409  | Send/reprint found nothing to print (no NEW lines, or every line of the KOT was voided)                                                      |
+| `STATION_MISSING`     | 409  | Some items have no kitchen station, so nothing was sent (`items` lists them)                                                                 |
+| `NO_PRINTER`          | 409  | The station of this KOT has no active printer                                                                                                |
 | `VERSION_CONFLICT`    | 409  | `If-Match` does not match; `currentVersion` says what the order is now                                                                      |
 | `PRECONDITION_REQUIRED`| 428 | A structural change needs the order version in `If-Match`                                                                                   |
 | `INTERNAL_ERROR`      | 500  | Unexpected error (details only in server logs, correlate with `requestId`)                                                                  |

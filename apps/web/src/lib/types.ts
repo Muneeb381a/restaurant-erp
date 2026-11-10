@@ -82,6 +82,21 @@ export interface Order {
   subtotalPaisa: number;
 }
 
+export interface SendResult {
+  order: Order;
+  kots: { id: string; kotNo: number; station: string; lineCount: number; printers: number }[];
+  unprinted: string[];
+}
+
+export interface PrinterHealth {
+  id: string;
+  name: string;
+  state: 'OK' | 'OFFLINE' | 'UNKNOWN' | 'INACTIVE';
+  queued: number;
+  dead: number;
+  lastError: string | null;
+}
+
 export interface MenuModifierGroup {
   id: string;
   code: string | null;

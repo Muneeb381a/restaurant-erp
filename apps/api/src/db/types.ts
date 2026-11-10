@@ -482,9 +482,33 @@ export interface Printers {
   id: Generated<string>;
   is_active: Generated<boolean>;
   kind: string;
+  last_error: string | null;
+  last_error_at: Timestamp | null;
+  last_ok_at: Timestamp | null;
   name: string;
   paper_mm: Generated<number>;
   port: Generated<number | null>;
+}
+
+export interface PrintJobs {
+  attempts: Generated<number>;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  idempotency_key: string;
+  kind: string;
+  last_error: string | null;
+  lease_until: Timestamp | null;
+  next_attempt_at: Generated<Timestamp>;
+  payload: Buffer;
+  printed_at: Timestamp | null;
+  printer_id: string;
+  ref_id: string | null;
+  ref_type: string | null;
+  seq: Generated<Int8>;
+  status: Generated<string>;
+  title: string;
 }
 
 export interface Riders {
@@ -626,6 +650,7 @@ export interface DB {
   permissions: Permissions;
   pgmigrations: Pgmigrations;
   price_lists: PriceLists;
+  print_jobs: PrintJobs;
   printers: Printers;
   riders: Riders;
   role_permissions: RolePermissions;

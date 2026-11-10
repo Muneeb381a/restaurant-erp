@@ -1,5 +1,10 @@
 import { readFileSync } from 'node:fs';
+import { createServer, type Server } from 'node:net';
 import { expect, request, test, type Page } from '@playwright/test';
+
+// A fake kitchen printer: a real TCP server that records every ticket it receives.
+const tickets: string[] = [];
+let printer: Server;
 
 const API = 'http://127.0.0.1:18081/api/v1';
 const PASSWORD = 'Dev#Passw0rd';
@@ -41,7 +46,45 @@ test.beforeAll(async () => {
     });
     expect(r.ok()).toBe(true);
   }
+  // one kitchen printer serving the BBQ and Karahi stations
+  printer = createServer((socket) => {
+    const chunks: Buffer[] = [];
+    socket.on('data', (c) => chunks.push(c));
+    socket.on('close', () => tickets.push(Buffer.concat(chunks).toString('latin1')));
+    socket.on('error', () => undefined);
+  });
+  await new Promise<void>((resolve) => printer.listen(0, '127.0.0.1', resolve));
+  const port = (printer.address() as { port: number }).port;
+  const pr = await api.post(`${API}/printers`, {
+    headers: auth,
+    data: {
+      name: 'Kitchen printer',
+      kind: 'KOT',
+      conn_type: 'NETWORK',
+      host: '127.0.0.1',
+      port,
+      paper_mm: 80,
+    },
+  });
+  expect(pr.ok(), await pr.text()).toBe(true);
+  const printerId = (await pr.json()).id as string;
+  const stations = (await (await api.get(`${API}/stations`, { headers: auth })).json()).items as {
+    id: string;
+    code: string;
+  }[];
+  for (const code of ['BBQ', 'KARAHI']) {
+    const st = stations.find((s) => s.code === code)!;
+    const r = await api.put(`${API}/stations/${st.id}/printers`, {
+      headers: auth,
+      data: { printerIds: [printerId] },
+    });
+    expect(r.ok()).toBe(true);
+  }
   await api.dispose();
+});
+
+test.afterAll(async () => {
+  await new Promise((resolve) => printer.close(resolve));
 });
 
 test('cashier opens the day and a shift, then takes an order at table T1', async ({ page }) => {
@@ -86,6 +129,20 @@ test('cashier opens the day and a shift, then takes an order at table T1', async
   // voiding a not-yet-sent line is free
   await page.locator('aside').getByRole('button', { name: 'Void' }).last().click();
   await expect(page.locator('aside')).toContainText('Rs 3,120');
+
+  // send to the kitchen: lines become "Sent", and the tickets arrive at the (fake) printer
+  await page.getByRole('button', { name: 'Send to kitchen' }).click();
+  await expect(page.locator('aside')).toContainText('Sent to the kitchen: BBQ, KARAHI');
+  await expect(page.getByRole('button', { name: 'Send to kitchen' })).toBeDisabled(); // nothing new left
+  await expect.poll(() => tickets.length, { timeout: 15_000 }).toBe(2); // one KOT per station
+  const all = tickets.join('\n');
+  expect(all).toContain('2 x Chicken Tikka (Leg)');
+  expect(all).toContain('1 x Chicken Karahi (Full)');
+  expect(all).toContain('Table T1');
+  expect(all).not.toContain('Mutton Chops'); // the voided line never reached the kitchen
+
+  // a sent line can no longer be edited, and voiding it needs a reason
+  await expect(page.locator('aside').getByRole('button', { name: 'plus' })).toHaveCount(0);
 
   await page.getByRole('link', { name: /Back/ }).click();
   await expect(page.getByRole('button', { name: /T1/ })).toContainText('Occupied');

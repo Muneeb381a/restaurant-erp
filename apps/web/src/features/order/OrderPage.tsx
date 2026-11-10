@@ -6,7 +6,7 @@ import { localName } from '../../i18n';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
 import { useMenu, useOrder } from '../../lib/queries';
-import type { MenuItem, Order, OrderLine } from '../../lib/types';
+import type { MenuItem, Order, OrderLine, SendResult } from '../../lib/types';
 import { ItemSheet, type AddBody } from './ItemSheet';
 
 const PRICE_LIST: Record<Order['type'], string> = {
@@ -80,6 +80,29 @@ export function OrderPage() {
       api<Order>(`/orders/${id}/${held ? 'hold' : 'resume'}`, { method: 'POST' }),
     onSuccess: apply,
     onError,
+  });
+
+  const [rush, setRush] = useState(false);
+  const send = useMutation({
+    mutationFn: () =>
+      api<SendResult>(`/orders/${id}/send`, { method: 'POST', body: rush ? { rush: true } : {} }),
+    onSuccess: (out) => {
+      apply(out.order);
+      setRush(false);
+      const stations = out.kots.map((k) => k.station).join(', ');
+      setMessage(
+        out.unprinted.length
+          ? `${t('order.sentOk', { stations })} · ${t('order.noPrinter', { stations: out.unprinted.join(', ') })}`
+          : t('order.sentOk', { stations }),
+      );
+    },
+    onError: (e) => {
+      if (e instanceof ApiError && e.code === 'NOTHING_TO_SEND')
+        setMessage(t('order.nothingToSend'));
+      else if (e instanceof ApiError && e.code === 'STATION_MISSING')
+        setMessage(t('order.missingStation', { items: String(e.body.items ?? '') }));
+      else onError(e);
+    },
   });
 
   const topCategories = (menu.data?.categories ?? []).filter((c) => c.parentId === null);
@@ -277,9 +300,31 @@ export function OrderPage() {
           })}
         </ul>
 
-        <div className="flex items-center justify-between border-t border-slate-200 p-3 text-xl font-bold">
-          <span>{t('order.subtotal')}</span>
-          <span>{ltr(formatRs(o.subtotalPaisa))}</span>
+        <div className="space-y-2 border-t border-slate-200 p-3">
+          <div className="flex items-center justify-between text-xl font-bold">
+            <span>{t('order.subtotal')}</span>
+            <span>{ltr(formatRs(o.subtotalPaisa))}</span>
+          </div>
+          {o.status === 'OPEN' && !o.held && (
+            <div className="flex items-center gap-2">
+              <label className="flex min-h-touch items-center gap-2 px-2">
+                <input
+                  type="checkbox"
+                  className="size-5"
+                  checked={rush}
+                  onChange={(e) => setRush(e.target.checked)}
+                />
+                {t('order.rush')}
+              </label>
+              <button
+                className="btn-primary h-14 flex-1 text-lg"
+                disabled={send.isPending || !lines.some((l) => l.status === 'NEW')}
+                onClick={() => send.mutate()}
+              >
+                {t('order.send')}
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 

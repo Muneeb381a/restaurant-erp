@@ -1,44 +1,32 @@
 import { loadEnv } from './config/env';
+import { buildContext } from './http/build-context';
 import { createApp } from './http/app';
-import type { AppContext } from './http/context';
-import { createHasher } from './modules/auth/password';
-import { PermissionCache } from './modules/auth/permissions-cache';
-import { MenuCache } from './modules/menu/menu-cache';
-import { systemClock } from './shared/clock';
-import { createDb, createPool } from './shared/db';
+import { TcpTransport } from './modules/printing/print.service';
+import { startPrintWorker } from './modules/printing/print.worker';
 import { createLogger } from './shared/logger';
 
 const env = loadEnv();
 const logger = createLogger(env.LOG_LEVEL);
-const pool = createPool(env.DATABASE_URL);
-const db = createDb(pool);
-
-const ctx: AppContext = {
-  db,
-  logger,
-  clock: systemClock,
-  hasher: createHasher(),
-  permissions: new PermissionCache(db, systemClock),
-  menu: new MenuCache(),
-  auth: {
-    jwtSecret: env.JWT_SECRET,
-    accessTtlSeconds: env.ACCESS_TOKEN_TTL_SECONDS,
-    refreshTtlSeconds: env.REFRESH_TOKEN_TTL_SECONDS,
-  },
-};
+const ctx = buildContext(env, logger);
 
 if (env.NODE_ENV === 'production' && env.JWT_SECRET.startsWith('dev-only')) {
   throw new Error('Refusing to start in production with the dev JWT_SECRET');
 }
 
+// In development one process does everything. In production the separate `worker` service
+// (ops/docker-compose.yml) runs the queue, so the API does not.
+const embeddedWorker = (env.EMBEDDED_WORKER ?? String(env.NODE_ENV !== 'production')) === 'true';
+const stopWorker = embeddedWorker ? startPrintWorker(ctx, new TcpTransport()) : null;
+
 const server = createApp(ctx).listen(env.PORT, () => {
-  logger.info({ port: env.PORT }, 'api listening');
+  logger.info({ port: env.PORT, embeddedWorker }, 'api listening');
 });
 
 async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'shutting down');
   server.close();
-  await db.destroy();
+  await stopWorker?.();
+  await ctx.db.destroy();
   process.exit(0);
 }
 process.on('SIGINT', () => void shutdown('SIGINT'));

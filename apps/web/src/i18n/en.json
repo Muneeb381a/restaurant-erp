@@ -29,7 +29,8 @@
     "noShift": "No open shift",
     "openShift": "Open shift",
     "float": "Opening float (Rs)",
-    "logout": "Log out"
+    "logout": "Log out",
+    "printerOffline": "Printer offline: {{names}}"
   },
   "floor": {
     "title": "Tables",
@@ -66,6 +67,12 @@
     "voidReason": "Reason for voiding",
     "needReason": "This item was already sent. Enter a reason.",
     "conflict": "Someone else changed this order. It was reloaded.",
-    "notEditable": "This order can no longer be changed"
+    "notEditable": "This order can no longer be changed",
+    "send": "Send to kitchen",
+    "rush": "Rush",
+    "sentOk": "Sent to the kitchen: {{stations}}",
+    "noPrinter": "No printer for: {{stations}}",
+    "missingStation": "No kitchen station set for: {{items}}",
+    "nothingToSend": "Nothing new to send"
   }
 }

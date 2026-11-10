@@ -21,6 +21,7 @@ import type { AppContext } from '../../http/context';
 import { AppError } from '../../http/errors';
 import { withTx, type Queryable } from '../../shared/tx';
 import { writeAudit } from '../audit/audit.service';
+import { queueCancelTickets } from '../kitchen/tickets';
 import {
   bumpVersion,
   getOrderFull,
@@ -70,7 +71,7 @@ function audit(
  * `If-Match` version the client last saw. Item changes are commutative (two captains adding
  * to one table is normal), so `If-Match` is optional there — but if sent it must match.
  */
-function checkVersion(
+export function checkVersion(
   order: { version: number },
   ifMatch: number | undefined,
   required: boolean,
@@ -94,7 +95,7 @@ function checkVersion(
   }
 }
 
-function assertEditable(order: { status: string; held_at: Date | null }): void {
+export function assertEditable(order: { status: string; held_at: Date | null }): void {
   if (!isOrderEditable(order.status as 'OPEN')) {
     throw new AppError(
       409,
@@ -808,6 +809,20 @@ export function voidItem(
         },
         { status: 'VOID', wastage: rule.wastage },
         why,
+      );
+      // Tell the kitchen to stop: a CANCEL ticket on the printer(s) that got the original KOT.
+      const children = await trx
+        .selectFrom('order_items')
+        .select('id')
+        .where('parent_order_item_id', '=', lineId)
+        .execute();
+      await queueCancelTickets(
+        trx,
+        a,
+        orderId,
+        [lineId, ...children.map((c) => c.id)],
+        why,
+        ctx.clock.now(),
       );
     }
     await bumpVersion(trx, orderId);

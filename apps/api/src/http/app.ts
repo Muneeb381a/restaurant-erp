@@ -8,6 +8,7 @@ import { rolesRouter } from '../modules/admin/roles.routes';
 import { usersRouter } from '../modules/admin/users.routes';
 import { auditRouter } from '../modules/audit/audit.routes';
 import { authRouter } from '../modules/auth/auth.routes';
+import { kitchenRouter } from '../modules/kitchen/kitchen.routes';
 import { menuRouter } from '../modules/menu/menu.routes';
 import { ordersRouter } from '../modules/orders/orders.routes';
 import type { AppContext } from './context';
@@ -48,6 +49,7 @@ export function createApp(ctx: AppContext): Express {
   v1.use('/audit-log', auditRouter(ctx));
   v1.use('/users', usersRouter(ctx));
   v1.use('/devices', devicesRouter(ctx));
+  v1.use('/', kitchenRouter(ctx)); // before the CRUD routers: owns /printers/health
   v1.use('/stations', stationPrintersRouter(ctx)); // before CRUD: owns /:id/printers
   for (const [path, router] of Object.entries(configRouters(ctx))) v1.use(path, router);
   v1.use('/', ordersRouter(ctx)); // /business-days /shifts /floor /orders

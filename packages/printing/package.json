@@ -7,7 +7,11 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test": "echo \"no tests yet (M4)\"",
+    "test": "vitest run --coverage",
     "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.8",
+    "vitest": "^2.1.8"
   }
 }

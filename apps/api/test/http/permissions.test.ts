@@ -251,6 +251,27 @@ const probes: Probe[] = [
     perm: 'order.cancel',
     call: (a) => a.post(`/orders/${uuid()}/cancel`, {}),
   },
+  // ── kitchen & printing (M4)
+  {
+    name: 'POST /orders/:id/send',
+    perm: 'order.create',
+    call: (a) => a.post(`/orders/${uuid()}/send`, { course: 0 }),
+  },
+  {
+    name: 'POST /kots/:id/reprint',
+    perm: 'kot.reprint',
+    call: (a) => a.post(`/kots/${uuid()}/reprint`, {}),
+  },
+  {
+    name: 'GET /print-jobs',
+    perm: 'settings.manage',
+    call: (a) => a.get('/print-jobs?status=BOGUS'),
+  },
+  {
+    name: 'POST /print-jobs/:id/retry',
+    perm: 'settings.manage',
+    call: (a) => a.post(`/print-jobs/${uuid()}/retry`),
+  },
 ];
 
 let t: TestApp;

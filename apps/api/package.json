@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@erp/domain": "workspace:*",
+    "@erp/printing": "workspace:*",
     "@node-rs/argon2": "^2.2.2",
     "csv-parse": "^7.0.3",
     "express": "^4.21.2",

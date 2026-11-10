@@ -6,7 +6,7 @@ import { Link, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { ApiError, api } from '../../lib/api';
 import { useAuth } from '../../lib/auth-store';
 import { ltr } from '../../lib/money';
-import { can, useDay, useMe, useShift } from '../../lib/queries';
+import { can, useDay, useMe, usePrinterHealth, useShift } from '../../lib/queries';
 import { LanguageToggle } from './LanguageToggle';
 
 /** Auth guard + top bar (business day, shift, user, language) around every signed-in screen. */
@@ -24,6 +24,8 @@ function SignedIn() {
   const me = useMe();
   const day = useDay();
   const shift = useShift();
+  const printers = usePrinterHealth();
+  const offline = (printers.data ?? []).filter((p) => p.state === 'OFFLINE');
   const [floatOpen, setFloatOpen] = useState(false);
 
   const openDay = useMutation({
@@ -87,6 +89,14 @@ function SignedIn() {
           {t('shell.logout')}
         </button>
       </header>
+
+      {offline.length > 0 && (
+        <div role="alert" className="bg-rose-600 px-3 py-2 text-center font-semibold text-white">
+          {t('shell.printerOffline', {
+            names: offline.map((p) => `${p.name} (${p.queued})`).join(', '),
+          })}
+        </div>
+      )}
 
       <main className="min-h-0 flex-1 overflow-auto">
         <Outlet />

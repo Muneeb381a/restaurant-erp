@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
-import type { BusinessDay, Floor, Me, Menu, Order, Shift } from './types';
+import type { BusinessDay, Floor, Me, Menu, Order, PrinterHealth, Shift } from './types';
 
 /** Polling interval until the WebSocket events of M3b-2 replace it. */
 const LIVE_MS = 3000;
@@ -45,3 +45,11 @@ export const useMenu = (priceList: string | undefined) =>
 export function can(me: Me | undefined, permission: string): boolean {
   return !!me && me.permissions.includes(permission);
 }
+
+/** Printer status for the counter: a kitchen printer going offline must be noticed immediately. */
+export const usePrinterHealth = () =>
+  useQuery({
+    queryKey: ['printers-health'],
+    queryFn: async () => (await api<{ items: PrinterHealth[] }>('/printers/health')).items,
+    refetchInterval: 5000,
+  });
