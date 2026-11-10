@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { localName } from '../../i18n';
-import { formatRs } from '../../lib/money';
+import { formatRs, ltr } from '../../lib/money';
 import type { MenuItem } from '../../lib/types';
 
 export interface AddBody {
@@ -114,7 +114,7 @@ export function ItemSheet({
                 onClick={() => setVariantId(v.id)}
                 className={v.id === variantId ? 'btn-primary' : 'btn-secondary'}
               >
-                {localName(lang, v.name, v.nameUr)} · {formatRs(v.pricePaisa)}
+                {localName(lang, v.name, v.nameUr)} · {ltr(formatRs(v.pricePaisa))}
               </button>
             ))}
           </div>
@@ -134,7 +134,7 @@ export function ItemSheet({
                   className={mods[g.id]?.includes(m.id) ? 'btn-primary' : 'btn-secondary'}
                 >
                   {localName(lang, m.name, m.nameUr)}
-                  {m.priceDeltaPaisa !== 0 && ` (+${formatRs(m.priceDeltaPaisa)})`}
+                  {m.priceDeltaPaisa !== 0 && ` ${ltr(`+${formatRs(m.priceDeltaPaisa)}`)}`}
                 </button>
               ))}
             </div>
@@ -151,7 +151,7 @@ export function ItemSheet({
                 <span className="me-auto">
                   {localName(lang, o.itemName, o.itemNameUr)}{' '}
                   {o.variantName !== 'Regular' && `(${o.variantName})`}
-                  {o.priceDeltaPaisa !== 0 && ` +${formatRs(o.priceDeltaPaisa)}`}
+                  {o.priceDeltaPaisa !== 0 && ` ${ltr(`+${formatRs(o.priceDeltaPaisa)}`)}`}
                   {!o.available && <span className="ms-2 text-rose-600">{t('order.soldOut')}</span>}
                 </span>
                 <button
@@ -235,7 +235,7 @@ export function ItemSheet({
           onClick={submit}
         >
           {t('order.add')} ·{' '}
-          {item.kind === 'WEIGHT' ? formatRs(price) + '/kg' : formatRs(price * qty)}
+          {ltr(item.kind === 'WEIGHT' ? formatRs(price) + '/kg' : formatRs(price * qty))}
         </button>
       </div>
     </div>

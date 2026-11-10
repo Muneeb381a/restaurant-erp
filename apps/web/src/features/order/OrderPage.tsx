@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { localName } from '../../i18n';
 import { ApiError, api } from '../../lib/api';
-import { formatRs } from '../../lib/money';
+import { formatRs, ltr } from '../../lib/money';
 import { useMenu, useOrder } from '../../lib/queries';
 import type { MenuItem, Order, OrderLine } from '../../lib/types';
 import { ItemSheet, type AddBody } from './ItemSheet';
@@ -119,10 +119,10 @@ export function OrderPage() {
   return (
     <div className="flex h-full flex-col md:flex-row">
       {/* ── menu */}
-      <section className="flex min-h-0 flex-1 flex-col border-slate-200 md:border-e">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col border-slate-200 md:border-e">
         <div className="flex items-center gap-2 p-2">
-          <Link to="/" className="btn-secondary">
-            ← {t('common.back')}
+          <Link to="/" className="btn-secondary shrink-0 whitespace-nowrap">
+            {lang === 'ur' ? '→' : '←'} {t('common.back')}
           </Link>
           <input
             className="input"
@@ -133,7 +133,7 @@ export function OrderPage() {
         </div>
         <div className="flex gap-2 overflow-x-auto px-2 pb-2">
           <button
-            className={category === null ? 'btn-primary' : 'btn-secondary'}
+            className={`shrink-0 whitespace-nowrap ${category === null ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setCategory(null)}
           >
             {t('common.all')}
@@ -141,7 +141,7 @@ export function OrderPage() {
           {topCategories.map((c) => (
             <button
               key={c.id}
-              className={category === c.id ? 'btn-primary' : 'btn-secondary'}
+              className={`shrink-0 whitespace-nowrap ${category === c.id ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setCategory(c.id)}
             >
               {localName(lang, c.name, c.nameUr)}
@@ -162,8 +162,11 @@ export function OrderPage() {
               <span className="text-sm text-slate-600">
                 {item.available
                   ? item.variants.length > 1
-                    ? `${formatRs(Math.min(...item.variants.map((v) => v.pricePaisa)))}+`
-                    : formatRs(item.variants[0]!.pricePaisa) + (item.kind === 'WEIGHT' ? '/kg' : '')
+                    ? ltr(`${formatRs(Math.min(...item.variants.map((v) => v.pricePaisa)))}+`)
+                    : ltr(
+                        formatRs(item.variants[0]!.pricePaisa) +
+                          (item.kind === 'WEIGHT' ? '/kg' : ''),
+                      )
                   : t('order.soldOut')}
               </span>
             </button>
@@ -177,9 +180,9 @@ export function OrderPage() {
           <div className="me-auto">
             <div className="text-lg font-bold">
               {o.type === 'DINE_IN'
-                ? `${t('order.table')} ${o.tableCode}`
+                ? `${t('order.table')} ${ltr(o.tableCode ?? '')}`
                 : t(o.type === 'TAKEAWAY' ? 'order.takeaway' : 'order.delivery')}
-              <span className="ms-2 text-slate-500">#{o.orderNo}</span>
+              <span className="ms-2 text-slate-500">{ltr(`#${o.orderNo}`)}</span>
             </div>
             {o.held && <span className="text-sm text-amber-700">⏸ {t('order.held')}</span>}
           </div>
@@ -213,9 +216,9 @@ export function OrderPage() {
                 <div className="flex items-start gap-2">
                   <span className="me-auto font-medium">
                     {localName(lang, line.name, line.nameUr)}
-                    {line.weightG ? ` · ${line.weightG} g` : ''}
+                    {line.weightG ? ` · ${ltr(`${line.weightG} g`)}` : ''}
                   </span>
-                  <span className="whitespace-nowrap">{formatRs(line.lineTotalPaisa)}</span>
+                  <span className="whitespace-nowrap">{ltr(formatRs(line.lineTotalPaisa))}</span>
                 </div>
                 {line.modifiers.length > 0 && (
                   <div className="text-sm text-slate-500">
@@ -276,7 +279,7 @@ export function OrderPage() {
 
         <div className="flex items-center justify-between border-t border-slate-200 p-3 text-xl font-bold">
           <span>{t('order.subtotal')}</span>
-          <span>{formatRs(o.subtotalPaisa)}</span>
+          <span>{ltr(formatRs(o.subtotalPaisa))}</span>
         </div>
       </aside>
 

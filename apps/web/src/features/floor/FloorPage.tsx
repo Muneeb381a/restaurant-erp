@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ApiError, api } from '../../lib/api';
-import { formatRs } from '../../lib/money';
+import { formatRs, ltr } from '../../lib/money';
 import { useDay, useFloor } from '../../lib/queries';
 import type { FloorTable, Order } from '../../lib/types';
 
@@ -100,17 +100,20 @@ export function FloorPage() {
                 onClick={() => open(table)}
                 className={`flex min-h-28 flex-col items-start justify-between rounded-xl border-2 p-3 text-start transition active:scale-95 disabled:opacity-50 ${COLORS[table.status]}`}
               >
-                <span className="text-2xl font-bold">{table.code}</span>
+                <span className="text-2xl font-bold">{ltr(table.code)}</span>
                 <span className="text-sm font-medium">{statusLabel(table.status)}</span>
                 {table.order ? (
                   <span className="text-sm">
-                    #{table.order.orderNo} · {t('floor.items', { count: table.order.itemCount })}
+                    {ltr(`#${table.order.orderNo}`)} ·{' '}
+                    {t('floor.items', { count: table.order.itemCount })}
                     <br />
-                    {formatRs(table.order.subtotalPaisa)}
+                    {ltr(formatRs(table.order.subtotalPaisa))}
                     {table.order.held ? ' ⏸' : ''}
                   </span>
                 ) : (
-                  <span className="text-sm text-slate-500">{table.seats} 🪑</span>
+                  <span className="text-sm text-slate-500">
+                    {t('floor.seats', { count: table.seats })}
+                  </span>
                 )}
               </button>
             ))}

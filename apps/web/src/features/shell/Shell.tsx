@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { ApiError, api } from '../../lib/api';
 import { useAuth } from '../../lib/auth-store';
+import { ltr } from '../../lib/money';
 import { can, useDay, useMe, useShift } from '../../lib/queries';
 import { LanguageToggle } from './LanguageToggle';
 
@@ -50,7 +51,7 @@ function SignedIn() {
 
         {day.data ? (
           <span className="rounded-full bg-emerald-700 px-3 py-1 text-sm">
-            {t('shell.day')}: {day.data.businessDate}
+            {t('shell.day')}: {ltr(day.data.businessDate)}
           </span>
         ) : (
           <>

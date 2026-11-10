@@ -41,7 +41,8 @@
     "openOrders": "کھلے آرڈر",
     "noDay": "آرڈر لینے کے لیے پہلے دن شروع کریں",
     "items": "{{count}} آئٹم",
-    "guests": "{{count}} مہمان"
+    "guests": "{{count}} مہمان",
+    "seats": "{{count}} نشستیں"
   },
   "order": {
     "title": "آرڈر",

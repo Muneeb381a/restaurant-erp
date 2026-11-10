@@ -52,7 +52,7 @@ test('cashier opens the day and a shift, then takes an order at table T1', async
   await expect(page.getByRole('button', { name: /T1/ })).toBeDisabled();
 
   await page.getByRole('button', { name: 'Open day' }).click();
-  await expect(page.getByText(/Business day: \d{4}-\d{2}-\d{2}/)).toBeVisible();
+  await expect(page.getByText(/Business day:.*\d{4}-\d{2}-\d{2}/)).toBeVisible();
   await page.getByRole('button', { name: 'Open shift' }).click();
   await page.getByRole('textbox').fill('5000');
   await page.getByRole('button', { name: 'Confirm' }).click();
@@ -68,7 +68,7 @@ test('cashier opens the day and a shift, then takes an order at table T1', async
 
   // Half/Full item opens the sheet
   await page.getByRole('button', { name: /^Chicken Karahi/ }).click();
-  await page.getByRole('button', { name: /Full · Rs 2,400/ }).click();
+  await page.getByRole('button', { name: /Full.*Rs 2,400/ }).click();
   await page.getByRole('button', { name: /^Add/ }).click();
   await expect(page.locator('aside')).toContainText('Rs 2,760');
 

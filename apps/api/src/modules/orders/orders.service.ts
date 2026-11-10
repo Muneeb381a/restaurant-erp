@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import {
   allocateDealLine,
   asPaisa,
@@ -298,9 +299,12 @@ export interface AddItemInput {
   course?: number | undefined;
 }
 
-/** Printed name of a line: "Item" for single-variant kinds and "Regular", else "Item (Variant)". */
-const snapshotName = (item: string, variant: string, kind: string): string =>
-  kind !== 'STANDARD' || variant === 'Regular' ? item : `${item} (${variant})`;
+/**
+ * Printed name of a line: "Item (Variant)" only when the item really has a choice of variants
+ * (Half/Full…); single-variant items, weighed items and deals print just the item name.
+ */
+const snapshotName = (item: string, variant: string, kind: string, variantCount: number): string =>
+  kind !== 'STANDARD' || variantCount <= 1 ? item : `${item} (${variant})`;
 
 async function currentPrice(
   q: Queryable,
@@ -393,6 +397,9 @@ async function loadDeal(q: Queryable, itemId: string) {
           'items.is_active as i_active',
           'item_variants.name as variant_name',
           'item_variants.name_ur as variant_name_ur',
+          sql<number>`(select count(*)::int from item_variants iv where iv.item_id = items.id and iv.is_active)`.as(
+            'variant_count',
+          ),
           'item_variants.is_active as v_active',
         ])
         .where(
@@ -453,6 +460,16 @@ export function addItem(
       .executeTakeFirst();
     if (!variant) throw new AppError(404, 'NOT_FOUND', 'variant not found for this item');
 
+    const variantCount = Number(
+      (
+        await trx
+          .selectFrom('item_variants')
+          .select((eb) => eb.fn.countAll<string>().as('n'))
+          .where('item_id', '=', item.id)
+          .where('is_active', '=', true)
+          .executeTakeFirstOrThrow()
+      ).n,
+    );
     const unitPrice = await currentPrice(trx, variant.id, order.price_list_id, day.business_date);
     if (unitPrice === null)
       throw new AppError(
@@ -502,9 +519,9 @@ export function addItem(
         order_id: orderId,
         item_id: item.id,
         variant_id: variant.id,
-        name_snapshot: snapshotName(item.name, variant.name, item.kind),
+        name_snapshot: snapshotName(item.name, variant.name, item.kind, variantCount),
         name_ur_snapshot: item.name_ur
-          ? item.kind !== 'STANDARD' || variant.name === 'Regular'
+          ? item.kind !== 'STANDARD' || variantCount <= 1
             ? item.name_ur
             : `${item.name_ur} (${variant.name_ur ?? variant.name})`
           : null,
@@ -562,7 +579,7 @@ export function addItem(
             parent_order_item_id: line.id,
             item_id: o.item_id,
             variant_id: o.variant_id,
-            name_snapshot: snapshotName(o.item_name, o.variant_name, o.item_kind),
+            name_snapshot: snapshotName(o.item_name, o.variant_name, o.item_kind, o.variant_count),
             name_ur_snapshot: o.item_name_ur,
             qty: c.count * qty,
             unit_price_paisa: 0,

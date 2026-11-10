@@ -11,6 +11,20 @@ pnpm dev                 # api http://localhost:18080 · web http://127.0.0.1:15
 4. Open the app on a second device/browser as **captain**: the floor shows T1 occupied within ~3 s; tapping it joins the same order.
 5. Tap **اردو** for Urdu (right-to-left, Urdu item names).
 
+## Screenshots
+
+Captured by `SCREENSHOTS=1 pnpm test:e2e` (`e2e/screenshots.spec.ts`).
+
+| | |
+| --- | --- |
+| Login (PIN pad) | ![login](../screenshots/01-login.png) |
+| Floor | ![floor](../screenshots/02-floor.png) |
+| Order | ![order](../screenshots/03-order.png) |
+| Item sheet (Half/Full) | ![sheet](../screenshots/04-item-sheet.png) |
+| Order in Urdu (RTL) | ![urdu](../screenshots/05-order-urdu.png) |
+| Floor in Urdu | ![floor urdu](../screenshots/06-floor-urdu.png) |
+| Tablet portrait | ![portrait](../screenshots/07-order-tablet-portrait.png) |
+
 ## Tests
 
 ```bash

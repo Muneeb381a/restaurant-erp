@@ -41,7 +41,8 @@
     "openOrders": "Open orders",
     "noDay": "Open the business day to take orders",
     "items": "{{count}} items",
-    "guests": "{{count}} guests"
+    "guests": "{{count}} guests",
+    "seats": "{{count}} seats"
   },
   "order": {
     "title": "Order",
