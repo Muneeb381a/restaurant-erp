@@ -7,6 +7,7 @@ import { ROLES, startApp, type RoleCode, type TestApp } from './app-harness';
  * (Q21 in docs/OPEN-QUESTIONS.md: confirm role mapping with the owner.)
  */
 const ALL_PERMISSIONS = [
+  'day.open',
   'order.create',
   'order.transfer',
   'order.cancel',
@@ -43,6 +44,7 @@ const GRANTS: Record<RoleCode, string[]> = {
   OWNER: ALL_PERMISSIONS,
   MANAGER: ALL_PERMISSIONS.filter((p) => !NOT_MANAGER.includes(p)),
   CASHIER: [
+    'day.open',
     'order.create',
     'order.transfer',
     'kot.reprint',
@@ -196,6 +198,59 @@ const probes: Probe[] = [
   { name: 'GET /menu/warnings', perm: 'menu.manage', call: (a) => a.get('/menu/warnings') },
   { name: 'GET /menu/export.csv', perm: 'menu.manage', call: (a) => a.get('/menu/export.csv') },
   { name: 'POST /menu/import', perm: 'menu.manage', call: (a) => a.post('/menu/import', {}) },
+  // ── floor & orders (M3)
+  {
+    name: 'POST /business-days/open',
+    perm: 'day.open',
+    call: (a) => a.post('/business-days/open', { businessDate: 'bad' }),
+  },
+  { name: 'POST /shifts/open', perm: 'shift.open', call: (a) => a.post('/shifts/open', {}) },
+  { name: 'POST /orders', perm: 'order.create', call: (a) => a.post('/orders', {}) },
+  {
+    name: 'PATCH /orders/:id',
+    perm: 'order.create',
+    call: (a) => a.patch(`/orders/${uuid()}`, { guests: 2 }),
+  },
+  {
+    name: 'POST /orders/:id/hold',
+    perm: 'order.create',
+    call: (a) => a.post(`/orders/${uuid()}/hold`),
+  },
+  {
+    name: 'POST /orders/:id/resume',
+    perm: 'order.create',
+    call: (a) => a.post(`/orders/${uuid()}/resume`),
+  },
+  {
+    name: 'POST /orders/:id/items',
+    perm: 'order.create',
+    call: (a) => a.post(`/orders/${uuid()}/items`, {}),
+  },
+  {
+    name: 'PATCH /orders/:id/items/:line',
+    perm: 'order.create',
+    call: (a) => a.patch(`/orders/${uuid()}/items/${uuid()}`, { qty: 2 }),
+  },
+  {
+    name: 'POST /orders/:id/items/:line/void',
+    perm: 'order.create',
+    call: (a) => a.post(`/orders/${uuid()}/items/${uuid()}/void`, {}),
+  },
+  {
+    name: 'POST /orders/:id/transfer',
+    perm: 'order.transfer',
+    call: (a) => a.post(`/orders/${uuid()}/transfer`, {}),
+  },
+  {
+    name: 'POST /orders/:id/merge',
+    perm: 'order.transfer',
+    call: (a) => a.post(`/orders/${uuid()}/merge`, {}),
+  },
+  {
+    name: 'POST /orders/:id/cancel',
+    perm: 'order.cancel',
+    call: (a) => a.post(`/orders/${uuid()}/cancel`, {}),
+  },
 ];
 
 let t: TestApp;

@@ -405,6 +405,7 @@ export interface Orders {
   closed_at: Timestamp | null;
   customer_id: string | null;
   guests: number | null;
+  held_at: Timestamp | null;
   id: Generated<string>;
   notes: string | null;
   opened_at: Generated<Timestamp>;

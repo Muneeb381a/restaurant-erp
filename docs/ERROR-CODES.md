@@ -20,4 +20,6 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | `ACCOUNT_LOCKED`      | 423  | 5 failed logins within 10 minutes; `retryAfterSeconds` says when to retry. An admin can `POST /users/:id/unlock`                            |
 | `INTERNAL_ERROR`      | 500  | Unexpected error (details only in server logs, correlate with `requestId`)                                                                  |
 
-Planned (added with their milestones): `TAX_RULE_MISSING`, `TAX_RULE_AMBIGUOUS`, `SHIFT_NOT_OPEN`, `DISCOUNT_LIMIT`, `VERSION_CONFLICT`, `IDEMPOTENCY_CONFLICT`.
+Domain rule violations (bad deal pick, modifier min/max, missing weight, …) return `VALIDATION_FAILED` (400) with a `reason` such as `DEAL_SLOT_COUNT`, `MODIFIER_GROUP_MIN` or `LINE_WEIGHT_REQUIRED`.
+
+Planned (added with their milestones): `TAX_RULE_MISSING`, `TAX_RULE_AMBIGUOUS`, `SHIFT_NOT_OPEN`, `DISCOUNT_LIMIT`, `IDEMPOTENCY_CONFLICT`.

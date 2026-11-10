@@ -46,6 +46,24 @@ export function parseRupees(input: string): Paisa {
   return asPaisa(whole * 100 + fraction);
 }
 
+/**
+ * `round_half_up(amount × numerator / denominator)` in exact integer arithmetic (BigInt), so no
+ * float error and no intermediate overflow. Used for weight pricing, percentages and tax.
+ * `amount` and `numerator` must be non-negative integers, `denominator` a positive integer.
+ */
+export function mulDivHalfUp(amount: number, numerator: number, denominator: number): Paisa {
+  const ints = [amount, numerator, denominator];
+  if (!ints.every(Number.isSafeInteger) || amount < 0 || numerator < 0 || denominator <= 0) {
+    throw new MoneyError(
+      `mulDivHalfUp needs non-negative integers and a positive divisor, got ${ints.join(', ')}`,
+      'MONEY_INVALID_AMOUNT',
+    );
+  }
+  const x = BigInt(amount) * BigInt(numerator);
+  const d = BigInt(denominator);
+  return asPaisa(Number((2n * x + d) / (2n * d)));
+}
+
 /** Plain decimal rupees for CSV/export ("1250.50"). UI adds currency symbols/grouping. */
 export function formatPaisa(value: Paisa): string {
   const sign = value < 0 ? '-' : '';

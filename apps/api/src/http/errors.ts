@@ -1,4 +1,4 @@
-import { DealError, ModifierError, MoneyError, PriceError } from '@erp/domain';
+import { DealError, LineError, ModifierError, MoneyError, PriceError } from '@erp/domain';
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { ZodError } from 'zod';
 
@@ -18,7 +18,19 @@ export type ErrorCode =
   | 'REFERENCE_VIOLATION'
   | 'CONSTRAINT_VIOLATION'
   | 'ROLE_PROTECTED'
-  | 'LAST_OWNER';
+  | 'LAST_OWNER'
+  | 'DAY_NOT_OPEN'
+  | 'DAY_ALREADY_OPEN'
+  | 'SHIFT_ALREADY_OPEN'
+  | 'TABLE_OCCUPIED'
+  | 'ORDER_NOT_EDITABLE'
+  | 'ORDER_HELD'
+  | 'ORDER_HAS_SENT_ITEMS'
+  | 'ITEM_NOT_EDITABLE'
+  | 'ITEM_UNAVAILABLE'
+  | 'ITEM_NOT_ON_MENU'
+  | 'VERSION_CONFLICT'
+  | 'PRECONDITION_REQUIRED';
 
 export class AppError extends Error {
   constructor(
@@ -49,6 +61,7 @@ export const notFound: RequestHandler = (req, _res, next) => {
 function isDomainError(err: unknown): err is Error & { code: string } {
   return (
     err instanceof DealError ||
+    err instanceof LineError ||
     err instanceof ModifierError ||
     err instanceof PriceError ||
     err instanceof MoneyError
