@@ -136,7 +136,8 @@
       "newPin": "New PIN",
       "locked": "Locked",
       "unlock": "Unlock"
-    }
+    },
+    "settings": "Settings"
   },
   "order": {
     "title": "Order",
@@ -326,5 +327,36 @@
       "SETTLED": "Paid",
       "PRE_BILLED": "Unpaid"
     }
+  },
+  "settingsPage": {
+    "restaurant": "Restaurant",
+    "billing": "Billing",
+    "receipt": "Receipt",
+    "kitchen": "Kitchen",
+    "name": "Restaurant name",
+    "nameUr": "Restaurant name (Urdu)",
+    "address": "Address",
+    "phone": "Phone",
+    "saveRestaurant": "Save restaurant details",
+    "saved": "Saved",
+    "serviceCharge": "Service charge (%)",
+    "serviceChargeHint": "Added to every bill. 0 = none.",
+    "applyService": "Apply",
+    "roundToRupee": "Round bills to the nearest rupee",
+    "language": "Receipt language",
+    "en": "English (text)",
+    "ur": "اردو (bitmap)",
+    "languageHint": "Urdu receipts are printed as a picture so every printer can show them.",
+    "printOnSend": "Print kitchen tickets when an order is sent"
+  },
+  "orderActions": {
+    "move": "Move to another table",
+    "merge": "Merge another table into this order",
+    "cancel": "Cancel order",
+    "noFree": "No free table",
+    "noOthers": "No other open orders to merge",
+    "occupied": "That table already has an order",
+    "hasSent": "Items were already sent to the kitchen: void them first",
+    "cancelHint": "The whole order is cancelled and the table is freed. It cannot be undone."
   }
 }

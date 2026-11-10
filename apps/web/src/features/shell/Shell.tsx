@@ -1,10 +1,11 @@
 import { parseRupees } from '@erp/domain';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { ApiError, api } from '../../lib/api';
 import { useAuth } from '../../lib/auth-store';
+import { startLive } from '../../lib/live';
 import type { Shift } from '../../lib/types';
 import { ltr } from '../../lib/money';
 import { can, useDay, useMe, usePrinterHealth, useShift } from '../../lib/queries';
@@ -29,6 +30,8 @@ function SignedIn() {
   const shift = useShift();
   const printers = usePrinterHealth();
   const offline = (printers.data ?? []).filter((p) => p.state === 'OFFLINE');
+  // live updates: one event stream while signed in (polling stays as a slow safety net)
+  useEffect(() => startLive(qc), [qc]);
   const [floatOpen, setFloatOpen] = useState(false);
   // the dialog keeps its own copy: closing the shift empties the 'current shift' query
   const [drawerShift, setDrawerShift] = useState<Shift | null>(null);

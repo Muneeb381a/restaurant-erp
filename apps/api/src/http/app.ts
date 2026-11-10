@@ -16,6 +16,7 @@ import { menuRouter } from '../modules/menu/menu.routes';
 import { ordersRouter } from '../modules/orders/orders.routes';
 import type { AppContext } from './context';
 import { errorHandler, notFound } from './errors';
+import { eventsRouter, notifyOnWrite } from './events';
 
 export function createApp(ctx: AppContext): Express {
   const { db, logger } = ctx;
@@ -48,6 +49,8 @@ export function createApp(ctx: AppContext): Express {
   });
 
   const v1 = Router();
+  v1.use(notifyOnWrite);
+  v1.use('/', eventsRouter(ctx)); // GET /events (live change notifications)
   v1.use('/auth', authRouter(ctx));
   v1.use('/audit-log', auditRouter(ctx));
   v1.use('/users', usersRouter(ctx));

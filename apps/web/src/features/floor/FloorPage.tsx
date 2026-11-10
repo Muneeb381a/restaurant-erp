@@ -96,7 +96,9 @@ export function FloorPage() {
             {tables.map((table) => (
               <button
                 key={table.id}
-                disabled={dayClosed || create.isPending}
+                // cached data from before this visit may be out of date (a table just paid and freed):
+                // only fresh data can be tapped
+                disabled={dayClosed || create.isPending || !floor.isFetchedAfterMount}
                 onClick={() => open(table)}
                 className={`flex min-h-28 flex-col items-start justify-between rounded-xl border-2 p-3 text-start transition active:scale-95 disabled:opacity-50 ${COLORS[table.status]}`}
               >

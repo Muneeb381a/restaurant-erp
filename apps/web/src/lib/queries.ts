@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
+import { pollMs } from './live';
 import type {
   Bill,
   BusinessDay,
@@ -35,13 +36,17 @@ export const useShift = () =>
   });
 
 export const useFloor = () =>
-  useQuery({ queryKey: ['floor'], queryFn: () => api<Floor>('/floor'), refetchInterval: LIVE_MS });
+  useQuery({
+    queryKey: ['floor'],
+    queryFn: () => api<Floor>('/floor'),
+    refetchInterval: () => pollMs(LIVE_MS),
+  });
 
 export const useOrder = (id: string) =>
   useQuery({
     queryKey: ['order', id],
     queryFn: () => api<Order>(`/orders/${id}`),
-    refetchInterval: LIVE_MS + 1000,
+    refetchInterval: () => pollMs(LIVE_MS + 1000),
   });
 
 /** The POS menu: one payload; the browser revalidates it with ETag/If-None-Match (304 is cheap). */

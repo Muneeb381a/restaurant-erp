@@ -8,6 +8,7 @@ import { formatRs, ltr } from '../../lib/money';
 import { can, useMe, useMenu, useOrder } from '../../lib/queries';
 import type { MenuItem, Order, OrderLine, SendResult } from '../../lib/types';
 import { ItemSheet, type AddBody } from './ItemSheet';
+import { OrderActions } from './OrderActions';
 
 const PRICE_LIST: Record<Order['type'], string> = {
   DINE_IN: 'DINE_IN',
@@ -34,7 +35,7 @@ export function OrderPage() {
 
   const apply = (o: Order): void => {
     qc.setQueryData(['order', id], o);
-    void qc.invalidateQueries({ queryKey: ['floor'] });
+    qc.removeQueries({ queryKey: ['floor'] }); // not invalidate: no stale floor may flash up
     setMessage(null);
   };
   const onError = (e: unknown): void => {
@@ -115,7 +116,7 @@ export function OrderPage() {
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['order', id] });
-      void qc.invalidateQueries({ queryKey: ['floor'] });
+      qc.removeQueries({ queryKey: ['floor'] }); // not invalidate: no stale floor may flash up
       nav(`/order/${id}/pay`);
     },
     onError: (e) => {
@@ -238,6 +239,20 @@ export function OrderPage() {
             </button>
           )}
         </div>
+
+        {o.status === 'OPEN' &&
+          (can(me.data, 'order.transfer') || can(me.data, 'order.cancel')) && (
+            <OrderActions
+              order={o}
+              canTransfer={can(me.data, 'order.transfer')}
+              canCancel={can(me.data, 'order.cancel')}
+              onChanged={apply}
+              onCancelled={() => {
+                qc.removeQueries({ queryKey: ['floor'] }); // not invalidate: no stale floor may flash up
+                nav('/');
+              }}
+            />
+          )}
 
         {message && (
           <p role="alert" className="m-2 rounded-lg bg-amber-50 p-2 text-sm text-amber-900">

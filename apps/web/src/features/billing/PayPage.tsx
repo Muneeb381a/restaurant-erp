@@ -48,7 +48,7 @@ export function PayPage() {
   const apply = (next: Bill): void => {
     qc.setQueryData(['bill', id], next);
     void qc.invalidateQueries({ queryKey: ['order', id] });
-    void qc.invalidateQueries({ queryKey: ['floor'] });
+    qc.removeQueries({ queryKey: ['floor'] }); // not invalidate: no stale floor may flash up
   };
   const fail = (e: unknown): void => {
     if (e instanceof ApiError) {
@@ -133,7 +133,7 @@ export function PayPage() {
       api<Bill>(`/bills/${b!.id}/void`, { method: 'POST', body: { reason } }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['order', id] });
-      void qc.invalidateQueries({ queryKey: ['floor'] });
+      qc.removeQueries({ queryKey: ['floor'] }); // not invalidate: no stale floor may flash up
       nav(`/order/${id}`);
     },
     onError: fail,
