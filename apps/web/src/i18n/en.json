@@ -151,7 +151,8 @@
       "addSlot": "Add slot",
       "edit": "Edit contents"
     },
-    "roles": "Roles"
+    "roles": "Roles",
+    "tax": "Tax"
   },
   "order": {
     "title": "Order",
@@ -381,5 +382,45 @@
     "code": "Code",
     "name": "Name",
     "create": "Create"
+  },
+  "taxPage": {
+    "notice": "This software contains no tax rates. Enter the categories and rates given by your tax authority or accountant, name who confirmed each one, and only then switch tax on. Until then, bills carry no tax.",
+    "status": "Tax on bills",
+    "on": "ON",
+    "off": "OFF",
+    "enable": "Tax switched on",
+    "ready": "Everything needed is in place; tax can be switched on.",
+    "problems": "What is missing",
+    "notReady": "Tax cannot be switched on yet: see what is missing above.",
+    "serviceTaxable": "Service charge is taxable",
+    "identity": "Tax identity",
+    "authority": "Tax authority",
+    "categories": "Tax categories",
+    "categoriesHint": "Every menu item belongs to a category (the CSV import has a tax_category column). Add one per kind of goods the authority taxes differently.",
+    "code": "Code (A-Z, 0-9, _)",
+    "name": "Name",
+    "addCategory": "Add category",
+    "rules": "Rates",
+    "rulesHint": "A rate is never edited. To change it, end the old one and add a new one from the new date: old bills keep the rate they were taxed with.",
+    "category": "Category",
+    "class": "Paid by",
+    "rate": "Rate (%)",
+    "from": "From",
+    "to": "Until (optional)",
+    "verifiedBy": "Confirmed by",
+    "source": "Source (notification / finance act)",
+    "classes": {
+      "CASH_OTHER": "Cash / other",
+      "DIGITAL": "Card / wallet / QR",
+      "ANY": "Any"
+    },
+    "verify": "Confirm",
+    "verifyPrompt": "Who confirmed this rate (name of your accountant / CA)?",
+    "end": "End",
+    "endPrompt": "Last day this rate applies (YYYY-MM-DD)",
+    "noRules": "No rates yet.",
+    "addRule": "Add rate",
+    "pickAuthority": "Choose the tax authority above first.",
+    "saved": "Saved"
   }
 }

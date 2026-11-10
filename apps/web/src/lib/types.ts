@@ -311,6 +311,7 @@ export interface Bill {
   } | null;
   creditNotes?: CreditNoteSummary[];
   refundedPaisa?: number;
+  taxRateBps?: number | null;
 }
 
 export interface SettleResult {
@@ -382,4 +383,48 @@ export interface BillListItem {
   totalPaisa: number;
   settledAt: string | null;
   businessDate: string;
+}
+
+export interface BillQuoteTotals {
+  subtotalPaisa: number;
+  discountPaisa: number;
+  serviceChargePaisa: number;
+  taxPaisa: number;
+  roundOffPaisa: number;
+  totalPaisa: number;
+  taxRateBps?: number | null;
+}
+export interface BillQuotes {
+  taxEnabled: boolean;
+  CASH_OTHER: BillQuoteTotals;
+  DIGITAL: BillQuoteTotals;
+}
+
+export interface TaxCategory {
+  id: string;
+  code: string;
+  name: string;
+}
+export interface TaxRuleRow {
+  id: string;
+  authority: string;
+  categoryId: string;
+  categoryCode: string;
+  paymentClass: 'CASH_OTHER' | 'DIGITAL' | 'ANY';
+  rateBps: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  sourceNote: string | null;
+  verifiedBy: string | null;
+}
+export interface TaxReadiness {
+  ready: boolean;
+  date: string;
+  problems: {
+    code: string;
+    message: string;
+    categoryCode?: string;
+    paymentClass?: string;
+    ruleId?: string;
+  }[];
 }

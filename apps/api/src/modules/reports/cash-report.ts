@@ -243,6 +243,13 @@ export interface DayReport {
   khata: { chargedPaisa: number; collectedPaisa: number };
   refunds: { count: number; totalPaisa: number };
   netAfterRefundsPaisa: number;
+  /** Output tax of the day by rate and payment class, less what credit notes reversed. */
+  tax: {
+    collectedPaisa: number;
+    reversedPaisa: number;
+    netPaisa: number;
+    byRate: { rateBps: number; paymentClass: string; taxPaisa: number }[];
+  };
 }
 
 export async function dayReport(q: Queryable, branchId: string, dayId: string): Promise<DayReport> {
@@ -253,69 +260,99 @@ export async function dayReport(q: Queryable, branchId: string, dayId: string): 
     .where('branch_id', '=', branchId)
     .executeTakeFirst();
   if (!d) throw new AppError(404, 'NOT_FOUND', 'business day not found');
-  const [sales, byMethod, byType, shifts, voided, cancelled, charged, collected, refunded] =
-    await Promise.all([
-      salesTotals(q, { dayId }),
-      methodTotals(q, { dayId }),
-      q
-        .selectFrom('bills')
-        .innerJoin('orders', 'orders.id', 'bills.order_id')
-        .select([
-          'orders.type as type',
-          sql<number>`count(*)::int`.as('count'),
-          big(sql`sum(bills.total_paisa)`).as('total'),
-        ])
-        .where('bills.business_day_id', '=', dayId)
-        .where('bills.status', '=', 'SETTLED')
-        .groupBy('orders.type')
-        .orderBy('orders.type')
-        .execute(),
-      q
-        .selectFrom('shifts')
-        .innerJoin('users', 'users.id', 'shifts.opened_by')
-        .select([
-          'shifts.id as id',
-          'users.full_name as cashier',
-          'shifts.status as status',
-          'shifts.expected_cash_paisa as expected',
-          'shifts.counted_cash_paisa as counted',
-          'shifts.variance_paisa as variance',
-        ])
-        .where('shifts.business_day_id', '=', dayId)
-        .orderBy('shifts.opened_at')
-        .execute(),
-      q
-        .selectFrom('bills')
-        .select(sql<number>`count(*)::int`.as('n'))
-        .where('business_day_id', '=', dayId)
-        .where('status', '=', 'VOID')
-        .executeTakeFirstOrThrow(),
-      q
-        .selectFrom('orders')
-        .select(sql<number>`count(*)::int`.as('n'))
-        .where('business_day_id', '=', dayId)
-        .where('status', '=', 'CANCELLED')
-        .executeTakeFirstOrThrow(),
-      q
-        .selectFrom('khata_entries')
-        .innerJoin('bills', 'bills.id', 'khata_entries.bill_id')
-        .select(big(sql`sum(khata_entries.amount_paisa)`).as('n'))
-        .where('bills.business_day_id', '=', dayId)
-        .where('khata_entries.kind', '=', 'CHARGE')
-        .executeTakeFirstOrThrow(),
-      q
-        .selectFrom('khata_entries')
-        .innerJoin('shifts', 'shifts.id', 'khata_entries.shift_id')
-        .select(big(sql`sum(khata_entries.amount_paisa)`).as('n'))
-        .where('shifts.business_day_id', '=', dayId)
-        .where('khata_entries.kind', '=', 'PAYMENT')
-        .executeTakeFirstOrThrow(),
-      q
-        .selectFrom('credit_notes')
-        .select([sql<number>`count(*)::int`.as('n'), big(sql`sum(total_paisa)`).as('amount')])
-        .where('business_day_id', '=', dayId)
-        .executeTakeFirstOrThrow(),
-    ]);
+  const [
+    sales,
+    byMethod,
+    byType,
+    shifts,
+    voided,
+    cancelled,
+    charged,
+    collected,
+    refunded,
+    taxRows,
+    taxReversed,
+  ] = await Promise.all([
+    salesTotals(q, { dayId }),
+    methodTotals(q, { dayId }),
+    q
+      .selectFrom('bills')
+      .innerJoin('orders', 'orders.id', 'bills.order_id')
+      .select([
+        'orders.type as type',
+        sql<number>`count(*)::int`.as('count'),
+        big(sql`sum(bills.total_paisa)`).as('total'),
+      ])
+      .where('bills.business_day_id', '=', dayId)
+      .where('bills.status', '=', 'SETTLED')
+      .groupBy('orders.type')
+      .orderBy('orders.type')
+      .execute(),
+    q
+      .selectFrom('shifts')
+      .innerJoin('users', 'users.id', 'shifts.opened_by')
+      .select([
+        'shifts.id as id',
+        'users.full_name as cashier',
+        'shifts.status as status',
+        'shifts.expected_cash_paisa as expected',
+        'shifts.counted_cash_paisa as counted',
+        'shifts.variance_paisa as variance',
+      ])
+      .where('shifts.business_day_id', '=', dayId)
+      .orderBy('shifts.opened_at')
+      .execute(),
+    q
+      .selectFrom('bills')
+      .select(sql<number>`count(*)::int`.as('n'))
+      .where('business_day_id', '=', dayId)
+      .where('status', '=', 'VOID')
+      .executeTakeFirstOrThrow(),
+    q
+      .selectFrom('orders')
+      .select(sql<number>`count(*)::int`.as('n'))
+      .where('business_day_id', '=', dayId)
+      .where('status', '=', 'CANCELLED')
+      .executeTakeFirstOrThrow(),
+    q
+      .selectFrom('khata_entries')
+      .innerJoin('bills', 'bills.id', 'khata_entries.bill_id')
+      .select(big(sql`sum(khata_entries.amount_paisa)`).as('n'))
+      .where('bills.business_day_id', '=', dayId)
+      .where('khata_entries.kind', '=', 'CHARGE')
+      .executeTakeFirstOrThrow(),
+    q
+      .selectFrom('khata_entries')
+      .innerJoin('shifts', 'shifts.id', 'khata_entries.shift_id')
+      .select(big(sql`sum(khata_entries.amount_paisa)`).as('n'))
+      .where('shifts.business_day_id', '=', dayId)
+      .where('khata_entries.kind', '=', 'PAYMENT')
+      .executeTakeFirstOrThrow(),
+    q
+      .selectFrom('credit_notes')
+      .select([sql<number>`count(*)::int`.as('n'), big(sql`sum(total_paisa)`).as('amount')])
+      .where('business_day_id', '=', dayId)
+      .executeTakeFirstOrThrow(),
+    q
+      .selectFrom('bill_lines')
+      .innerJoin('bills', 'bills.id', 'bill_lines.bill_id')
+      .select([
+        'bill_lines.tax_rate_bps as rateBps',
+        'bills.tax_payment_class as paymentClass',
+        big(sql`sum(bill_lines.tax_paisa)`).as('tax'),
+      ])
+      .where('bills.business_day_id', '=', dayId)
+      .where('bills.status', '=', 'SETTLED')
+      .where('bill_lines.tax_rate_bps', 'is not', null)
+      .groupBy(['bill_lines.tax_rate_bps', 'bills.tax_payment_class'])
+      .orderBy('bill_lines.tax_rate_bps')
+      .execute(),
+    q
+      .selectFrom('credit_notes')
+      .select(big(sql`sum(tax_paisa)`).as('n'))
+      .where('business_day_id', '=', dayId)
+      .executeTakeFirstOrThrow(),
+  ]);
   return {
     day: {
       id: d.id,
@@ -340,6 +377,16 @@ export async function dayReport(q: Queryable, branchId: string, dayId: string): 
     khata: { chargedPaisa: charged.n, collectedPaisa: collected.n },
     refunds: { count: refunded.n, totalPaisa: refunded.amount },
     netAfterRefundsPaisa: sales.totalPaisa - refunded.amount,
+    tax: {
+      collectedPaisa: taxRows.reduce((n, r) => n + r.tax, 0),
+      reversedPaisa: taxReversed.n,
+      netPaisa: taxRows.reduce((n, r) => n + r.tax, 0) - taxReversed.n,
+      byRate: taxRows.map((r) => ({
+        rateBps: r.rateBps!,
+        paymentClass: r.paymentClass ?? '',
+        taxPaisa: r.tax,
+      })),
+    },
     varianceTotalPaisa: shifts.reduce((n, s) => n + (s.variance ?? 0), 0),
   };
 }
@@ -451,6 +498,22 @@ export function dayReportDoc(r: DayReport, restaurant: string, tz: string, copy 
     ],
     sections: [
       { heading: 'Sales', rows: salesRows(r.sales) },
+      ...(r.tax.collectedPaisa > 0
+        ? [
+            {
+              heading: 'Tax',
+              rows: [
+                ...r.tax.byRate.map((t): [string, number] => [
+                  `${t.rateBps / 100}% ${t.paymentClass === 'DIGITAL' ? 'digital' : 'cash/other'}`,
+                  t.taxPaisa,
+                ]),
+                ['Reversed by credit notes', -r.tax.reversedPaisa] as [string, number],
+                ['Net tax payable', r.tax.netPaisa] as [string, number],
+              ] as [string, number | string][],
+              boldLast: true,
+            },
+          ]
+        : []),
       {
         heading: 'Refunds',
         rows: [

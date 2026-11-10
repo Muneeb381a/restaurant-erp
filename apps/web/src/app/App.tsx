@@ -4,6 +4,7 @@ import { MenuAdmin } from '../features/admin/MenuAdmin';
 import { PrintersAdmin } from '../features/admin/PrintersAdmin';
 import { RolesAdmin } from '../features/admin/RolesAdmin';
 import { SettingsAdmin } from '../features/admin/SettingsAdmin';
+import { TaxAdmin } from '../features/admin/TaxAdmin';
 import { TablesAdmin } from '../features/admin/TablesAdmin';
 import { UsersAdmin } from '../features/admin/UsersAdmin';
 import { BillsPage } from '../features/billing/BillsPage';
@@ -31,6 +32,7 @@ export function App() {
           <Route path="printers" element={<PrintersAdmin />} />
           <Route path="tables" element={<TablesAdmin />} />
           <Route path="users" element={<UsersAdmin />} />
+          <Route path="tax" element={<TaxAdmin />} />
           <Route path="roles" element={<RolesAdmin />} />
           <Route path="settings" element={<SettingsAdmin />} />
         </Route>

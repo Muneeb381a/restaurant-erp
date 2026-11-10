@@ -143,4 +143,23 @@ describe('renderReceiptBitmap', () => {
     );
     expect(text).toMatch(/<RASTER:576x\d+>/);
   });
+
+  it('prints tax with its rate and the registration numbers (bitmap)', () => {
+    const base = readable(renderReceiptBitmap(doc, 80));
+    const taxed = readable(
+      renderReceiptBitmap(
+        { ...doc, taxPaisa: 16000, taxLabel: 'Sales tax 16%', ntn: '1234567-8', strn: '17-00-1' },
+        80,
+      ),
+    );
+    const rows = (t: string): number =>
+      [...t.matchAll(/<RASTER:576x(\d+)>/g)].reduce((n, m) => n + Number(m[1]), 0);
+    expect(rows(taxed)).toBeGreaterThan(rows(base));
+    const noLabel = readable(
+      renderReceiptBitmap({ ...doc, taxPaisa: 16000, ntn: null, strn: '17-00-1' }, 80),
+    );
+    expect(noLabel).toMatch(/<RASTER/);
+    const onlyNtn = readable(renderReceiptBitmap({ ...doc, taxPaisa: 16000, ntn: '1-2' }, 80));
+    expect(onlyNtn).toMatch(/<RASTER/);
+  });
 });

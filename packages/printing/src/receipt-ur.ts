@@ -41,6 +41,14 @@ export function renderReceiptBitmap(doc: ReceiptDoc, paperMm: PaperMm = 80): Uin
   b.text(doc.restaurantUr || doc.restaurant, big, 'center');
   if (doc.address) b.text(doc.address, { size: 22, rtl: true }, 'center');
   if (doc.phone) b.text(`${UR.tel}: ${lri(doc.phone)}`, { size: 22, rtl: true }, 'center');
+  if (doc.taxPaisa > 0 && (doc.ntn || doc.strn))
+    b.text(
+      [doc.ntn ? `NTN: ${doc.ntn}` : '', doc.strn ? `STRN: ${doc.strn}` : '']
+        .filter(Boolean)
+        .join('  '),
+      { size: 22 },
+      'center',
+    );
   if (doc.duplicate && doc.duplicate > 0)
     b.text(
       `*** ${UR.duplicate} ${lri(doc.duplicate)} ***`,
@@ -70,7 +78,12 @@ export function renderReceiptBitmap(doc: ReceiptDoc, paperMm: PaperMm = 80): Uin
   b.row(UR.subtotal, money(doc.subtotalPaisa), R);
   if (doc.discountPaisa > 0) b.row(UR.discount, money(-doc.discountPaisa), R);
   if (doc.serviceChargePaisa > 0) b.row(UR.service, money(doc.serviceChargePaisa), R);
-  if (doc.taxPaisa > 0) b.row(UR.tax, money(doc.taxPaisa), R);
+  if (doc.taxPaisa > 0)
+    b.row(
+      doc.taxLabel ? `${UR.tax} ${lri(doc.taxLabel.replace(/^Sales tax\s*/, ''))}`.trim() : UR.tax,
+      money(doc.taxPaisa),
+      R,
+    );
   if (doc.roundOffPaisa !== 0) b.row(UR.roundOff, money(doc.roundOffPaisa), R);
   b.row(UR.total, `Rs ${money(doc.totalPaisa)}`, { size: 34, bold: true, rtl: true });
   b.rule();

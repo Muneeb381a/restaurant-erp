@@ -36,6 +36,9 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | `APPROVER_INVALID`    | 403  | Approver username/PIN wrong, or that user cannot approve discounts (failed PINs count towards the lockout)                                  |
 | `SHIFT_NOT_OPEN`      | 409  | The cashier has no open shift in the bill's business day                                                                                    |
 | `VARIANCE_NOTE_REQUIRED` | 400 | Shift close: counted cash differs from expected; send `notes` (the body has `variancePaisa`)                                           |
+| `TAX_RULE_MISSING`    | 409  | Tax is on but no rule covers a line's category / payment class / date: the bill is NOT priced with a guess (`categoryId`, `paymentClass`, `date`) |
+| `TAX_RULE_AMBIGUOUS`  | 409  | Two rules apply to the same line (`ruleIds`); fix the rules                                                                                   |
+| `TAX_NOT_READY`       | 409  | Switching tax on refused; `problems` lists what is missing (authority, rule, unverified rule)                                                 |
 | `NOTHING_TO_REFUND`   | 409  | Credit note refused: every line of the bill was already returned                                                                            |
 | `KHATA_NOT_ON_BILL`   | 409  | Refund to khata on a bill that was not put on khata                                                                                         |
 | `KHATA_REFUND_EXCEEDS`| 409  | Refund to khata is more than the bill charged to khata (`maxPaisa` says what is left)                                                       |

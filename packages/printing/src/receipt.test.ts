@@ -172,3 +172,26 @@ describe('khata receipts', () => {
     expect(text).toContain('Khata a/c: Haji Sahib');
   });
 });
+
+describe('tax on the receipt', () => {
+  const taxed: ReceiptDoc = {
+    ...base,
+    taxPaisa: 16000,
+    taxLabel: 'Sales tax 16%',
+    ntn: '1234567-8',
+    strn: '17-00-0000-001-37',
+  };
+  it('shows the rate label and the registration numbers only when the bill carries tax', () => {
+    const text = describeBytes(renderReceipt(taxed, 80));
+    expect(text).toContain('Sales tax 16%');
+    expect(text).toContain('NTN: 1234567-8  STRN: 17-00-0000-001-37');
+    const untaxed = describeBytes(renderReceipt({ ...taxed, taxPaisa: 0 }, 80));
+    expect(untaxed).not.toContain('NTN:');
+    expect(describeBytes(renderReceipt({ ...taxed, taxLabel: null, strn: null }, 80))).toMatch(
+      /Tax\s+160/,
+    );
+    expect(describeBytes(renderReceipt({ ...taxed, ntn: null }, 80))).toContain(
+      'STRN: 17-00-0000-001-37',
+    );
+  });
+});

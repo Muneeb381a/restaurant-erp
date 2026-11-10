@@ -13,6 +13,7 @@ import {
   getBillForOrder,
   getBillView,
   listBills,
+  quoteBill,
   reprintBill,
   settleBill,
   voidBill,
@@ -79,6 +80,13 @@ export function billingRouter(ctx: AppContext): Router {
         })
         .parse(req.query);
       res.json({ items: await listBills(ctx.db, req.branchId!, q) });
+    }),
+  );
+  r.get(
+    '/bills/:id/quotes',
+    ...read,
+    asyncHandler(async (req, res) => {
+      res.json(await quoteBill(ctx, req.branchId!, idParam.parse(req.params).id));
     }),
   );
   r.get(

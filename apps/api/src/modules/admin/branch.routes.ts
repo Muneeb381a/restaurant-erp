@@ -6,6 +6,7 @@ import { AppError } from '../../http/errors';
 import { withTx } from '../../shared/tx';
 import { writeAudit } from '../audit/audit.service';
 import { authenticate, requirePermission, resolveBranch } from '../auth/middleware';
+import { assertCanEnableTax } from '../tax/tax.service';
 
 const branchPatch = z
   .object({
@@ -28,6 +29,8 @@ const TAX_FIELDS = ['ntn', 'strn', 'tax_authority'] as const;
 export const SETTING_SCHEMAS: Record<string, z.ZodType> = {
   'tax.service_charge_taxable': z.boolean(),
   'tax.mixed_tender_policy': z.enum(['HIGHEST_RATE_IF_ANY_NON_DIGITAL', 'PROPORTIONAL']),
+  /** Master switch of the tax engine; can only be turned on when `taxReadiness` is clean. */
+  'tax.enabled': z.boolean(),
   'billing.round_to_rupee': z.boolean(),
   'billing.service_charge_bps': z.number().int().min(0).max(10_000),
   'kot.print_on_send': z.boolean(),
@@ -128,6 +131,8 @@ export function branchRouter(ctx: AppContext): Router {
         });
 
       const value = schema.parse(z.object({ value: z.unknown() }).parse(req.body).value);
+      // tax can only be switched on when every rule in use exists, is unambiguous and is verified
+      if (key === 'tax.enabled' && value === true) await assertCanEnableTax(ctx, req.branchId!);
       await withTx(ctx.db, async (trx) => {
         const prev = await trx
           .selectFrom('settings')

@@ -23,6 +23,11 @@ export interface ReceiptDoc {
   restaurantUr?: string | null;
   address?: string | null;
   phone?: string | null;
+  /** Tax registration numbers, printed when the bill carries tax. */
+  ntn?: string | null;
+  strn?: string | null;
+  /** Label of the tax row, e.g. "Sales tax 16%". */
+  taxLabel?: string | null;
   billNo: number;
   orderNo: number;
   orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
@@ -75,6 +80,12 @@ export function renderReceipt(doc: ReceiptDoc, paperMm: PaperMm = 80): Uint8Arra
   p.size(1, 1).bold(false);
   if (doc.address) for (const l of wrap(doc.address, cols)) p.line(l);
   if (doc.phone) p.line(`Tel: ${doc.phone}`);
+  if (doc.taxPaisa > 0 && (doc.ntn || doc.strn))
+    p.line(
+      [doc.ntn ? `NTN: ${doc.ntn}` : '', doc.strn ? `STRN: ${doc.strn}` : '']
+        .filter(Boolean)
+        .join('  '),
+    );
   if (doc.duplicate && doc.duplicate > 0)
     p.bold(true).line(`*** DUPLICATE #${doc.duplicate} ***`).bold(false);
   p.align('left').rule(cols);
@@ -112,7 +123,7 @@ export function renderReceipt(doc: ReceiptDoc, paperMm: PaperMm = 80): Uint8Arra
   row('Subtotal', doc.subtotalPaisa);
   if (doc.discountPaisa > 0) row('Discount', -doc.discountPaisa);
   if (doc.serviceChargePaisa > 0) row('Service charge', doc.serviceChargePaisa);
-  if (doc.taxPaisa > 0) row('Tax', doc.taxPaisa);
+  if (doc.taxPaisa > 0) row(doc.taxLabel || 'Tax', doc.taxPaisa);
   if (doc.roundOffPaisa !== 0) row('Round off', doc.roundOffPaisa);
   p.bold(true)
     .size(1, 2)

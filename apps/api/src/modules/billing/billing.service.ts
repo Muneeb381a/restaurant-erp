@@ -3,10 +3,13 @@ import {
   canTransitionOrder,
   computeBill,
   discountNeedsApproval,
+  taxClassOf,
   validateTenders,
   type BillTotals,
   type Discount,
   type Paisa,
+  type TaxClass,
+  type TaxResult,
 } from '@erp/domain';
 import { renderReceipt, renderReceiptBitmap, type ReceiptDoc } from '@erp/printing';
 import type { AppContext } from '../../http/context';
@@ -18,6 +21,7 @@ import { clockTime } from '../kitchen/tickets';
 import { bumpVersion, lockOrder, nextDocNo } from '../orders/orders.repo';
 import { assertEditable, checkVersion, type Actor } from '../orders/orders.service';
 import { chargeKhata, khataForBill } from '../khata/khata.service';
+import { loadTaxContext, taxFor, type TaxContext } from '../tax/tax.service';
 import { creditNotesOf } from './credit.service';
 import { enqueuePrintJob } from '../printing/print.service';
 
@@ -105,6 +109,7 @@ export async function getBillView(q: Queryable, branchId: string, billId: string
     serviceChargePaisa: bill.service_charge_paisa,
     taxablePaisa: bill.taxable_paisa,
     taxPaisa: bill.tax_paisa,
+    taxRateBps: bill.tax_rate_bps,
     roundOffPaisa: bill.round_off_paisa,
     totalPaisa: bill.total_paisa,
     taxPaymentClass: bill.tax_payment_class,
@@ -116,6 +121,8 @@ export async function getBillView(q: Queryable, branchId: string, billId: string
       qty: Number(l.qty),
       unitPricePaisa: l.unit_price_paisa,
       netPaisa: l.net_paisa,
+      taxPaisa: l.tax_paisa,
+      taxRateBps: l.tax_rate_bps,
     })),
     payments: payments.map((p) => ({
       id: p.id,
@@ -213,6 +220,158 @@ const totalsRow = (t: BillTotals) => ({
   total_paisa: t.totalPaisa,
 });
 
+const taxCols = (tax: TaxResult | null) => ({
+  tax_rule_id: tax?.singleRule?.ruleId ?? null,
+  tax_rate_bps: tax?.singleRule?.rateBps ?? null,
+});
+
+interface PriceInput {
+  subtotalPaisa: Paisa;
+  discount?: Discount | undefined;
+  settings: BillingSettings;
+  lines: { id: string; netPaisa: number; categoryId: string }[];
+  tctx: TaxContext;
+  paymentClass: TaxClass;
+  date: string;
+}
+
+/**
+ * Prices a bill: discount -> service charge -> tax (per line, from the owner's rules) -> round-off.
+ * The service charge is needed for the tax base and the tax for the round-off, hence two passes.
+ * With tax switched off the tax is 0 and no rule is involved.
+ */
+function priceBill(i: PriceInput): { totals: BillTotals; tax: TaxResult | null } {
+  const first = computeBill({
+    subtotalPaisa: i.subtotalPaisa,
+    discount: i.discount,
+    serviceChargeBps: i.settings.serviceChargeBps,
+    roundToRupee: false,
+  });
+  const tax = taxFor(i.tctx, {
+    lines: i.lines,
+    discountPaisa: first.discountPaisa,
+    serviceChargePaisa: first.serviceChargePaisa,
+    paymentClass: i.paymentClass,
+    date: i.date,
+  });
+  const totals = computeBill({
+    subtotalPaisa: i.subtotalPaisa,
+    discount: i.discount,
+    serviceChargeBps: i.settings.serviceChargeBps,
+    taxPaisa: tax?.taxPaisa,
+    roundToRupee: i.settings.roundToRupee,
+  });
+  return { totals, tax };
+}
+
+async function writeLineTax(
+  trx: Queryable,
+  tax: TaxResult | null,
+  lineIds: string[],
+): Promise<void> {
+  for (const id of lineIds) {
+    const t = tax?.lines.find((l) => l.id === id);
+    await trx
+      .updateTable('bill_lines')
+      .set({
+        tax_paisa: t?.taxPaisa ?? 0,
+        tax_rate_bps: t?.rateBps ?? null,
+        tax_rule_id: t?.ruleId ?? null,
+      })
+      .where('id', '=', id)
+      .execute();
+  }
+}
+
+async function billDate(q: Queryable, dayId: string): Promise<string> {
+  const d = await q
+    .selectFrom('business_days')
+    .select('business_date')
+    .where('id', '=', dayId)
+    .executeTakeFirstOrThrow();
+  return d.business_date;
+}
+
+/** Re-prices a PRE_BILLED bill (discount change, or the payment class becoming known) and stores it. */
+async function repriceBill(
+  trx: Queryable,
+  a: Actor,
+  bill: { id: string; business_day_id: string; subtotal_paisa: number },
+  discount: Discount,
+  paymentClass: TaxClass,
+): Promise<BillTotals> {
+  const [lines, settings, tctx, date] = await Promise.all([
+    trx
+      .selectFrom('bill_lines')
+      .select(['id', 'net_paisa', 'tax_category_id'])
+      .where('bill_id', '=', bill.id)
+      .orderBy('id')
+      .execute(),
+    readSettings(trx, a.branchId),
+    loadTaxContext(trx, a.branchId),
+    billDate(trx, bill.business_day_id),
+  ]);
+  const { totals, tax } = priceBill({
+    subtotalPaisa: asPaisa(bill.subtotal_paisa),
+    discount,
+    settings,
+    lines: lines.map((l) => ({ id: l.id, netPaisa: l.net_paisa, categoryId: l.tax_category_id! })),
+    tctx,
+    paymentClass,
+    date,
+  });
+  await writeLineTax(
+    trx,
+    tax,
+    lines.map((l) => l.id),
+  );
+  await trx
+    .updateTable('bills')
+    .set({ ...totalsRow(totals), ...taxCols(tax) })
+    .where('id', '=', bill.id)
+    .execute();
+  return totals;
+}
+
+/** What the bill would total for each payment class (the screen shows the one the tenders imply). */
+export async function quoteBill(ctx: AppContext, branchId: string, billId: string) {
+  const bill = await ctx.db
+    .selectFrom('bills')
+    .selectAll()
+    .where('id', '=', billId)
+    .where('branch_id', '=', branchId)
+    .executeTakeFirst();
+  if (!bill) throw new AppError(404, 'NOT_FOUND', 'bill not found');
+  const [lines, settings, tctx, date] = await Promise.all([
+    ctx.db
+      .selectFrom('bill_lines')
+      .select(['id', 'net_paisa', 'tax_category_id'])
+      .where('bill_id', '=', billId)
+      .orderBy('id')
+      .execute(),
+    readSettings(ctx.db, branchId),
+    loadTaxContext(ctx.db, branchId),
+    billDate(ctx.db, bill.business_day_id),
+  ]);
+  const price = (paymentClass: TaxClass) => {
+    const priced = priceBill({
+      subtotalPaisa: asPaisa(bill.subtotal_paisa),
+      discount: { kind: 'AMOUNT', paisa: asPaisa(bill.discount_paisa) },
+      settings,
+      lines: lines.map((l) => ({
+        id: l.id,
+        netPaisa: l.net_paisa,
+        categoryId: l.tax_category_id!,
+      })),
+      tctx,
+      paymentClass,
+      date,
+    });
+    return { ...priced.totals, taxRateBps: priced.tax?.singleRule?.rateBps ?? null };
+  };
+  return { taxEnabled: tctx.enabled, CASH_OTHER: price('CASH_OTHER'), DIGITAL: price('DIGITAL') };
+}
+
 // ───────────────────────────────── pre-bill ─────────────────────────────────
 
 /**
@@ -249,10 +408,18 @@ export function createBill(
 
     const settings = await readSettings(trx, a.branchId);
     const subtotal = asPaisa(lines.reduce((n, l) => n + l.line_total_paisa, 0));
-    const totals = computeBill({
+    // shown with the highest-rate class; the real class is known at settlement (tenders)
+    const { totals, tax } = priceBill({
       subtotalPaisa: subtotal,
-      serviceChargeBps: settings.serviceChargeBps,
-      roundToRupee: settings.roundToRupee,
+      settings,
+      lines: lines.map((l) => ({
+        id: l.id,
+        netPaisa: l.line_total_paisa,
+        categoryId: l.tax_category_id,
+      })),
+      tctx: await loadTaxContext(trx, a.branchId),
+      paymentClass: 'CASH_OTHER',
+      date: await billDate(trx, order.business_day_id),
     });
     const billNo = await nextDocNo(trx, a.branchId, order.business_day_id, 'BILL');
 
@@ -266,6 +433,7 @@ export function createBill(
         status: 'PRE_BILLED',
         created_by: a.userId,
         ...totalsRow(totals),
+        ...taxCols(tax),
       })
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -282,6 +450,9 @@ export function createBill(
           portion_bps: 10000,
           net_paisa: l.line_total_paisa,
           tax_category_id: l.tax_category_id,
+          tax_paisa: tax?.lines.find((t) => t.id === l.id)?.taxPaisa ?? 0,
+          tax_rate_bps: tax?.lines.find((t) => t.id === l.id)?.rateBps ?? null,
+          tax_rule_id: tax?.lines.find((t) => t.id === l.id)?.ruleId ?? null,
         })),
       )
       .execute();
@@ -431,17 +602,10 @@ export async function applyDiscount(
     if (bill.status !== 'PRE_BILLED')
       throw new AppError(409, 'BILL_NOT_PAYABLE', `A ${bill.status} bill cannot be changed`);
 
-    const settings = await readSettings(trx, a.branchId);
-    const totals = computeBill({
-      subtotalPaisa: asPaisa(bill.subtotal_paisa),
-      discount,
-      serviceChargeBps: settings.serviceChargeBps,
-      roundToRupee: settings.roundToRupee,
-    });
+    const totals = await repriceBill(trx, a, bill, discount, 'CASH_OTHER');
     await trx
       .updateTable('bills')
       .set({
-        ...totalsRow(totals),
         discount_reason: totals.discountPaisa > 0 ? reason! : null,
         discount_approved_by: totals.discountPaisa > 0 ? approvedBy : null,
       })
@@ -532,7 +696,7 @@ async function receiptDoc(
   const [branch, order, cashier] = await Promise.all([
     q
       .selectFrom('branches')
-      .select(['name', 'name_ur', 'address', 'phone', 'timezone'])
+      .select(['name', 'name_ur', 'address', 'phone', 'timezone', 'ntn', 'strn'])
       .where('id', '=', branchId)
       .executeTakeFirstOrThrow(),
     q
@@ -575,6 +739,9 @@ async function receiptDoc(
     restaurantUr: branch.name_ur,
     address: branch.address,
     phone: branch.phone,
+    ntn: branch.ntn,
+    strn: branch.strn,
+    taxLabel: bill.taxRateBps ? `Sales tax ${bill.taxRateBps / 100}%` : null,
     billNo: bill.billNo,
     orderNo: bill.orderNo,
     orderType: bill.orderType as ReceiptDoc['orderType'],
@@ -739,8 +906,29 @@ export async function settleBill(
         throw new AppError(400, 'VALIDATION_FAILED', 'Choose the customer’s khata account');
       if (khataTender.tipPaisa) throw bad('A tip cannot be put on khata');
     }
+    // The tax rate depends on HOW the bill is paid (all digital vs anything else), which is only known
+    // now: price the bill with that class, then the tenders must match the resulting total exactly.
+    const payClass = taxClassOf(
+      tenders.map((t) => ({
+        tenderClass: methods.find((m) => m.id === t.methodId)!.tender_class as
+          'CASH_OTHER' | 'DIGITAL',
+      })),
+    );
+    const taxCtx = await loadTaxContext(trx, a.branchId);
+    const settleTotal =
+      taxCtx.enabled || bill.tax_paisa > 0
+        ? (
+            await repriceBill(
+              trx,
+              a,
+              bill,
+              { kind: 'AMOUNT', paisa: asPaisa(bill.discount_paisa) },
+              payClass,
+            )
+          ).totalPaisa
+        : asPaisa(bill.total_paisa);
     const result = validateTenders(
-      asPaisa(bill.total_paisa),
+      settleTotal,
       tenders.map((t) => {
         const m = methods.find((x) => x.id === t.methodId)!;
         return {
@@ -817,7 +1005,7 @@ export async function settleBill(
       { status: 'PRE_BILLED' },
       {
         status: 'SETTLED',
-        totalPaisa: bill.total_paisa,
+        totalPaisa: settleTotal,
         taxPaymentClass: result.taxClass,
         changeDuePaisa: result.changeDuePaisa,
         tenders: result.applied.map((t) => ({

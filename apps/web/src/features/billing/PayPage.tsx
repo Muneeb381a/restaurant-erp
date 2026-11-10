@@ -1,11 +1,11 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr, parseRs } from '../../lib/money';
 import { can, useBill, useMe, usePaymentMethods } from '../../lib/queries';
-import type { Bill, KhataAccount, PaymentMethod, SettleResult } from '../../lib/types';
+import type { Bill, BillQuotes, KhataAccount, PaymentMethod, SettleResult } from '../../lib/types';
 import { KhataPicker } from '../khata/KhataPicker';
 import { RefundDialog } from './RefundDialog';
 
@@ -29,6 +29,12 @@ export function PayPage() {
   const nav = useNavigate();
   const me = useMe();
   const bill = useBill(id, true);
+  // what the bill totals for each payment class (the tax rate depends on how it is paid)
+  const quotes = useQuery({
+    queryKey: ['bill-quotes', bill.data?.id],
+    queryFn: () => api<BillQuotes>(`/bills/${bill.data!.id}/quotes`),
+    enabled: bill.data?.status === 'PRE_BILLED',
+  });
   const methods = usePaymentMethods();
 
   const [rows, setRows] = useState<TenderRow[]>([]);
@@ -70,6 +76,7 @@ export function PayPage() {
     }) => api<Bill>(`/bills/${b!.id}/discount`, { method: 'POST', body: v }),
     onSuccess: (next) => {
       apply(next);
+      void qc.invalidateQueries({ queryKey: ['bill-quotes'] });
       setNeedApprover(null);
       setMessage(null);
     },
@@ -145,12 +152,36 @@ export function PayPage() {
   const settled = b.status === 'SETTLED';
   const payable = b.status === 'PRE_BILLED';
   const enteredPaisa = rows.reduce((n, r) => n + (parseRs(r.amount) ?? 0), 0);
-  const remaining = b.totalPaisa - enteredPaisa; // display hint only; the server re-validates
+  // all-digital tenders get the digital quote, anything else the cash/other one; the server decides at settle
+  const payClass: 'CASH_OTHER' | 'DIGITAL' =
+    rows.length > 0 &&
+    rows.every((r) => methods.data?.find((m) => m.id === r.methodId)?.tender_class === 'DIGITAL')
+      ? 'DIGITAL'
+      : 'CASH_OTHER';
+  const quoted =
+    quotes.data?.taxEnabled && b.status === 'PRE_BILLED' ? quotes.data[payClass] : null;
+  const shown = {
+    taxPaisa: quoted?.taxPaisa ?? b.taxPaisa,
+    roundOffPaisa: quoted?.roundOffPaisa ?? b.roundOffPaisa,
+    totalPaisa: quoted?.totalPaisa ?? b.totalPaisa,
+  };
+  const remaining = shown.totalPaisa - enteredPaisa; // display hint only; the server re-validates
   const methodOf = (mid: string): PaymentMethod | undefined =>
     methods.data?.find((m) => m.id === mid);
 
   const addRow = (m: PaymentMethod): void => {
-    const rest = Math.max(remaining, 0);
+    // prefill with what is left under the class this tender creates: adding a card to an empty bill
+    // makes it an all-digital (cheaper-tax) bill, so the total to split changes with the new row
+    const classAfter =
+      m.tender_class === 'DIGITAL' &&
+      rows.every((r) => methods.data?.find((x) => x.id === r.methodId)?.tender_class === 'DIGITAL')
+        ? 'DIGITAL'
+        : 'CASH_OTHER';
+    const totalAfter =
+      quotes.data?.taxEnabled && b.status === 'PRE_BILLED'
+        ? quotes.data[classAfter].totalPaisa
+        : b.totalPaisa;
+    const rest = Math.max(totalAfter - enteredPaisa, 0);
     setRows((rs) => [
       ...rs,
       {
@@ -266,11 +297,22 @@ export function PayPage() {
           {b.serviceChargePaisa > 0 && (
             <Row label={t('bill.service')} paisa={b.serviceChargePaisa} />
           )}
-          {b.taxPaisa > 0 && <Row label={t('bill.tax')} paisa={b.taxPaisa} />}
-          {b.roundOffPaisa !== 0 && <Row label={t('bill.roundOff')} paisa={b.roundOffPaisa} />}
+          {shown.taxPaisa > 0 && (
+            <Row
+              label={
+                (quoted?.taxRateBps ?? b.taxRateBps)
+                  ? `${t('bill.tax')} ${(quoted?.taxRateBps ?? b.taxRateBps)! / 100}%`
+                  : t('bill.tax')
+              }
+              paisa={shown.taxPaisa}
+            />
+          )}
+          {shown.roundOffPaisa !== 0 && (
+            <Row label={t('bill.roundOff')} paisa={shown.roundOffPaisa} />
+          )}
           <div className="flex justify-between text-2xl font-bold">
             <dt>{t('bill.total')}</dt>
-            <dd data-testid="bill-total">{ltr(formatRs(b.totalPaisa))}</dd>
+            <dd data-testid="bill-total">{ltr(formatRs(shown.totalPaisa))}</dd>
           </div>
         </dl>
 

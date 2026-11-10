@@ -191,4 +191,31 @@ describe('computeRefund', () => {
       ),
     );
   });
+
+  it('reverses each line’s tax at its own original rate, and the parts add up to the bill', () => {
+    // food 60000 @16 % = 9600 tax, goods 40000 @5 % = 2000 tax; no discount; total 111600
+    const bill: RefundBill = {
+      subtotalPaisa: 100000,
+      discountPaisa: 0,
+      serviceChargePaisa: 0,
+      roundOffPaisa: 0,
+      totalPaisa: 111600,
+    };
+    const lines: RefundableLine[] = [
+      { id: 'food', netPaisa: 60000, qtyMilli: 2000, refundedQtyMilli: 0, taxPaisa: 9600 },
+      { id: 'goods', netPaisa: 40000, qtyMilli: 1000, refundedQtyMilli: 0, taxPaisa: 2000 },
+    ];
+    expect(linePaidValues(bill, lines).reduce((n, v) => n + v, 0)).toBe(111600);
+    const one = computeRefund(bill, lines, [{ lineId: 'food', qtyMilli: 1000 }]);
+    expect(one.totalPaisa).toBe(34800); // (60000 + 9600) / 2
+    expect(one.taxPaisa).toBe(4800);
+    const all = computeRefund(
+      bill,
+      lines,
+      lines.map((l) => ({ lineId: l.id, qtyMilli: l.qtyMilli })),
+    );
+    expect(all.totalPaisa).toBe(111600);
+    expect(all.taxPaisa).toBe(11600);
+    expect(all.lines.map((l) => l.taxPaisa)).toEqual([9600, 2000]);
+  });
 });

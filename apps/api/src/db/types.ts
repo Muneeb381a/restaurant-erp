@@ -62,6 +62,9 @@ export interface BillLines {
   portion_bps: Generated<number>;
   qty: Generated<Numeric>;
   tax_category_id: string | null;
+  tax_paisa: Generated<Int8>;
+  tax_rate_bps: number | null;
+  tax_rule_id: string | null;
   unit_price_paisa: Generated<Int8>;
 }
 

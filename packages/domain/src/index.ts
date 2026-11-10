@@ -12,3 +12,4 @@ export * from './billing/tender';
 export * from './cash/drawer';
 export * from './khata/ledger';
 export * from './billing/refund';
+export * from './billing/tax';

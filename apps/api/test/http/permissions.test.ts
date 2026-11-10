@@ -393,6 +393,25 @@ const probes: Probe[] = [
         .post(`/bills/${uuid()}/credit-notes`, { all: true, methodId: uuid(), reason: 'probe' })
         .set('Idempotency-Key', 'probe-key-0005'),
   },
+  // ── tax (M5)
+  { name: 'GET /tax/categories', perm: 'tax.manage', call: (a) => a.get('/tax/categories') },
+  {
+    name: 'POST /tax/categories',
+    perm: 'tax.manage',
+    call: (a) => a.post('/tax/categories', { code: 'PROBE_CAT', name: 'probe' }),
+  },
+  { name: 'GET /tax/rules', perm: 'tax.manage', call: (a) => a.get('/tax/rules') },
+  {
+    name: 'POST /tax/rules',
+    perm: 'tax.manage',
+    call: (a) => a.post('/tax/rules', { authority: 'PRA' }),
+  },
+  {
+    name: 'PATCH /tax/rules/:id',
+    perm: 'tax.manage',
+    call: (a) => a.patch(`/tax/rules/${uuid()}`, { verifiedBy: 'x' }),
+  },
+  { name: 'GET /tax/readiness', perm: 'tax.manage', call: (a) => a.get('/tax/readiness') },
 ];
 
 let t: TestApp;

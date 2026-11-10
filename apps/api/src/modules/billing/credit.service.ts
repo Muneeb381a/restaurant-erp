@@ -64,6 +64,7 @@ export async function getRefundable(q: Queryable, branchId: string, billId: stri
     netPaisa: l.net_paisa,
     qtyMilli: milli(l.qty),
     refundedQtyMilli: refundedMilli(l.id),
+    taxPaisa: l.tax_paisa,
   }));
   return { bill, lines, refundable };
 }
@@ -190,8 +191,10 @@ export function createCreditNote(
       requestLines(input, refundable),
     );
     const preview = {
+      taxPaisa: result.taxPaisa,
       lines: result.lines.map((l) => ({
         billLineId: l.lineId,
+        taxPaisa: l.taxPaisa,
         description: lines.find((x) => x.id === l.lineId)!.description,
         qty: l.qtyMilli / 1000,
         paisa: l.paisa,
@@ -249,8 +252,8 @@ export function createCreditNote(
         bill_id: billId,
         cn_no: cnNo,
         reason: input.reason,
-        net_paisa: result.totalPaisa,
-        tax_paisa: 0,
+        net_paisa: result.totalPaisa - result.taxPaisa,
+        tax_paisa: result.taxPaisa, // reversed at each line's original rate
         total_paisa: result.totalPaisa,
         refund_method_id: method.id,
         shift_id: mine.id,
@@ -269,8 +272,8 @@ export function createCreditNote(
           credit_note_id: cn.id,
           bill_line_id: l.lineId,
           qty: (l.qtyMilli / 1000).toFixed(3),
-          net_paisa: l.paisa,
-          tax_paisa: 0,
+          net_paisa: l.paisa - l.taxPaisa,
+          tax_paisa: l.taxPaisa,
         })),
       )
       .execute();
@@ -316,6 +319,7 @@ export function createCreditNote(
       billNo: bill.bill_no,
       lines: preview.lines,
       totalPaisa: result.totalPaisa,
+      taxPaisa: result.taxPaisa,
       method: method.name,
       reason: input.reason,
       khataCustomer: khata?.customer ?? null,
@@ -357,6 +361,7 @@ function creditNoteDoc(d: {
   billNo: number;
   lines: { description: string; qty: number; paisa: number }[];
   totalPaisa: number;
+  taxPaisa: number;
   method: string;
   reason: string;
   khataCustomer: string | null;
@@ -383,6 +388,7 @@ function creditNoteDoc(d: {
           ['Method', d.method],
           ...(d.khataCustomer ? ([['Khata a/c', d.khataCustomer]] as [string, string][]) : []),
           ['Reason', d.reason],
+          ...(d.taxPaisa > 0 ? ([['incl. tax reversed', d.taxPaisa]] as [string, number][]) : []),
           ['TOTAL REFUND', d.totalPaisa],
         ],
         boldLast: true,

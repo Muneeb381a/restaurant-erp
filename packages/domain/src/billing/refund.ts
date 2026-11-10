@@ -31,15 +31,19 @@ export interface RefundableLine {
   qtyMilli: number;
   /** Already returned by earlier credit notes. */
   refundedQtyMilli: number;
+  /** Tax charged on this line (reversed at the same rate when it is returned). */
+  taxPaisa?: number;
 }
 export interface RefundRequestLine {
   lineId: string;
   qtyMilli: number;
 }
 export interface RefundResult {
-  lines: { lineId: string; qtyMilli: number; paisa: Paisa }[];
+  lines: { lineId: string; qtyMilli: number; paisa: Paisa; taxPaisa: Paisa }[];
   /** What goes back to the customer, including the round-off when the bill is fully returned. */
   totalPaisa: Paisa;
+  /** The tax part of `totalPaisa`, reversed at each line's original rate. */
+  taxPaisa: Paisa;
   /** Every line of the bill has now been returned in full. */
   completesBill: boolean;
 }
@@ -54,11 +58,16 @@ const share = (value: number, numerator: number, denominator: number): number =>
  * What the customer actually paid for each line: its net, less its share of the bill discount, plus
  * its share of the service charge. By construction Σ = subtotal − discount + service = total − roundOff.
  */
-export function linePaidValues(bill: RefundBill, lines: readonly { netPaisa: number }[]): number[] {
+export function linePaidValues(
+  bill: RefundBill,
+  lines: readonly { netPaisa: number; taxPaisa?: number }[],
+): number[] {
   const nets = lines.map((l) => l.netPaisa);
   const disc = allocateProRata(asPaisa(bill.discountPaisa), nets);
   const svc = allocateProRata(asPaisa(bill.serviceChargePaisa), nets);
-  return nets.map((n, i) => n - (disc[i] as number) + (svc[i] as number));
+  return nets.map(
+    (n, i) => n - (disc[i] as number) + (svc[i] as number) + (lines[i]?.taxPaisa ?? 0),
+  );
 }
 
 /**
@@ -89,10 +98,12 @@ export function computeRefund(
     if (after > line.qtyMilli)
       throw new RefundError('REFUND_QTY_EXCEEDS', 'More than was sold on this line');
     const v = (q: number): number => share(paid[i] as number, q, line.qtyMilli);
+    const tv = (q: number): number => share(line.taxPaisa ?? 0, q, line.qtyMilli);
     return {
       lineId: r.lineId,
       qtyMilli: r.qtyMilli,
       paisa: asPaisa(v(after) - v(line.refundedQtyMilli)),
+      taxPaisa: asPaisa(tv(after) - tv(line.refundedQtyMilli)),
     };
   });
 
@@ -104,6 +115,7 @@ export function computeRefund(
   return {
     lines: out,
     totalPaisa: asPaisa(sum + (completesBill ? bill.roundOffPaisa : 0)),
+    taxPaisa: asPaisa(out.reduce((n, l) => n + l.taxPaisa, 0)),
     completesBill,
   };
 }
