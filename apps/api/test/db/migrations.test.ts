@@ -37,7 +37,7 @@ describe('0002_auth_rbac on a database that already has data (upgrade path)', ()
     const billId = await createPreBilledBill(db.pool, b, orderId, 1);
     await pay(db.pool, b, billId, 1160, 'before-0002');
 
-    expect(await migrateUp(db.url, 'core')).toEqual(['0002_auth_rbac']);
+    expect(await migrateUp(db.url, 'core')).toEqual(['0002_auth_rbac', '0003_menu']);
     expect(await migrateUp(db.url, 'core')).toEqual([]);
 
     const user = await db.pool.query(`SELECT failed_attempts, locked_until, last_failed_at FROM users WHERE id = $1`, [b.userId]);
@@ -99,5 +99,46 @@ describe('phase 2 migration on a database that already has data', () => {
     await expect(db.pool.query(`DELETE FROM stock_movements WHERE id = $1`, [mv.rows[0].id])).rejects.toMatchObject({
       code: SQLSTATE.restrictViolation,
     });
+  });
+});
+
+
+describe('0003_menu on a database that already has menu data', () => {
+  let db: TestDb;
+  beforeAll(async () => {
+    db = await startDb([]);
+  }, 180_000);
+  afterAll(async () => {
+    await db.stop();
+  });
+
+  it('keeps existing items/prices and adds the new columns and guards', async () => {
+    expect(await migrateUp(db.url, 'core', 2)).toEqual(['0001_core', '0002_auth_rbac']);
+    const b = await seedBase(db.pool);
+    const item = (await db.pool.query(
+      `INSERT INTO items(branch_id,tax_category_id,code,name,name_ur) VALUES ($1,$2,'OLD1','Old Karahi','پرانی کڑاہی') RETURNING id`,
+      [b.branchId, b.taxCategoryId],
+    )).rows[0].id as string;
+    const variant = (await db.pool.query(
+      `INSERT INTO item_variants(item_id,name,is_default) VALUES ($1,'Full',true) RETURNING id`,
+      [item],
+    )).rows[0].id as string;
+    await db.pool.query(
+      `INSERT INTO item_prices(variant_id,price_list_id,price_paisa,effective_from) VALUES ($1,$2,210000,'2026-01-01')`,
+      [variant, b.priceListId],
+    );
+
+    expect(await migrateUp(db.url, 'core')).toEqual(['0003_menu']);
+
+    const row = (await db.pool.query(`SELECT name_ur, search_terms FROM items WHERE id=$1`, [item])).rows[0];
+    expect(row).toEqual({ name_ur: 'پرانی کڑاہی', search_terms: null });
+    expect((await db.pool.query(`SELECT count(*)::int AS n FROM item_prices`)).rows[0].n).toBe(1);
+    // the new overlap guard now applies to that old data
+    await expect(
+      db.pool.query(
+        `INSERT INTO item_prices(variant_id,price_list_id,price_paisa,effective_from) VALUES ($1,$2,1,'2026-06-01')`,
+        [variant, b.priceListId],
+      ),
+    ).rejects.toMatchObject({ code: '23P01' });
   });
 });

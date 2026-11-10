@@ -3,6 +3,7 @@ import { createApp } from './http/app';
 import type { AppContext } from './http/context';
 import { createHasher } from './modules/auth/password';
 import { PermissionCache } from './modules/auth/permissions-cache';
+import { MenuCache } from './modules/menu/menu-cache';
 import { systemClock } from './shared/clock';
 import { createDb, createPool } from './shared/db';
 import { createLogger } from './shared/logger';
@@ -18,6 +19,7 @@ const ctx: AppContext = {
   clock: systemClock,
   hasher: createHasher(),
   permissions: new PermissionCache(db, systemClock),
+  menu: new MenuCache(),
   auth: {
     jwtSecret: env.JWT_SECRET,
     accessTtlSeconds: env.ACCESS_TOKEN_TTL_SECONDS,

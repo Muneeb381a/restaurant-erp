@@ -4,6 +4,7 @@ import type { DB } from '../db/types';
 import type { Clock } from '../shared/clock';
 import type { PasswordHasher } from '../modules/auth/password';
 import type { PermissionCache } from '../modules/auth/permissions-cache';
+import type { MenuCache } from '../modules/menu/menu-cache';
 
 /** Everything a request handler may depend on. Built once in main.ts (or per test). */
 export interface AppContext {
@@ -12,6 +13,7 @@ export interface AppContext {
   clock: Clock;
   hasher: PasswordHasher;
   permissions: PermissionCache;
+  menu: MenuCache;
   auth: {
     jwtSecret: string;
     accessTtlSeconds: number;

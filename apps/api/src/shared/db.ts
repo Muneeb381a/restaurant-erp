@@ -22,3 +22,8 @@ export function createDb(pool: pg.Pool): Kysely<DB> {
 
 // Global parser registration (idempotent) — applies to every pg client in this process.
 pg.types.setTypeParser(PG_INT8, (value: string) => paisaFromDb(value));
+
+// `date` columns (business_date, effective_from/to) stay 'YYYY-MM-DD' strings: a JS Date at local
+// midnight would shift the day when the server timezone differs from the restaurant's.
+const PG_DATE = 1082;
+pg.types.setTypeParser(PG_DATE, (value: string) => value);

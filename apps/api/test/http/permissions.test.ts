@@ -135,6 +135,67 @@ const probes: Probe[] = [
   { name: 'GET /devices', perm: 'device.manage', call: (a) => a.get('/devices') },
   { name: 'POST /devices', perm: 'device.manage', call: (a) => a.post('/devices', {}) },
   { name: 'GET /audit-log', perm: 'audit.view', call: (a) => a.get('/audit-log') },
+  // ── menu (M2)
+  { name: 'POST /categories', perm: 'menu.manage', call: (a) => a.post('/categories', {}) },
+  {
+    name: 'PATCH /categories/:id',
+    perm: 'menu.manage',
+    call: (a) => a.patch(`/categories/${uuid()}`, { name: 'x' }),
+  },
+  { name: 'POST /items', perm: 'menu.manage', call: (a) => a.post('/items', {}) },
+  {
+    name: 'PATCH /items/:id',
+    perm: 'menu.manage',
+    call: (a) => a.patch(`/items/${uuid()}`, { name: 'x' }),
+  },
+  {
+    name: 'PATCH /items/:id/availability',
+    perm: 'menu.availability',
+    call: (a) => a.patch(`/items/${uuid()}/availability`, { isAvailable: true }),
+  },
+  {
+    name: 'POST /items/:id/variants',
+    perm: 'menu.manage',
+    call: (a) => a.post(`/items/${uuid()}/variants`, { name: 'x' }),
+  },
+  {
+    name: 'PATCH /variants/:id',
+    perm: 'menu.manage',
+    call: (a) => a.patch(`/variants/${uuid()}`, { name: 'x' }),
+  },
+  {
+    name: 'PUT /variants/:id/prices/:list',
+    perm: 'menu.manage',
+    call: (a) => a.put(`/variants/${uuid()}/prices/${uuid()}`, { pricePaisa: 1 }),
+  },
+  {
+    name: 'POST /modifier-groups',
+    perm: 'menu.manage',
+    call: (a) => a.post('/modifier-groups', {}),
+  },
+  {
+    name: 'POST /modifier-groups/:id/modifiers',
+    perm: 'menu.manage',
+    call: (a) => a.post(`/modifier-groups/${uuid()}/modifiers`, {}),
+  },
+  {
+    name: 'PATCH /modifiers/:id',
+    perm: 'menu.manage',
+    call: (a) => a.patch(`/modifiers/${uuid()}`, { name: 'x' }),
+  },
+  {
+    name: 'PUT /items/:id/modifier-groups',
+    perm: 'menu.manage',
+    call: (a) => a.put(`/items/${uuid()}/modifier-groups`, { groupIds: [] }),
+  },
+  {
+    name: 'PUT /items/:id/deal',
+    perm: 'menu.manage',
+    call: (a) => a.put(`/items/${uuid()}/deal`, { slots: [] }),
+  },
+  { name: 'GET /menu/warnings', perm: 'menu.manage', call: (a) => a.get('/menu/warnings') },
+  { name: 'GET /menu/export.csv', perm: 'menu.manage', call: (a) => a.get('/menu/export.csv') },
+  { name: 'POST /menu/import', perm: 'menu.manage', call: (a) => a.post('/menu/import', {}) },
 ];
 
 let t: TestApp;

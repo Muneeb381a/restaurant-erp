@@ -9,6 +9,7 @@ import { createApp } from '../../src/http/app';
 import type { AppContext } from '../../src/http/context';
 import { createHasher } from '../../src/modules/auth/password';
 import { PermissionCache } from '../../src/modules/auth/permissions-cache';
+import { MenuCache } from '../../src/modules/menu/menu-cache';
 import type { Clock } from '../../src/shared/clock';
 import { startDb, type TestDb } from '../db/harness';
 
@@ -77,6 +78,7 @@ export async function startApp(): Promise<TestApp> {
     clock,
     hasher: createHasher({ memoryCost: 1024, timeCost: 1 }), // cheap argon2 for tests only
     permissions: new PermissionCache(kdb, clock),
+    menu: new MenuCache(),
     auth: {
       jwtSecret: 'test-secret-test-secret-test-secret-123',
       accessTtlSeconds: ACCESS_TTL,

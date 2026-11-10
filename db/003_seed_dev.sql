@@ -5,7 +5,7 @@
 -- =====================================================================
 -- NOTE: permissions, roles and role_permissions are reference data and live in migration 0002_auth_rbac.sql.
 
-INSERT INTO tax_categories(code, name) VALUES ('RESTAURANT_SERVICE','Restaurant / food service');
+-- tax_categories.RESTAURANT_SERVICE is reference data created by migration 0003_menu.sql.
 
 DO $$
 DECLARE b uuid; tc uuid;

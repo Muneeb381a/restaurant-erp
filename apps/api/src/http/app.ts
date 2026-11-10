@@ -8,6 +8,7 @@ import { rolesRouter } from '../modules/admin/roles.routes';
 import { usersRouter } from '../modules/admin/users.routes';
 import { auditRouter } from '../modules/audit/audit.routes';
 import { authRouter } from '../modules/auth/auth.routes';
+import { menuRouter } from '../modules/menu/menu.routes';
 import type { AppContext } from './context';
 import { errorHandler, notFound } from './errors';
 
@@ -48,6 +49,7 @@ export function createApp(ctx: AppContext): Express {
   v1.use('/devices', devicesRouter(ctx));
   v1.use('/stations', stationPrintersRouter(ctx)); // before CRUD: owns /:id/printers
   for (const [path, router] of Object.entries(configRouters(ctx))) v1.use(path, router);
+  v1.use('/', menuRouter(ctx)); // /categories /items /variants /modifier-groups /menu …
   v1.use('/', rolesRouter(ctx)); // /roles, /permissions
   v1.use('/', branchRouter(ctx)); // /branch, /settings
   app.use('/api/v1', v1);

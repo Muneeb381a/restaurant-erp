@@ -9,6 +9,9 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+/** Postgres date as YYYY-MM-DD (see ADR 0001 / shared/db.ts). */
+export type DateString = ColumnType<string, string, string>;
+
 export type Int8 = ColumnType<number, number | string, number | string>; // paisa, see ADR 0001
 
 export type Json = JsonValue;
@@ -111,7 +114,7 @@ export interface Branches {
 
 export interface BusinessDays {
   branch_id: string;
-  business_date: Timestamp;
+  business_date: DateString;
   closed_at: Timestamp | null;
   closed_by: string | null;
   id: Generated<string>;
@@ -271,8 +274,8 @@ export interface ItemModifierGroups {
 }
 
 export interface ItemPrices {
-  effective_from: Generated<Timestamp>;
-  effective_to: Timestamp | null;
+  effective_from: Generated<DateString>;
+  effective_to: DateString | null;
   id: Generated<string>;
   price_list_id: string;
   price_paisa: Int8;
@@ -289,6 +292,7 @@ export interface Items {
   kind: Generated<string>;
   name: string;
   name_ur: string | null;
+  search_terms: string | null;
   sort: Generated<number>;
   station_id: string | null;
   tax_category_id: string;
@@ -340,6 +344,7 @@ export interface Kots {
 
 export interface ModifierGroups {
   branch_id: string;
+  code: string | null;
   id: Generated<string>;
   max_select: Generated<number>;
   min_select: Generated<number>;
@@ -555,8 +560,8 @@ export interface TaxCategories {
 export interface TaxRules {
   authority: string;
   created_at: Generated<Timestamp>;
-  effective_from: Timestamp;
-  effective_to: Timestamp | null;
+  effective_from: DateString;
+  effective_to: DateString | null;
   id: Generated<string>;
   input_tax_adjustable: Generated<boolean>;
   payment_class: string;

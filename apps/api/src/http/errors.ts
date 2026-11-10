@@ -1,3 +1,4 @@
+import { DealError, ModifierError, MoneyError, PriceError } from '@erp/domain';
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { ZodError } from 'zod';
 
@@ -45,6 +46,15 @@ export const notFound: RequestHandler = (req, _res, next) => {
   next(new AppError(404, 'NOT_FOUND', `No route for ${req.method} ${req.path}`));
 };
 
+function isDomainError(err: unknown): err is Error & { code: string } {
+  return (
+    err instanceof DealError ||
+    err instanceof ModifierError ||
+    err instanceof PriceError ||
+    err instanceof MoneyError
+  );
+}
+
 interface PgError {
   code: string;
   constraint?: string;
@@ -55,7 +65,7 @@ function isPgIntegrityError(err: unknown): err is PgError {
     typeof err === 'object' &&
     err !== null &&
     typeof (err as { code?: unknown }).code === 'string' &&
-    /^23\d{3}$/.test((err as { code: string }).code)
+    /^23[0-9A-Z]{3}$/.test((err as { code: string }).code)
   );
 }
 
@@ -70,6 +80,8 @@ function fromPg(err: PgError): AppError {
         'A record with the same unique value already exists',
         extra,
       );
+    case '23P01': // exclusion constraint (e.g. overlapping price periods)
+      return new AppError(409, 'CONFLICT', 'Overlaps an existing record', extra);
     case '23503':
       return new AppError(
         409,
@@ -104,6 +116,15 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
       status: appErr.status,
       code: appErr.code,
       ...appErr.extra,
+    };
+  } else if (isDomainError(err)) {
+    // Pure-domain rule violations (bad deal pick, missing price, invalid amount, …).
+    problem = {
+      type: 'urn:erp:error:VALIDATION_FAILED',
+      title: err.message,
+      status: 400,
+      code: 'VALIDATION_FAILED',
+      reason: err.code,
     };
   } else if (err instanceof ZodError) {
     problem = {
