@@ -22,5 +22,5 @@
 | 18 | Multiple tax categories on one bill: schema stores one `tax_rate_bps`/`tax_rule_id` per bill and no per-line tax. Add `bill_lines.tax_paisa` + per-category rows? Needed for credit notes at the original rate. | M5 | |
 | 19 | Split bills: round-to-rupee per bill or once per order? (Σ rounded bills may differ from the order total by up to Rs 1 per bill.) | M5 | |
 | 20 | Fiscal invoice numbering: does the authority require its own gap-free sequence separate from `bill_no`? Can a bill be reprinted without the fiscal number once submitted? | M7 | |
-| 21 | Permissions to add to the seed: `price.override`, `drawer.open` (no-sale), `bill.void`, `order.cancel`, `audit.view`, `device.manage`, `menu.availability` (86). KITCHEN role currently has none. Confirm role mapping with the owner. | M1 | |
+| 21 | Permissions to add to the seed: `price.override`, `drawer.open` (no-sale), `bill.void`, `order.cancel`, `audit.view`, `device.manage`, `menu.availability` (86). KITCHEN role currently has none. Confirm role mapping with the owner. **M1 implemented my proposed mapping** (migration 0002; see docs/demo/M1.md) - adjust via PUT /roles/:id/permissions once confirmed. | M1 | |
 | 22 | Dev tooling: Node 24 is installed locally but the stack says Node 22. Pin 22 via `.nvmrc`/`engines`, or allow 24? Is Docker Desktop running for Testcontainers? | M0 | |

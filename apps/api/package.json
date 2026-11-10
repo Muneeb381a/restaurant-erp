@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=../../.env src/main.ts",
-    "start": "tsx src/main.ts",
-    "worker": "tsx src/worker.ts",
+    "start": "tsx --env-file-if-exists=../../.env src/main.ts",
+    "worker": "tsx --env-file-if-exists=../../.env src/worker.ts",
     "db:migrate": "tsx --env-file-if-exists=../../.env scripts/db-migrate.ts core",
     "db:migrate:phase2": "tsx --env-file-if-exists=../../.env scripts/db-migrate.ts phase2",
     "db:reset": "tsx --env-file-if-exists=../../.env scripts/db-reset.ts",
@@ -16,7 +16,9 @@
   },
   "dependencies": {
     "@erp/domain": "workspace:*",
+    "@node-rs/argon2": "^2.2.2",
     "express": "^4.21.2",
+    "jose": "^6.2.16",
     "kysely": "^0.27.5",
     "node-pg-migrate": "^7.9.0",
     "pg": "^8.13.1",

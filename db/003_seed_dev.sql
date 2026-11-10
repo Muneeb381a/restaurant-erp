@@ -3,48 +3,7 @@
 -- TAX RULES BELOW ARE PLACEHOLDERS: verified_by is NULL on purpose.
 -- The app must refuse to enable fiscal/tax features until a CA/consultant fills verified_by.
 -- =====================================================================
-INSERT INTO permissions(code, description) VALUES
- ('order.create','Create/modify orders'),
- ('order.transfer','Transfer / merge / split tables'),
- ('kot.void','Void items after KOT sent'),
- ('kot.reprint','Reprint KOT'),
- ('bill.create','Create/pre-bill'),
- ('bill.discount','Give discount (up to own limit)'),
- ('bill.discount.unlimited','Discount above own limit / approve discounts'),
- ('bill.settle','Take payment and settle'),
- ('bill.reprint','Reprint bill'),
- ('bill.refund','Create credit note / refund'),
- ('shift.open','Open shift'),
- ('shift.close','Close shift'),
- ('shift.reopen','Reopen closed shift'),
- ('day.close','Close business day'),
- ('cash.paid_out','Paid-out / cash drop'),
- ('menu.manage','Edit menu, prices, deals'),
- ('tax.manage','Edit tax rules'),
- ('user.manage','Manage users and roles'),
- ('report.view','View reports'),
- ('report.financial','View financial / tax reports'),
- ('stock.manage','Purchases, wastage, stocktake'),
- ('settings.manage','Branch settings, printers, devices');
-
-INSERT INTO roles(code, name) VALUES
- ('OWNER','Owner'),('MANAGER','Manager'),('CASHIER','Cashier'),
- ('CAPTAIN','Captain / Waiter'),('KITCHEN','Kitchen'),('STORE','Store keeper'),('ACCOUNTANT','Accountant');
-
--- OWNER: everything
-INSERT INTO role_permissions SELECT r.id, p.code FROM roles r, permissions p WHERE r.code='OWNER';
--- MANAGER: everything except user/tax/settings management
-INSERT INTO role_permissions SELECT r.id, p.code FROM roles r, permissions p
- WHERE r.code='MANAGER' AND p.code NOT IN ('user.manage','tax.manage','settings.manage');
-INSERT INTO role_permissions SELECT r.id, p.code FROM roles r, permissions p
- WHERE r.code='CASHIER' AND p.code IN ('order.create','order.transfer','kot.reprint','bill.create','bill.discount',
-   'bill.settle','bill.reprint','shift.open','shift.close','cash.paid_out','report.view');
-INSERT INTO role_permissions SELECT r.id, p.code FROM roles r, permissions p
- WHERE r.code='CAPTAIN' AND p.code IN ('order.create','order.transfer','kot.reprint','bill.create');
-INSERT INTO role_permissions SELECT r.id, p.code FROM roles r, permissions p
- WHERE r.code='STORE' AND p.code IN ('stock.manage','report.view');
-INSERT INTO role_permissions SELECT r.id, p.code FROM roles r, permissions p
- WHERE r.code='ACCOUNTANT' AND p.code IN ('report.view','report.financial');
+-- NOTE: permissions, roles and role_permissions are reference data and live in migration 0002_auth_rbac.sql.
 
 INSERT INTO tax_categories(code, name) VALUES ('RESTAURANT_SERVICE','Restaurant / food service');
 

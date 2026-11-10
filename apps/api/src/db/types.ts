@@ -570,9 +570,12 @@ export interface Users {
   branch_id: string | null;
   created_at: Generated<Timestamp>;
   discount_limit_bps: Generated<number>;
+  failed_attempts: Generated<number>;
   full_name: string;
   id: Generated<string>;
   is_active: Generated<boolean>;
+  last_failed_at: Timestamp | null;
+  locked_until: Timestamp | null;
   password_hash: string | null;
   pin_hash: string | null;
   role_id: string;

@@ -18,14 +18,19 @@ export const MIGRATION_SETS = {
 export type MigrationSet = keyof typeof MIGRATION_SETS;
 
 /** Forward-only: there is deliberately no `down` support (CLAUDE.md definition of done). */
-export async function migrateUp(databaseUrl: string, set: MigrationSet = 'core'): Promise<string[]> {
+export async function migrateUp(
+  databaseUrl: string,
+  set: MigrationSet = 'core',
+  /** Apply at most this many pending migrations (tests use it to simulate an older DB). */
+  count: number = Infinity,
+): Promise<string[]> {
   const { dir, table } = MIGRATION_SETS[set];
   const done = await runner({
     databaseUrl,
     dir,
     migrationsTable: table,
     direction: 'up',
-    count: Infinity,
+    count,
     checkOrder: true,
     log: () => undefined,
   });

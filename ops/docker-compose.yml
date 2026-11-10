@@ -27,6 +27,7 @@ services:
     environment: &apienv
       NODE_ENV: production
       PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (openssl rand -base64 48)}
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-erp}
     depends_on:
       db: { condition: service_healthy }

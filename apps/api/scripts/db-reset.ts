@@ -33,3 +33,7 @@ await client.connect();
 await client.query(seed);
 await client.end();
 console.log('dev seed loaded');
+
+const { seedDevUsers, DEV_PASSWORD, DEV_PIN } = await import('./seed-dev-users');
+const users = await seedDevUsers(url);
+console.log(`dev users: ${users.join(', ')}  (password: ${DEV_PASSWORD}, PIN: ${DEV_PIN})`);
