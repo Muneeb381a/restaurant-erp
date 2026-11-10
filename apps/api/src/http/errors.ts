@@ -1,6 +1,7 @@
 import {
   BillError,
   DealError,
+  DrawerError,
   LineError,
   ModifierError,
   MoneyError,
@@ -45,6 +46,9 @@ export type ErrorCode =
   | 'APPROVER_INVALID'
   | 'SHIFT_NOT_OPEN'
   | 'TENDER_UNSUPPORTED'
+  | 'VARIANCE_NOTE_REQUIRED'
+  | 'SHIFTS_STILL_OPEN'
+  | 'ORDERS_STILL_OPEN'
   | 'NOTHING_TO_SEND'
   | 'STATION_MISSING'
   | 'NO_PRINTER'
@@ -82,6 +86,7 @@ function isDomainError(err: unknown): err is Error & { code: string } {
     err instanceof DealError ||
     err instanceof LineError ||
     err instanceof BillError ||
+    err instanceof DrawerError ||
     err instanceof TenderError ||
     err instanceof ModifierError ||
     err instanceof PriceError ||

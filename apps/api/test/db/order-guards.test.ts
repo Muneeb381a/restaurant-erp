@@ -76,7 +76,10 @@ describe('one open shift per cashier and per till', () => {
     await open(user2, dev);
     const user3 = (await db.pool.query(`INSERT INTO users(role_id,username,full_name) SELECT role_id,'third','T' FROM users WHERE id=$1 RETURNING id`, [b.userId])).rows[0].id;
     await expect(open(user3, dev)).rejects.toMatchObject({ code: SQLSTATE.uniqueViolation });
-    await db.pool.query(`UPDATE shifts SET status='CLOSED', closed_at=now() WHERE opened_by=$1`, [user2]);
+    await db.pool.query(
+      `UPDATE shifts SET status='CLOSED', closed_at=now(), closed_by=$1, expected_cash_paisa=0, counted_cash_paisa=0 WHERE opened_by=$1`,
+      [user2],
+    );
     await open(user3, dev); // the till is free again
   });
 });

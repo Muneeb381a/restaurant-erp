@@ -9,3 +9,4 @@ export * from './orders/line';
 export * from './orders/state';
 export * from './billing/bill';
 export * from './billing/tender';
+export * from './cash/drawer';

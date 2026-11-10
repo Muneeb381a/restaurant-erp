@@ -299,6 +299,47 @@ const probes: Probe[] = [
     perm: 'bill.reprint',
     call: (a) => a.post(`/bills/${uuid()}/reprint`, { reason: 'probe' }),
   },
+  // ── shifts, cash and day close (M6b)
+  {
+    name: 'POST /shifts/:id/close',
+    perm: 'shift.close',
+    call: (a) => a.post(`/shifts/${uuid()}/close`, { countedCashPaisa: 0 }),
+  },
+  {
+    name: 'POST /shifts/:id/reopen',
+    perm: 'shift.reopen',
+    call: (a) => a.post(`/shifts/${uuid()}/reopen`, { reason: 'probe' }),
+  },
+  {
+    name: 'POST /cash-movements',
+    perm: 'cash.paid_out',
+    call: (a) =>
+      a
+        .post('/cash-movements', { kind: 'DROP', amountPaisa: 1, reason: 'probe' })
+        .set('Idempotency-Key', 'probe-key-0002'),
+  },
+  {
+    name: 'POST /drawer/open',
+    perm: 'drawer.open',
+    call: (a) =>
+      a.post('/drawer/open', { reason: 'probe' }).set('Idempotency-Key', 'probe-key-0003'),
+  },
+  {
+    name: 'POST /business-days/close',
+    perm: 'day.close',
+    call: (a) => a.post('/business-days/close'),
+  },
+  { name: 'GET /business-days', perm: 'report.financial', call: (a) => a.get('/business-days') },
+  {
+    name: 'GET /business-days/:id/report',
+    perm: 'report.financial',
+    call: (a) => a.get(`/business-days/${uuid()}/report`),
+  },
+  {
+    name: 'POST /reports/reprint (day)',
+    perm: 'day.close',
+    call: (a) => a.post('/reports/reprint', { dayId: uuid(), reason: 'probe' }),
+  },
 ];
 
 let t: TestApp;

@@ -172,8 +172,14 @@ describe('floor and day rules', () => {
     await expect(
       db.pool.query(`INSERT INTO business_days(branch_id,business_date) VALUES ($1,'2026-08-02')`, [b.branchId]),
     ).rejects.toMatchObject({ code: SQLSTATE.uniqueViolation });
-    await db.pool.query(`UPDATE shifts SET status='CLOSED', closed_at=now() WHERE business_day_id=$1`, [b.dayId]);
-    await db.pool.query(`UPDATE business_days SET status='CLOSED', closed_at=now() WHERE id=$1`, [b.dayId]);
+    await db.pool.query(
+      `UPDATE shifts SET status='CLOSED', closed_at=now(), closed_by=$2, expected_cash_paisa=0, counted_cash_paisa=0 WHERE business_day_id=$1`,
+      [b.dayId, b.userId],
+    );
+    await db.pool.query(
+      `UPDATE business_days SET status='CLOSED', closed_at=now(), closed_by=$2 WHERE id=$1`,
+      [b.dayId, b.userId],
+    );
     await db.pool.query(`INSERT INTO business_days(branch_id,business_date) VALUES ($1,'2026-08-02')`, [
       b.branchId,
     ]); // allowed after close

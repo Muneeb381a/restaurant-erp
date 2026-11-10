@@ -48,7 +48,7 @@ export class TcpTransport implements PrintTransport {
 export interface NewPrintJob {
   branchId: string;
   printerId: string;
-  kind: 'KOT' | 'KOT_CANCEL' | 'RECEIPT' | 'TEST';
+  kind: 'KOT' | 'KOT_CANCEL' | 'RECEIPT' | 'TEST' | 'REPORT' | 'DRAWER';
   refType: string | null;
   refId: string | null;
   title: string;

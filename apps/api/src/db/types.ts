@@ -128,6 +128,7 @@ export interface CashMovements {
   created_at: Generated<Timestamp>;
   created_by: string;
   id: Generated<string>;
+  idempotency_key: string | null;
   kind: string;
   reason: string | null;
   shift_id: string;

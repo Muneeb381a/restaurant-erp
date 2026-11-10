@@ -23,6 +23,7 @@ export default defineConfig({
         'src/orders/state.ts': full,
         'src/billing/bill.ts': full,
         'src/billing/tender.ts': full,
+        'src/cash/drawer.ts': full,
         'src/menu/import.ts': { branches: 85, functions: 95, lines: 95, statements: 95 },
       },
     },

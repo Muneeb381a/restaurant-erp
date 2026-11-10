@@ -656,6 +656,7 @@ export async function settleBill(
       .select(['id', 'business_day_id'])
       .where('opened_by', '=', a.userId)
       .where('status', '=', 'OPEN')
+      .forShare() // a shift close (FOR UPDATE) waits for this payment, so it can never miss it
       .executeTakeFirst();
     if (!shift || shift.business_day_id !== bill.business_day_id)
       throw new AppError(409, 'SHIFT_NOT_OPEN', 'Open your shift before taking payment');

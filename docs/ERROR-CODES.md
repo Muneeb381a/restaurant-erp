@@ -36,6 +36,9 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | `APPROVER_INVALID`    | 403  | Approver username/PIN wrong, or that user cannot approve discounts (failed PINs count towards the lockout)                                  |
 | `SHIFT_NOT_OPEN`      | 409  | The cashier has no open shift in the bill's business day                                                                                    |
 | `TENDER_UNSUPPORTED`  | 409  | Payment method not available yet (customer credit / khata)                                                                                  |
+| `VARIANCE_NOTE_REQUIRED` | 400 | Shift close: counted cash differs from expected; send `notes` (the body has `variancePaisa`)                                           |
+| `SHIFTS_STILL_OPEN`   | 409  | Day close refused: some shifts are open (`cashiers` lists them)                                                                             |
+| `ORDERS_STILL_OPEN`   | 409  | Day close refused: orders still OPEN or BILLED (`orders` lists number and status)                                                           |
 | `NOTHING_TO_SEND`     | 409  | Send/reprint found nothing to print (no NEW lines, or every line of the KOT was voided)                                                      |
 | `STATION_MISSING`     | 409  | Some items have no kitchen station, so nothing was sent (`items` lists them)                                                                 |
 | `NO_PRINTER`          | 409  | The station of this KOT has no active printer                                                                                                |
@@ -43,6 +46,6 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | `PRECONDITION_REQUIRED`| 428 | A structural change needs the order version in `If-Match`                                                                                   |
 | `INTERNAL_ERROR`      | 500  | Unexpected error (details only in server logs, correlate with `requestId`)                                                                  |
 
-Domain rule violations (bad deal pick, modifier min/max, missing weight, …) return `VALIDATION_FAILED` (400) with a `reason` such as `DEAL_SLOT_COUNT`, `MODIFIER_GROUP_MIN` or `LINE_WEIGHT_REQUIRED`.
+Domain rule violations (bad deal pick, modifier min/max, missing weight, …) return `VALIDATION_FAILED` (400) with a `reason` such as `DEAL_SLOT_COUNT`, `MODIFIER_GROUP_MIN`, `LINE_WEIGHT_REQUIRED`, `TENDER_SUM_MISMATCH` or `DRAWER_INSUFFICIENT_CASH` (paid-out/drop larger than the cash in the drawer).
 
-Planned (added with their milestones): `TAX_RULE_MISSING`, `TAX_RULE_AMBIGUOUS`, `SHIFT_NOT_OPEN`, `DISCOUNT_LIMIT`, `IDEMPOTENCY_CONFLICT`.
+Planned (added with their milestones): `TAX_RULE_MISSING`, `TAX_RULE_AMBIGUOUS`, `DISCOUNT_LIMIT`, `IDEMPOTENCY_CONFLICT`.
