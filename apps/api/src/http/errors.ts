@@ -1,4 +1,12 @@
-import { DealError, LineError, ModifierError, MoneyError, PriceError } from '@erp/domain';
+import {
+  BillError,
+  DealError,
+  LineError,
+  ModifierError,
+  MoneyError,
+  PriceError,
+  TenderError,
+} from '@erp/domain';
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { ZodError } from 'zod';
 
@@ -29,6 +37,14 @@ export type ErrorCode =
   | 'ITEM_NOT_EDITABLE'
   | 'ITEM_UNAVAILABLE'
   | 'ITEM_NOT_ON_MENU'
+  | 'EMPTY_ORDER'
+  | 'UNSENT_ITEMS'
+  | 'BILL_NOT_PAYABLE'
+  | 'BILL_ALREADY_SETTLED'
+  | 'DISCOUNT_APPROVAL_REQUIRED'
+  | 'APPROVER_INVALID'
+  | 'SHIFT_NOT_OPEN'
+  | 'TENDER_UNSUPPORTED'
   | 'NOTHING_TO_SEND'
   | 'STATION_MISSING'
   | 'NO_PRINTER'
@@ -65,6 +81,8 @@ function isDomainError(err: unknown): err is Error & { code: string } {
   return (
     err instanceof DealError ||
     err instanceof LineError ||
+    err instanceof BillError ||
+    err instanceof TenderError ||
     err instanceof ModifierError ||
     err instanceof PriceError ||
     err instanceof MoneyError

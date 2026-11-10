@@ -272,6 +272,33 @@ const probes: Probe[] = [
     perm: 'settings.manage',
     call: (a) => a.post(`/print-jobs/${uuid()}/retry`),
   },
+  // ── billing & payments (M6a)
+  {
+    name: 'POST /orders/:id/bill',
+    perm: 'bill.create',
+    call: (a) => a.post(`/orders/${uuid()}/bill`),
+  },
+  {
+    name: 'POST /bills/:id/discount',
+    perm: 'bill.discount',
+    call: (a) => a.post(`/bills/${uuid()}/discount`, { percentBps: 100, reason: 'probe' }),
+  },
+  {
+    name: 'POST /bills/:id/settle',
+    perm: 'bill.settle',
+    call: (a) =>
+      a.post(`/bills/${uuid()}/settle`, { tenders: [] }).set('Idempotency-Key', 'probe-key-0001'),
+  },
+  {
+    name: 'POST /bills/:id/void',
+    perm: 'bill.void',
+    call: (a) => a.post(`/bills/${uuid()}/void`, { reason: 'probe' }),
+  },
+  {
+    name: 'POST /bills/:id/reprint',
+    perm: 'bill.reprint',
+    call: (a) => a.post(`/bills/${uuid()}/reprint`, { reason: 'probe' }),
+  },
 ];
 
 let t: TestApp;

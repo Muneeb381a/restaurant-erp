@@ -7,3 +7,5 @@ export * from './menu/categories';
 export * from './menu/import';
 export * from './orders/line';
 export * from './orders/state';
+export * from './billing/bill';
+export * from './billing/tender';

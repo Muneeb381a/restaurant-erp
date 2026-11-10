@@ -28,6 +28,14 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | `ITEM_NOT_EDITABLE`   | 409  | The line was already sent (edit = void + re-add) or is already void                                                                         |
 | `ITEM_UNAVAILABLE`    | 409  | The item (or a deal component) is sold out (86) or no longer offered                                                                        |
 | `ITEM_NOT_ON_MENU`    | 409  | The item has no price in this order's price list for the business date                                                                      |
+| `EMPTY_ORDER`         | 409  | Pre-bill refused: the order has no live lines                                                                                               |
+| `UNSENT_ITEMS`        | 409  | Pre-bill refused: some lines were never sent to the kitchen (`items` lists them)                                                            |
+| `BILL_NOT_PAYABLE`    | 409  | The bill is not PRE_BILLED (already settled/void), so it cannot be discounted, paid, voided; reprint needs a settled bill                    |
+| `BILL_ALREADY_SETTLED`| 409  | Settle with a *different* `Idempotency-Key` on a paid bill (the same key replays the original result with 200)                              |
+| `DISCOUNT_APPROVAL_REQUIRED` | 403 | Discount above the user's `discount_limit_bps`; send `approver: {username, pin}` of a user with `bill.discount.unlimited`           |
+| `APPROVER_INVALID`    | 403  | Approver username/PIN wrong, or that user cannot approve discounts (failed PINs count towards the lockout)                                  |
+| `SHIFT_NOT_OPEN`      | 409  | The cashier has no open shift in the bill's business day                                                                                    |
+| `TENDER_UNSUPPORTED`  | 409  | Payment method not available yet (customer credit / khata)                                                                                  |
 | `NOTHING_TO_SEND`     | 409  | Send/reprint found nothing to print (no NEW lines, or every line of the KOT was voided)                                                      |
 | `STATION_MISSING`     | 409  | Some items have no kitchen station, so nothing was sent (`items` lists them)                                                                 |
 | `NO_PRINTER`          | 409  | The station of this KOT has no active printer                                                                                                |

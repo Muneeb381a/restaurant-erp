@@ -8,6 +8,7 @@ import { rolesRouter } from '../modules/admin/roles.routes';
 import { usersRouter } from '../modules/admin/users.routes';
 import { auditRouter } from '../modules/audit/audit.routes';
 import { authRouter } from '../modules/auth/auth.routes';
+import { billingRouter } from '../modules/billing/billing.routes';
 import { kitchenRouter } from '../modules/kitchen/kitchen.routes';
 import { menuRouter } from '../modules/menu/menu.routes';
 import { ordersRouter } from '../modules/orders/orders.routes';
@@ -53,6 +54,7 @@ export function createApp(ctx: AppContext): Express {
   v1.use('/stations', stationPrintersRouter(ctx)); // before CRUD: owns /:id/printers
   for (const [path, router] of Object.entries(configRouters(ctx))) v1.use(path, router);
   v1.use('/', ordersRouter(ctx)); // /business-days /shifts /floor /orders
+  v1.use('/', billingRouter(ctx)); // /orders/:id/bill /bills/…
   v1.use('/', menuRouter(ctx)); // /categories /items /variants /modifier-groups /menu …
   v1.use('/', rolesRouter(ctx)); // /roles, /permissions
   v1.use('/', branchRouter(ctx)); // /branch, /settings

@@ -21,6 +21,8 @@ export default defineConfig({
         'src/allocate.ts': full,
         'src/orders/line.ts': full,
         'src/orders/state.ts': full,
+        'src/billing/bill.ts': full,
+        'src/billing/tender.ts': full,
         'src/menu/import.ts': { branches: 85, functions: 95, lines: 95, statements: 95 },
       },
     },
