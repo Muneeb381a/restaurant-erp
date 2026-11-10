@@ -18,6 +18,18 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | `ROLE_PROTECTED`      | 409  | The OWNER role's permissions cannot be edited                                                                                               |
 | `LAST_OWNER`          | 409  | The last active owner cannot be deactivated or demoted                                                                                      |
 | `ACCOUNT_LOCKED`      | 423  | 5 failed logins within 10 minutes; `retryAfterSeconds` says when to retry. An admin can `POST /users/:id/unlock`                            |
+| `DAY_NOT_OPEN`        | 409  | No business day is open (open it before taking orders or opening a shift)                                                                   |
+| `DAY_ALREADY_OPEN`    | 409  | A business day is already open for the branch                                                                                               |
+| `SHIFT_ALREADY_OPEN`  | 409  | The cashier (or the till/device) already has an open shift                                                                                  |
+| `TABLE_OCCUPIED`      | 409  | The table already has an open order (`orderId` / `orderNo` in the body)                                                                     |
+| `ORDER_NOT_EDITABLE`  | 409  | The order is BILLED / SETTLED / CANCELLED and can no longer be changed                                                                      |
+| `ORDER_HELD`          | 409  | The order is parked; resume it first                                                                                                        |
+| `ORDER_HAS_SENT_ITEMS`| 409  | Cancel refused: void the items already sent to the kitchen first                                                                            |
+| `ITEM_NOT_EDITABLE`   | 409  | The line was already sent (edit = void + re-add) or is already void                                                                         |
+| `ITEM_UNAVAILABLE`    | 409  | The item (or a deal component) is sold out (86) or no longer offered                                                                        |
+| `ITEM_NOT_ON_MENU`    | 409  | The item has no price in this order's price list for the business date                                                                      |
+| `VERSION_CONFLICT`    | 409  | `If-Match` does not match; `currentVersion` says what the order is now                                                                      |
+| `PRECONDITION_REQUIRED`| 428 | A structural change needs the order version in `If-Match`                                                                                   |
 | `INTERNAL_ERROR`      | 500  | Unexpected error (details only in server logs, correlate with `requestId`)                                                                  |
 
 Domain rule violations (bad deal pick, modifier min/max, missing weight, …) return `VALIDATION_FAILED` (400) with a `reason` such as `DEAL_SLOT_COUNT`, `MODIFIER_GROUP_MIN` or `LINE_WEIGHT_REQUIRED`.
