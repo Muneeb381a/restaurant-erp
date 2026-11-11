@@ -146,7 +146,7 @@ export function TaxAdmin() {
     authority !== 'NONE';
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4">
+    <div className="max-w-6xl space-y-6 p-4 md:p-6">
       <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{t('taxPage.notice')}</p>
       {message && (
         <p role="status" className="rounded-lg bg-emerald-50 p-2 text-emerald-900">

@@ -87,7 +87,7 @@ export function RolesAdmin() {
     list.filter((p) => mine.has(p.code) || draft?.has(p.code)).map((p) => p.code);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 p-4">
+    <div className="max-w-6xl space-y-4 p-4 md:p-6">
       <PageHead title={t('admin.roles')} hint={t('rolesPage.hint')} />
       <div className="grid gap-4 md:grid-cols-[17rem_1fr]">
         <aside className="space-y-3 md:sticky md:top-4 md:self-start">

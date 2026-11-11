@@ -37,7 +37,7 @@ export function UsersAdmin() {
     !!u.locked_until && new Date(u.locked_until).getTime() > Date.now();
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="max-w-6xl space-y-4 p-4 md:p-6">
       <PageHead title={t('admin.users')} hint={t('admin.usersPage.hint')}>
         <button className="btn-primary" onClick={() => setDialog('new')}>
           <Icon name="plus" size={18} />

@@ -59,7 +59,7 @@ export function CostsAdmin() {
   const uncosted = (food.data?.items ?? []).reduce((n, i) => n + i.uncostedLines, 0);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4">
+    <div className="max-w-6xl space-y-6 p-4 md:p-6">
       <PageHead title={t('costPage.title')} hint={t('costPage.hint')}>
         <div className="flex flex-wrap items-end gap-3">
           <Field label={t('costPage.from')}>

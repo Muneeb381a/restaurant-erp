@@ -83,7 +83,7 @@ export function QrMenuAdmin() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 p-4">
+    <div className="max-w-6xl space-y-4 p-4 md:p-6">
       <PageHead title={t('admin.qrMenu')} hint={t('qr.hint')} />
       {message && (
         <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">

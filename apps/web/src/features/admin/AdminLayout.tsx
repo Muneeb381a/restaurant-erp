@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { Navigate, NavLink, Outlet } from 'react-router-dom';
+import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Icon, type IconName } from '../../components/Icon';
 import { can, useMe } from '../../lib/queries';
 
 /** Which admin sections exist, the permission each needs (the API enforces them too), and their group. */
@@ -54,45 +55,75 @@ export const ADMIN_SECTIONS = [
   },
 ] as const;
 
+const GROUP_ICON: Record<string, IconName> = {
+  'admin.groupMenu': 'book',
+  'admin.groupStock': 'box',
+  'admin.groupPeople': 'user',
+  'admin.groupBusiness': 'sliders',
+};
+
+/**
+ * Admin shell. Two tiers of tabs across the top instead of a long side list: the first tier picks an
+ * area (Menu & tables, Stock & costs, People, Business), the second its screens. The page below gets
+ * the full width, so wide tables fit, and the bar stays put while the page scrolls.
+ */
 export function AdminLayout() {
   const { t } = useTranslation();
   const me = useMe();
+  const { pathname } = useLocation();
   if (me.isPending) return <p className="p-4">{t('common.loading')}</p>;
   const allowed = ADMIN_SECTIONS.filter((s) => can(me.data, s.permission));
   if (allowed.length === 0) return <Navigate to="/" replace />;
   const groups = [...new Set(allowed.map((s) => s.group))];
+  const current = allowed.find((s) => pathname.startsWith(`/admin/${s.path}`));
+  const activeGroup = current?.group ?? groups[0]!;
+  const screens = allowed.filter((s) => s.group === activeGroup);
 
   return (
-    <div className="flex h-full flex-col md:flex-row">
-      <nav
-        className="shrink-0 overflow-auto border-slate-300 bg-white md:w-56 md:border-e"
-        aria-label={t('admin.title')}
-      >
-        <div className="flex gap-4 overflow-x-auto p-2 md:block md:space-y-4 md:p-3">
-          {groups.map((g) => (
-            <div key={g} className="shrink-0">
-              <div className="micro px-3 pb-1 md:pt-1">{t(g)}</div>
-              <div className="flex gap-1 md:flex-col">
-                {allowed
-                  .filter((s) => s.group === g)
-                  .map((s) => (
-                    <NavLink
-                      key={s.path}
-                      to={`/admin/${s.path}`}
-                      className={({ isActive }) =>
-                        `flex min-h-touch items-center whitespace-nowrap rounded-lg px-3 text-base font-medium ${
-                          isActive ? 'bg-slate-900 text-white' : 'text-slate-800 hover:bg-slate-100'
-                        }`
-                      }
-                    >
-                      {t(s.label)}
-                    </NavLink>
-                  ))}
-              </div>
-            </div>
+    <div className="flex h-full flex-col">
+      <header className="shrink-0 border-b border-slate-300 bg-white">
+        <nav className="flex gap-1 overflow-x-auto px-3 pt-2" aria-label={t('admin.title')}>
+          {groups.map((g) => {
+            const first = allowed.find((s) => s.group === g)!;
+            const on = g === activeGroup;
+            return (
+              <NavLink
+                key={g}
+                to={`/admin/${first.path}`}
+                aria-current={on ? 'true' : undefined}
+                className={`flex min-h-11 shrink-0 items-center gap-2 rounded-t-lg border border-b-0 px-4 text-base font-semibold ${
+                  on
+                    ? 'border-slate-300 bg-slate-50 text-slate-900'
+                    : 'border-transparent text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <Icon name={GROUP_ICON[g] ?? 'sliders'} size={18} />
+                {t(g)}
+              </NavLink>
+            );
+          })}
+        </nav>
+        <nav
+          className="-mb-px flex gap-1 overflow-x-auto border-t border-slate-300 bg-slate-50 px-3"
+          aria-label={t(activeGroup)}
+        >
+          {screens.map((s) => (
+            <NavLink
+              key={s.path}
+              to={`/admin/${s.path}`}
+              className={({ isActive }) =>
+                `flex min-h-11 shrink-0 items-center whitespace-nowrap border-b-[3px] px-4 text-base ${
+                  isActive
+                    ? 'border-emerald-700 font-semibold text-slate-900'
+                    : 'border-transparent font-medium text-slate-600 hover:text-slate-900'
+                }`
+              }
+            >
+              {t(s.label)}
+            </NavLink>
           ))}
-        </div>
-      </nav>
+        </nav>
+      </header>
       <div className="min-h-0 min-w-0 flex-1 overflow-auto">
         <Outlet />
       </div>

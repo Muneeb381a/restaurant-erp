@@ -31,6 +31,7 @@ test('the owner sets tax up from scratch: authority, confirmed rates, then ON', 
 }) => {
   await login(page, 'owner');
   await page.getByRole('link', { name: 'Admin' }).click();
+  await page.getByRole('link', { name: 'Business' }).click();
   await page.getByRole('link', { name: 'Tax', exact: true }).click();
   await expect(page.getByText('This software contains no tax rates')).toBeVisible();
   await expect(page.getByText('OFF', { exact: true })).toBeVisible();
@@ -122,6 +123,7 @@ test('the bill total follows how it is paid: 16 % for cash, 8 % for card', async
 test('the owner can switch tax off again; nothing else changes', async ({ page }) => {
   await login(page, 'owner');
   await page.getByRole('link', { name: 'Admin' }).click();
+  await page.getByRole('link', { name: 'Business' }).click();
   await page.getByRole('link', { name: 'Tax', exact: true }).click();
   const enable = page.getByRole('switch', { name: 'Tax switched on' });
   await expect(enable).toHaveAttribute('aria-checked', 'true');

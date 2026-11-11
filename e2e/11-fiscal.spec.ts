@@ -15,6 +15,7 @@ async function login(page: Page, username: string): Promise<void> {
 test('the owner turns on tax and the test reporting provider', async ({ page }) => {
   await login(page, 'owner');
   await page.getByRole('link', { name: 'Admin' }).click();
+  await page.getByRole('link', { name: 'Business' }).click();
   await page.getByRole('link', { name: 'Tax', exact: true }).click();
   // wait until the form holds the saved branch data (it would overwrite what we type otherwise)
   await expect(page.getByLabel('Tax authority')).toHaveValue('PRA');
@@ -25,6 +26,7 @@ test('the owner turns on tax and the test reporting provider', async ({ page }) 
   await enable.click();
   await expect(enable).toHaveAttribute('aria-checked', 'true');
 
+  await page.getByRole('link', { name: 'Business' }).click();
   await page.getByRole('link', { name: 'Fiscal' }).click();
   await expect(page.getByText(/Bills and credit notes are reported/)).toBeVisible();
   await page.getByRole('button', { name: /Test provider/ }).click();
@@ -65,6 +67,7 @@ test('a sale shows "pending" at once and the fiscal number a few seconds later',
 test('the owner sees the queue empty and the day balanced', async ({ page }) => {
   await login(page, 'owner');
   await page.getByRole('link', { name: 'Admin' }).click();
+  await page.getByRole('link', { name: 'Business' }).click();
   await page.getByRole('link', { name: 'Fiscal' }).click();
   await expect(page.getByTestId('fiscal-summary')).toContainText('Reported');
   await expect(page.getByText('Nothing is waiting.')).toBeVisible();
@@ -72,6 +75,7 @@ test('the owner sees the queue empty and the day balanced', async ({ page }) => 
 
   // leave the shop as it was: provider off, tax off
   await page.getByRole('button', { name: 'Off', exact: true }).click();
+  await page.getByRole('link', { name: 'Business' }).click();
   await page.getByRole('link', { name: 'Tax', exact: true }).click();
   const enable = page.getByRole('switch', { name: 'Tax switched on' });
   await enable.click();

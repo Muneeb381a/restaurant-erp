@@ -40,7 +40,7 @@ export function TablesAdmin() {
   const areaName = (id: string | null): string => areas.data?.find((a) => a.id === id)?.name ?? '';
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="max-w-6xl space-y-4 p-4 md:p-6">
       <PageHead title={t('admin.tables')} hint={t('admin.tablesPage.hint')}>
         <button className="btn-secondary" onClick={() => setDialog('area')}>
           {t('admin.tablesPage.newArea')}

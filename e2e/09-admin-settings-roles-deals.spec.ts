@@ -17,6 +17,7 @@ test('settings: restaurant details, service charge and receipt language are save
 }) => {
   await loginOwner(page);
   await page.getByRole('link', { name: 'Admin' }).click();
+  await page.getByRole('link', { name: 'Business' }).click();
   await page.getByRole('link', { name: 'Settings' }).click();
 
   await page.getByLabel('Restaurant name (Urdu)').fill('لاہور کڑاہی ہاؤس');
@@ -53,6 +54,7 @@ test('settings: restaurant details, service charge and receipt language are save
 test('roles: change what a cashier may do, and it sticks', async ({ page }) => {
   await loginOwner(page);
   await page.getByRole('link', { name: 'Admin' }).click();
+  await page.getByRole('link', { name: 'People & access' }).click();
   await page.getByRole('link', { name: 'Roles' }).click();
 
   await page.getByRole('button', { name: /^Cashier/ }).click();

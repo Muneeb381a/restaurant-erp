@@ -56,7 +56,7 @@ export function RecipesAdmin() {
   const withoutRecipe = rows.filter((r) => r.costPaisa === null).length;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4 p-4">
+    <div className="max-w-6xl space-y-4 p-4 md:p-6">
       <PageHead title={t('recipePage.title')} hint={t('recipePage.hint')} />
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative w-full max-w-xs">

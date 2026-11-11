@@ -87,7 +87,7 @@ export function PurchasesAdmin() {
     setLines((ls) => ls.map((l, k) => (k === i ? { ...l, ...p } : l)));
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4">
+    <div className="max-w-6xl space-y-6 p-4 md:p-6">
       <h1 className="text-2xl font-bold">{t('purchasePage.title')}</h1>
       <section className="card space-y-3 p-4">
         <h2 className="text-lg font-bold">{t('purchasePage.new')}</h2>

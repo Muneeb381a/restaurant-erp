@@ -99,7 +99,7 @@ export function PrintersAdmin() {
   const kotPrinters = (printers.data ?? []).filter((p) => p.kind === 'KOT' && p.is_active);
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="max-w-6xl space-y-4 p-4 md:p-6">
       <PageHead title={t('admin.printers')} hint={t('admin.printersPage.hint')}>
         <button className="btn-primary" onClick={() => setEditing('new')}>
           <Icon name="plus" size={18} />

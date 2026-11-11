@@ -83,7 +83,7 @@ export function FiscalAdmin() {
   );
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4">
+    <div className="max-w-6xl space-y-6 p-4 md:p-6">
       <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{t('fiscalPage.notice')}</p>
 
       {manage && (

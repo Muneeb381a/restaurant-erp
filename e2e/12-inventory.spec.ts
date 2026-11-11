@@ -13,6 +13,7 @@ async function login(page: Page, username: string): Promise<void> {
 }
 async function admin(page: Page, section: string): Promise<void> {
   await page.getByRole('link', { name: 'Admin' }).click();
+  await page.getByRole('link', { name: 'Stock & costs' }).click(); // all the sections used here are in this area
   await page.getByRole('link', { name: section, exact: true }).click();
 }
 

@@ -88,7 +88,7 @@ export function MenuAdmin() {
   }
 
   return (
-    <div className="space-y-3 p-4">
+    <div className="space-y-3 p-4 md:p-6">
       <PageHead title={t('admin.menu')} hint={t('admin.menuPage.priceHint')}>
         <button className="btn-secondary" onClick={() => void exportCsv()}>
           {t('admin.menuPage.export')}

@@ -111,7 +111,7 @@ export function SettingsAdmin() {
   const bps = parseRs(service);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5 p-4">
+    <div className="max-w-3xl space-y-5 p-4 md:p-6">
       <PageHead title={t('admin.settings')} hint={t('settingsPage.hint')} />
       {message && (
         <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">

@@ -34,7 +34,7 @@ export function StockAdmin() {
   const refresh = (): Promise<void> => qc.invalidateQueries({ queryKey: ['ingredients'] });
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4">
+    <div className="max-w-6xl space-y-6 p-4 md:p-6">
       <PageHead title={t('stockPage.title')} hint={t('stockPage.hint')}>
         {write && (
           <>
