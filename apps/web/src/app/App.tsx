@@ -14,6 +14,7 @@ import { TablesAdmin } from '../features/admin/TablesAdmin';
 import { UsersAdmin } from '../features/admin/UsersAdmin';
 import { BillsPage } from '../features/billing/BillsPage';
 import { PayPage } from '../features/billing/PayPage';
+import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { FloorPage } from '../features/floor/FloorPage';
 import { KhataDetail, KhataPage } from '../features/khata/KhataPage';
 import { LoginPage } from '../features/login/LoginPage';
@@ -28,6 +29,7 @@ export function App() {
         <Route index element={<FloorPage />} />
         <Route path="order/:id" element={<OrderPage />} />
         <Route path="order/:id/pay" element={<PayPage />} />
+        <Route path="dashboard" element={<DashboardPage />} />
         <Route path="bills" element={<BillsPage />} />
         <Route path="khata" element={<KhataPage />} />
         <Route path="khata/:id" element={<KhataDetail />} />

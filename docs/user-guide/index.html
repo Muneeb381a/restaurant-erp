@@ -134,8 +134,8 @@ footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line);
   <p>Each person signs in with their own username and a 4 to 8 digit PIN. What they can see and do depends on their role. The buttons they are not allowed to use are not shown, and the server refuses the action even if someone tries another way.</p>
   <div class="tablewrap"><table>
     <tr><th>Role</th><th>Typical work</th></tr>
-    <tr><td>Owner</td><td>Everything, including menu, prices, users, roles, tax, reports and settings.</td></tr>
-    <tr><td>Manager</td><td>Starts and closes the day, approves large discounts, cancels bills, handles refunds, creates khata accounts, checks reports.</td></tr>
+    <tr><td>Owner</td><td>Everything, including the dashboard, menu, prices, users, roles, tax and settings.</td></tr>
+    <tr><td>Manager</td><td>Starts and closes the day, approves large discounts, cancels bills, handles refunds, creates khata accounts, checks the dashboard and reports.</td></tr>
     <tr><td>Cashier</td><td>Opens a shift, takes orders and payments, uses the cash drawer, receives khata payments, closes the shift.</td></tr>
     <tr><td>Captain / waiter</td><td>Takes and sends orders, moves a party to another table. Cannot cancel an order.</td></tr>
     <tr><td>Kitchen, store, accountant</td><td>Accounts for kitchen tickets, stock and purchasing, and figures. Their exact rights are set by the owner.</td></tr>
@@ -273,6 +273,61 @@ footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line);
     <li><strong>Close shift</strong>: the cashier counts the cash and enters it. The system compares it with what it expects and prints a slip. A difference needs a short note. Closing a shift is the end of that cashier's responsibility.</li>
     <li><strong>Close day</strong> (manager): ends the trading day and produces the day report with sales, payment methods, cash differences and tax. If orders are still open, the system lists them (for example "#12, #15") and refuses to close until they are paid or cancelled. Nothing is left behind silently.</li>
   </ul>
+
+  <h2 id="dashboard">Owner dashboard</h2>
+  <p>The <span class="ui">Dashboard</span> button (first in the left menu, for the owner, manager and accountant) answers the questions an owner asks every evening: <em>how much did we sell, what did it cost, what did we keep, and is anything leaking?</em> Everything is calculated from paid bills and recorded entries. Nothing on this page can be edited.</p>
+  <figure><img src="img/dashboard-top.png" alt="Dashboard with net sales, net profit, expenses, food cost and average bill" loading="lazy"><figcaption>Choose a period at the top: Today, Yesterday, Last 7 or 30 days, This month, Last month, or your own dates. Every figure is compared with the previous period of the same length.</figcaption></figure>
+  <h3>The five headline numbers</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Number</th><th>What it means</th></tr>
+    <tr><td>Net sales</td><td>Menu sales minus discounts, plus service charge, minus refunds. Tax is not included because it belongs to the authority.</td></tr>
+    <tr><td>Net profit</td><td>What is left after the cost of food and every expense you entered. The margin shows it as a percentage of sales.</td></tr>
+    <tr><td>Expenses</td><td>Rent, salaries, gas, vegetables and other costs entered under Admin → Costs.</td></tr>
+    <tr><td>Food cost</td><td>The cost of the ingredients in the dishes sold, as a share of net sales. Many restaurants aim for roughly 28 to 35 percent. Use your own history as the real benchmark.</td></tr>
+    <tr><td>Average bill</td><td>Sales per bill, and per guest when the number of guests is entered.</td></tr>
+  </table></div>
+  <p>The green or red tag beside each number shows the change against the previous period. For costs, a rise is shown in red.</p>
+  <figure><img src="img/dashboard-trend.png" alt="Profit and loss, sales by day, busy hours and payments" loading="lazy"><figcaption>Profit and loss from sales down to profit, where each Rs 100 went, sales and gross profit by day, and the busiest hours.</figcaption></figure>
+  <h3>Profit and loss, line by line</h3>
+  <ul>
+    <li><strong>Menu sales</strong> before discounts, then discounts, service charge and refunds, which gives <strong>net sales</strong>.</li>
+    <li><strong>Cost of food</strong>, worked out from each dish's recipe and the average price you paid for the ingredients, which gives <strong>gross profit</strong>.</li>
+    <li>Each <strong>expense type</strong> listed separately, which gives <strong>net profit</strong>.</li>
+    <li><strong>Where each Rs 100 went</strong> shows the same thing as one bar: food, expenses, and what you keep.</li>
+    <li><strong>Stock bought</strong> is shown as information only. It is not counted as an expense, because the cost is counted when the dishes are sold. Otherwise the same money would be counted twice.</li>
+  </ul>
+  <div class="callout warn"><strong>Read the yellow notice</strong>If some sold dishes have no recipe, the dashboard says so. Their ingredient cost is missing and profit looks higher than it really is. Add recipes under Admin → Recipes to fix it.</div>
+  <div class="callout"><strong>Rent and salaries on one day</strong>An expense counts on the day it is entered. A single day can therefore show a loss on the day rent is paid. Choose <span class="ui">This month</span> for the true picture.</div>
+  <h3>How guests paid, and what sells</h3>
+  <ul>
+    <li><strong>How guests paid</strong>: cash, each card and wallet, and credit (khata), with each one's share. Cash is counted separately from card and wallets, so you can match the money in your hand with the bank.</li>
+    <li><strong>Dine-in, takeaway and delivery</strong>, and <strong>sales by category</strong>.</li>
+    <li><strong>Best sellers</strong> with the margin of each dish, so you can see which dishes earn money and not only which ones sell. <strong>Slowest movers</strong> are candidates for a promotion or for removal.</li>
+    <li><strong>Busy hours</strong> shows when to staff up and when to prepare.</li>
+  </ul>
+  <figure><img src="img/dashboard-menu.png" alt="Best sellers with margin and slowest movers" loading="lazy"></figure>
+  <h3>Watch for leaks</h3>
+  <figure><img src="img/dashboard-leaks.png" alt="Controls: discounts, voids, free dishes, refunds, no-sale, cash differences, wastage and staff meals" loading="lazy"></figure>
+  <p>These are the places where money quietly disappears. Each one is counted from the logged actions, and yellow or red tags mark what deserves a look.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Check</th><th>Why it matters</th></tr>
+    <tr><td>Discounts given</td><td>Total, share of sales, and how many a manager approved. A high share, or one cashier giving most of them, is worth a conversation.</td></tr>
+    <tr><td>Dishes voided after the kitchen had them</td><td>Food that was cooked and not paid for. Each one has a reason on record.</td></tr>
+    <tr><td>Free dishes and refunds</td><td>Complimentary items and money returned to guests.</td></tr>
+    <tr><td>Drawer opened with no sale</td><td>Every one is logged. Many in a day is a warning sign.</td></tr>
+    <tr><td>Cash count difference</td><td>How many closed shifts did not match the count, and by how much. A shortage is marked.</td></tr>
+    <tr><td>Wastage and staff meals</td><td>Ingredients thrown away or used for staff, valued at cost.</td></tr>
+    <tr><td>By cashier</td><td>Bills and discounts per person.</td></tr>
+  </table></div>
+  <h3>Right now</h3>
+  <p>These do not depend on the period: what customers owe you in khata, what you owe suppliers, the value of stock on the shelf, ingredients running low (with a reorder list), and how many orders and tables are open at this moment.</p>
+  <div class="pair">
+    <figure class="narrow"><img src="img/dashboard-phone.png" alt="Dashboard on a phone" loading="lazy"><figcaption>It works on a phone, so the owner can check the day from anywhere on the restaurant network. The period buttons scroll sideways.</figcaption></figure>
+    <div>
+      <div class="callout"><strong>Who can see it</strong>Only roles with the financial reports permission: normally the owner, the manager and the accountant. Cashiers and captains do not see the Dashboard button, and the server refuses the page even if they type its address.</div>
+      <p>The figures refresh by themselves every minute, so the dashboard can stay open on a screen in the office.</p>
+    </div>
+  </div>
 
   <h2 id="admin">Owner setup (Admin)</h2>
   <p>The <span class="ui">Admin</span> area has its own menu on the left, grouped by job. Each person sees only the parts they are allowed to use.</p>

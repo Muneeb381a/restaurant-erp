@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "pnpm db:up && pnpm db:migrate && pnpm -r --parallel --filter \"./apps/*\" dev",
     "demo:data": "node scripts/demo-data.mjs",
+    "demo:history": "pnpm --filter @erp/api exec tsx --env-file-if-exists=../../.env scripts/demo-history.ts",
     "db:up": "docker compose --env-file .env -f ops/docker-compose.yml -f ops/docker-compose.dev.yml up -d --wait db",
     "db:migrate": "pnpm --filter @erp/api db:migrate",
     "db:migrate:phase2": "pnpm --filter @erp/api db:migrate:phase2",

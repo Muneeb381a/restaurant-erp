@@ -64,7 +64,10 @@ function SignedIn() {
     nav('/login', { replace: true });
   }
 
-  const items: NavItem[] = [{ to: '/', icon: 'tables', label: t('shell.navTables'), end: true }];
+  const items: NavItem[] = [];
+  if (can(me.data, 'report.financial'))
+    items.push({ to: '/dashboard', icon: 'chart', label: t('shell.navDashboard') });
+  items.push({ to: '/', icon: 'tables', label: t('shell.navTables'), end: true });
   if (can(me.data, 'report.view'))
     items.push({ to: '/bills', icon: 'receipt', label: t('shell.navBills') });
   if (can(me.data, 'khata.collect'))
