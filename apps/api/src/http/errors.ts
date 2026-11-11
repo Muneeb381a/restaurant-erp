@@ -189,6 +189,13 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
       code: 'VALIDATION_FAILED',
       issues: err.issues,
     };
+  } else if ((err as { type?: string } | null)?.type === 'entity.too.large') {
+    problem = {
+      type: 'urn:erp:error:VALIDATION_FAILED',
+      title: 'The request body is too large',
+      status: 413,
+      code: 'VALIDATION_FAILED',
+    };
   } else if (err instanceof SyntaxError && 'body' in err) {
     problem = {
       type: 'urn:erp:error:VALIDATION_FAILED',

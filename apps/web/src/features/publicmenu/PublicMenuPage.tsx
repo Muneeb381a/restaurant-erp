@@ -27,6 +27,11 @@ interface PublicMenu {
     isDeal: boolean;
     categoryId: string | null;
     available: boolean;
+    description: string | null;
+    descriptionUr: string | null;
+    tags: string[];
+    allergens: string[];
+    imageUrl: string | null;
     variants: { name: string; nameUr: string | null; pricePaisa: number }[];
     dealSlots: {
       name: string;
@@ -35,6 +40,14 @@ interface PublicMenu {
     }[];
   }[];
 }
+
+const TAG_STYLE: Record<string, string> = {
+  HALAL: 'chip-ok',
+  VEGETARIAN: 'chip-ok',
+  SPICY: 'chip-bad',
+  CHEF: 'chip-warn',
+  NEW: 'chip-info',
+};
 
 class MenuUnavailable extends Error {
   constructor(readonly off: boolean) {
@@ -84,6 +97,7 @@ export function PublicMenuPage() {
     retry: 1,
   });
   const [search, setSearch] = useState('');
+  const [vegOnly, setVegOnly] = useState(false);
   const [active, setActive] = useState<string | null>(null);
   const chips = useRef<HTMLDivElement>(null);
 
@@ -98,7 +112,8 @@ export function PublicMenuPage() {
     if (!d) return [];
     const q = search.trim().toLowerCase();
     const match = (i: PublicMenu['items'][number]): boolean =>
-      !q || `${i.name} ${i.nameUr ?? ''}`.toLowerCase().includes(q);
+      (!vegOnly || i.tags.includes('VEGETARIAN')) &&
+      (!q || `${i.name} ${i.nameUr ?? ''} ${i.description ?? ''}`.toLowerCase().includes(q));
     const cats = [...d.categories].sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name));
     const out = cats
       .map((c) => ({
@@ -110,7 +125,7 @@ export function PublicMenuPage() {
     const loose = d.items.filter((i) => !i.categoryId && match(i));
     if (loose.length) out.push({ id: 'other', name: t('pm.other'), items: loose });
     return out;
-  }, [menu.data, search, lang, t]);
+  }, [menu.data, search, vegOnly, lang, t]);
 
   // highlight the section being read
   useEffect(() => {
@@ -138,6 +153,9 @@ export function PublicMenuPage() {
   const r = menu.data?.restaurant;
   const name = r ? localName(lang, r.name, r.nameUr) : '';
   const price = (p: number): string => ltr(formatRs(p));
+  const desc = (i: PublicMenu['items'][number]): string | null =>
+    (lang === 'ur' && i.descriptionUr ? i.descriptionUr : i.description) ?? null;
+  const hasVeg = menu.data?.items.some((i) => i.tags.includes('VEGETARIAN')) ?? false;
 
   return (
     <div className="min-h-full bg-slate-50 text-slate-900">
@@ -224,6 +242,15 @@ export function PublicMenuPage() {
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
+              {hasVeg && (
+                <button
+                  className="seg-item !min-h-9 border border-slate-400 bg-white"
+                  aria-pressed={vegOnly}
+                  onClick={() => setVegOnly(!vegOnly)}
+                >
+                  {t('pm.vegOnly')}
+                </button>
+              )}
               <div
                 ref={chips}
                 className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1"
@@ -265,57 +292,94 @@ export function PublicMenuPage() {
                 <ul className="divide-y divide-slate-200">
                   {s.items.map((i) => (
                     <li key={i.id} className={`py-3 ${i.available ? '' : 'opacity-60'}`}>
-                      <div className="flex items-baseline gap-3">
-                        <span className="me-auto min-w-0 font-medium">
-                          {localName(lang, i.name, i.nameUr)}
-                          {i.isDeal && (
-                            <span className="chip-info ms-2 align-middle">{t('pm.deal')}</span>
+                      <div className="flex items-start gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-baseline gap-3">
+                            <span className="me-auto min-w-0 font-medium">
+                              {localName(lang, i.name, i.nameUr)}
+                              {i.isDeal && (
+                                <span className="chip-info ms-2 align-middle">{t('pm.deal')}</span>
+                              )}
+                              {!i.available && (
+                                <span className="chip-mute ms-2 align-middle">
+                                  {t('pm.soldOut')}
+                                </span>
+                              )}
+                            </span>
+                            {i.variants.length === 1 && (
+                              <span
+                                className={`money shrink-0 font-semibold ${i.available ? '' : 'line-through'}`}
+                              >
+                                {price(i.variants[0]!.pricePaisa)}
+                              </span>
+                            )}
+                          </div>
+                          {i.variants.length > 1 && (
+                            <ul className="mt-1 space-y-0.5 text-sm text-slate-700">
+                              {i.variants.map((v) => (
+                                <li key={v.name} className="flex justify-between gap-3">
+                                  <span>{localName(lang, v.name, v.nameUr)}</span>
+                                  <span
+                                    className={`money ${i.available ? 'font-semibold' : 'line-through'}`}
+                                  >
+                                    {price(v.pricePaisa)}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
                           )}
-                          {!i.available && (
-                            <span className="chip-mute ms-2 align-middle">{t('pm.soldOut')}</span>
+                          {i.isDeal && i.dealSlots.length > 0 && (
+                            <ul className="mt-1 space-y-0.5 text-sm text-slate-600">
+                              {i.dealSlots.map((sl) => (
+                                <li key={sl.name}>
+                                  <span className="font-medium text-slate-700">
+                                    {ltr(`${sl.qty} ×`)} {sl.name}
+                                  </span>
+                                  {sl.options.length > 0 && (
+                                    <>
+                                      :{' '}
+                                      {sl.options
+                                        .map((o) => localName(lang, o.name, o.nameUr))
+                                        .join(' / ')}
+                                    </>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
                           )}
-                        </span>
-                        {i.variants.length === 1 && (
-                          <span
-                            className={`money shrink-0 font-semibold ${i.available ? '' : 'line-through'}`}
-                          >
-                            {price(i.variants[0]!.pricePaisa)}
-                          </span>
+                          {(i.tags.length > 0 || i.allergens.length > 0 || desc(i)) && (
+                            <div className="mt-1.5 space-y-1.5">
+                              {desc(i) && <p className="text-sm text-slate-600">{desc(i)}</p>}
+                              {i.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {i.tags.map((tg) => (
+                                    <span key={tg} className={TAG_STYLE[tg] ?? 'chip-mute'}>
+                                      {t(`guest.tag.${tg}`)}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              {i.allergens.length > 0 && (
+                                <p className="flex items-start gap-1.5 text-xs text-amber-900">
+                                  <Icon name="alert" size={14} className="mt-0.5 shrink-0" />
+                                  <span>
+                                    {t('pm.contains')}{' '}
+                                    {i.allergens.map((a) => t(`guest.allergen.${a}`)).join(', ')}
+                                  </span>
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {i.imageUrl && (
+                          <img
+                            src={i.imageUrl}
+                            alt={localName(lang, i.name, i.nameUr)}
+                            loading="lazy"
+                            className="size-24 shrink-0 rounded-lg border border-slate-300 bg-slate-200 object-cover"
+                          />
                         )}
                       </div>
-                      {i.variants.length > 1 && (
-                        <ul className="mt-1 space-y-0.5 text-sm text-slate-700">
-                          {i.variants.map((v) => (
-                            <li key={v.name} className="flex justify-between gap-3">
-                              <span>{localName(lang, v.name, v.nameUr)}</span>
-                              <span
-                                className={`money ${i.available ? 'font-semibold' : 'line-through'}`}
-                              >
-                                {price(v.pricePaisa)}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {i.isDeal && i.dealSlots.length > 0 && (
-                        <ul className="mt-1 space-y-0.5 text-sm text-slate-600">
-                          {i.dealSlots.map((sl) => (
-                            <li key={sl.name}>
-                              <span className="font-medium text-slate-700">
-                                {ltr(`${sl.qty} ×`)} {sl.name}
-                              </span>
-                              {sl.options.length > 0 && (
-                                <>
-                                  :{' '}
-                                  {sl.options
-                                    .map((o) => localName(lang, o.name, o.nameUr))
-                                    .join(' / ')}
-                                </>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
                     </li>
                   ))}
                 </ul>

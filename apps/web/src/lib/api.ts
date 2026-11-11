@@ -61,8 +61,10 @@ export interface RequestOptions {
   ifMatch?: number;
   /** Send this text as the body (CSV import) instead of JSON. */
   rawText?: { content: string; contentType: string };
-  /** "text" returns the body as a string (CSV export). */
-  responseType?: 'json' | 'text';
+  /** Send this file (a dish photo) as the body. */
+  rawBlob?: { content: Blob; contentType: string };
+  /** "text" returns the body as a string (CSV export); "blob" as a file (a dish photo). */
+  responseType?: 'json' | 'text' | 'blob';
   auth?: boolean;
   /** Extra request headers, e.g. `Idempotency-Key` for payments. */
   headers?: Record<string, string>;
@@ -78,19 +80,23 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
       method: opts.method ?? 'GET',
       headers: {
         ...opts.headers,
-        ...(opts.rawText
-          ? { 'content-type': opts.rawText.contentType }
-          : opts.body !== undefined
-            ? { 'content-type': 'application/json' }
-            : {}),
+        ...(opts.rawBlob
+          ? { 'content-type': opts.rawBlob.contentType }
+          : opts.rawText
+            ? { 'content-type': opts.rawText.contentType }
+            : opts.body !== undefined
+              ? { 'content-type': 'application/json' }
+              : {}),
         ...(opts.auth !== false && tokens ? { authorization: `Bearer ${tokens.accessToken}` } : {}),
         ...(opts.ifMatch !== undefined ? { 'if-match': String(opts.ifMatch) } : {}),
       },
-      body: opts.rawText
-        ? opts.rawText.content
-        : opts.body !== undefined
-          ? JSON.stringify(opts.body)
-          : undefined,
+      body: opts.rawBlob
+        ? opts.rawBlob.content
+        : opts.rawText
+          ? opts.rawText.content
+          : opts.body !== undefined
+            ? JSON.stringify(opts.body)
+            : undefined,
     });
 
   let res = await send(useAuth.getState().tokens);
@@ -105,5 +111,6 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
   if (!res.ok) throw await toError(res);
   if (res.status === 204) return undefined as T;
   if (opts.responseType === 'text') return (await res.text()) as T;
+  if (opts.responseType === 'blob') return (await res.blob()) as T;
   return (await res.json()) as T;
 }

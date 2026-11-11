@@ -182,6 +182,12 @@ export interface AdminItem {
   isAvailable: boolean;
   isActive: boolean;
   searchTerms: string | null;
+  description: string | null;
+  descriptionUr: string | null;
+  hiddenFromGuests: boolean;
+  guestTags: string[];
+  allergens: string[];
+  hasImage: boolean;
   variants: AdminVariant[];
 }
 

@@ -152,6 +152,11 @@ export interface ItemInput {
   taxCategoryCode?: string | undefined;
   sort?: number | undefined;
   variants?: VariantInput[] | undefined;
+  description?: string | null | undefined;
+  descriptionUr?: string | null | undefined;
+  hiddenFromGuests?: boolean | undefined;
+  guestTags?: string[] | undefined;
+  allergens?: string[] | undefined;
 }
 
 /** WEIGHT and DEAL items have exactly one variant ("Per kg" / "Deal"); STANDARD at least one. */
@@ -198,6 +203,11 @@ export function createItem(ctx: AppContext, a: Actor, input: ItemInput) {
         kind: input.kind,
         search_terms: input.searchTerms ?? null,
         sort: input.sort ?? 0,
+        description: input.description ?? null,
+        description_ur: input.descriptionUr ?? null,
+        hidden_from_guests: input.hiddenFromGuests ?? false,
+        guest_tags: input.guestTags ?? [],
+        allergens: input.allergens ?? [],
       })
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -228,6 +238,11 @@ export interface ItemPatch {
   searchTerms?: string | null | undefined;
   sort?: number | undefined;
   isActive?: boolean | undefined;
+  description?: string | null | undefined;
+  descriptionUr?: string | null | undefined;
+  hiddenFromGuests?: boolean | undefined;
+  guestTags?: string[] | undefined;
+  allergens?: string[] | undefined;
 }
 
 export function updateItem(ctx: AppContext, a: Actor, id: string, p: ItemPatch) {
@@ -246,12 +261,54 @@ export function updateItem(ctx: AppContext, a: Actor, id: string, p: ItemPatch) 
         ...(p.searchTerms !== undefined && { search_terms: p.searchTerms }),
         ...(p.sort !== undefined && { sort: p.sort }),
         ...(p.isActive !== undefined && { is_active: p.isActive }),
+        ...(p.description !== undefined && { description: p.description }),
+        ...(p.descriptionUr !== undefined && { description_ur: p.descriptionUr }),
+        ...(p.hiddenFromGuests !== undefined && { hidden_from_guests: p.hiddenFromGuests }),
+        ...(p.guestTags !== undefined && { guest_tags: [...new Set(p.guestTags)] }),
+        ...(p.allergens !== undefined && { allergens: [...new Set(p.allergens)] }),
       })
       .where('id', '=', id)
       .execute();
     const after = await requireItem(trx, a.branchId, id);
     await audit(trx, a, 'ITEM_UPDATE', 'item', id, before, after);
     return getItemFull(trx, a.branchId, id);
+  });
+}
+
+/** Sets (or replaces) the one photo of a dish. The bytes were checked by the route; the audit keeps only the size. */
+export function setItemImage(
+  ctx: AppContext,
+  a: Actor,
+  id: string,
+  image: { contentType: string; data: Buffer },
+) {
+  return command(ctx, a, async (trx) => {
+    await requireItem(trx, a.branchId, id, true);
+    await trx
+      .insertInto('item_images')
+      .values({ item_id: id, content_type: image.contentType, data: image.data })
+      .onConflict((oc) =>
+        oc.column('item_id').doUpdateSet({
+          content_type: image.contentType,
+          data: image.data,
+          updated_at: new Date(),
+        }),
+      )
+      .execute();
+    await audit(trx, a, 'ITEM_IMAGE_SET', 'item', id, null, {
+      contentType: image.contentType,
+      bytes: image.data.length,
+    });
+    return { id, hasImage: true };
+  });
+}
+
+export function clearItemImage(ctx: AppContext, a: Actor, id: string) {
+  return command(ctx, a, async (trx) => {
+    await requireItem(trx, a.branchId, id, true);
+    await trx.deleteFrom('item_images').where('item_id', '=', id).execute();
+    await audit(trx, a, 'ITEM_IMAGE_CLEAR', 'item', id, null, null);
+    return { id, hasImage: false };
   });
 }
 

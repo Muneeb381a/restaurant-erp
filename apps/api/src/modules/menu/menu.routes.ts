@@ -1,4 +1,4 @@
-import { asPaisa } from '@erp/domain';
+import { ALLERGENS, GUEST_TAGS, asPaisa, sniffImage } from '@erp/domain';
 import express, { Router, type Request } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../http/async-handler';
@@ -21,6 +21,9 @@ const code = z
   .string()
   .trim()
   .regex(/^[A-Za-z0-9._-]{1,40}$/, 'letters, digits, . _ - (max 40)');
+
+const guestTags = z.array(z.enum(GUEST_TAGS)).max(GUEST_TAGS.length);
+const allergens = z.array(z.enum(ALLERGENS)).max(ALLERGENS.length);
 
 const categoryBody = z
   .object({
@@ -53,6 +56,11 @@ const itemCreateBody = z
     taxCategoryCode: text(60).optional(),
     sort: sort.optional(),
     variants: z.array(variantBody).max(30).optional(),
+    description: nullableText(300).optional(),
+    descriptionUr: nullableText(300).optional(),
+    hiddenFromGuests: z.boolean().optional(),
+    guestTags: guestTags.optional(),
+    allergens: allergens.optional(),
   })
   .strict();
 
@@ -66,6 +74,11 @@ const itemPatchBody = z
     searchTerms: nullableText(300),
     sort,
     isActive: z.boolean(),
+    description: nullableText(300),
+    descriptionUr: nullableText(300),
+    hiddenFromGuests: z.boolean(),
+    guestTags,
+    allergens,
   })
   .partial()
   .strict();
@@ -231,6 +244,11 @@ export function menuRouter(ctx: AppContext): Router {
           isActive: i.is_active,
           sort: i.sort,
           searchTerms: i.search_terms,
+          description: i.description,
+          descriptionUr: i.description_ur,
+          hiddenFromGuests: i.hidden_from_guests,
+          guestTags: i.guest_tags,
+          allergens: i.allergens,
           variants: variants
             .filter((v) => v.item_id === i.id)
             .map((v) => ({
@@ -267,6 +285,47 @@ export function menuRouter(ctx: AppContext): Router {
       if (Object.keys(body).length === 0)
         throw new AppError(400, 'VALIDATION_FAILED', 'No fields to update');
       res.json(await svc.updateItem(ctx, actorOf(req), id, body));
+    }),
+  );
+  /** One photo per dish. The browser shrinks it first; the server checks the bytes, not the declared type. */
+  r.put(
+    '/items/:id/image',
+    ...manage,
+    express.raw({ type: () => true, limit: '600kb' }),
+    asyncHandler(async (req, res) => {
+      const { id } = idParam.parse(req.params);
+      const data: unknown = req.body;
+      if (!Buffer.isBuffer(data) || data.length === 0)
+        throw new AppError(400, 'VALIDATION_FAILED', 'Send the image as the request body');
+      const contentType = sniffImage(data);
+      if (!contentType)
+        throw new AppError(400, 'VALIDATION_FAILED', 'The photo must be a JPEG, PNG or WebP image');
+      res.json(await svc.setItemImage(ctx, actorOf(req), id, { contentType, data }));
+    }),
+  );
+  r.get(
+    '/items/:id/image',
+    ...read,
+    asyncHandler(async (req, res) => {
+      const { id } = idParam.parse(req.params);
+      const row = await ctx.db
+        .selectFrom('item_images')
+        .innerJoin('items', 'items.id', 'item_images.item_id')
+        .select(['item_images.content_type as contentType', 'item_images.data as data'])
+        .where('item_images.item_id', '=', id)
+        .where('items.branch_id', '=', req.branchId!)
+        .executeTakeFirst();
+      if (!row) throw new AppError(404, 'NOT_FOUND', 'No photo');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cache-Control', 'private, no-cache');
+      res.type(row.contentType).send(row.data);
+    }),
+  );
+  r.delete(
+    '/items/:id/image',
+    ...manage,
+    asyncHandler(async (req, res) => {
+      res.json(await svc.clearItemImage(ctx, actorOf(req), idParam.parse(req.params).id));
     }),
   );
   r.patch(

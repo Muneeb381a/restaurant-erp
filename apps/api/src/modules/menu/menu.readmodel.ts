@@ -100,6 +100,15 @@ export async function getMenu(
     : [];
   const priceOf = new Map(prices.map((p) => [p.variant_id, p.price_paisa]));
 
+  const images = itemIds.length
+    ? await db
+        .selectFrom('item_images')
+        .select(['item_id', 'updated_at'])
+        .where('item_id', 'in', itemIds)
+        .execute()
+    : [];
+  const imageVer = new Map(images.map((i) => [i.item_id, new Date(i.updated_at).getTime()]));
+
   const groupLinks = itemIds.length
     ? await db
         .selectFrom('item_modifier_groups')
@@ -153,6 +162,7 @@ export async function getMenu(
           'items.id as item_id',
           'items.name as item_name',
           'items.name_ur as item_name_ur',
+          'item_variants.item_id as option_item_id',
           'item_variants.name as variant_name',
           'item_variants.name_ur as variant_name_ur',
           'item_variants.is_active as v_active',
@@ -194,6 +204,12 @@ export async function getMenu(
         station: item.station_id ? (stationCode.get(item.station_id) ?? null) : null,
         available: item.is_available,
         searchTerms: item.search_terms,
+        description: item.description,
+        descriptionUr: item.description_ur,
+        hiddenFromGuests: item.hidden_from_guests,
+        guestTags: item.guest_tags,
+        allergens: item.allergens,
+        imageVer: imageVer.get(item.id) ?? null,
         variants: vs,
         modifierGroups: groupLinks
           .filter((g) => g.item_id === item.id)
@@ -227,6 +243,7 @@ export async function getMenu(
                       .map((o) => ({
                         id: o.id,
                         variantId: o.variant_id,
+                        itemId: o.option_item_id,
                         itemName: o.item_name,
                         itemNameUr: o.item_name_ur,
                         variantName: o.variant_name,
@@ -297,6 +314,13 @@ export async function getAdminMenu(ctx: AppContext, branchId: string, date?: str
       .execute(),
   ]);
   const ids = items.map((i) => i.id);
+  const withImage = new Set(
+    ids.length
+      ? (
+          await db.selectFrom('item_images').select('item_id').where('item_id', 'in', ids).execute()
+        ).map((r) => r.item_id)
+      : [],
+  );
   const variants = ids.length
     ? await db
         .selectFrom('item_variants')
@@ -342,6 +366,12 @@ export async function getAdminMenu(ctx: AppContext, branchId: string, date?: str
       isAvailable: i.is_available,
       isActive: i.is_active,
       searchTerms: i.search_terms,
+      description: i.description,
+      descriptionUr: i.description_ur,
+      hiddenFromGuests: i.hidden_from_guests,
+      guestTags: i.guest_tags,
+      allergens: i.allergens,
+      hasImage: withImage.has(i.id),
       variants: variants
         .filter((v) => v.item_id === i.id)
         .map((v) => ({

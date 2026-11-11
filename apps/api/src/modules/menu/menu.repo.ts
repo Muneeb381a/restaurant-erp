@@ -214,6 +214,11 @@ export async function getItemFull(q: Queryable, branchId: string, itemId: string
     isActive: item.is_active,
     sort: item.sort,
     searchTerms: item.search_terms,
+    description: item.description,
+    descriptionUr: item.description_ur,
+    hiddenFromGuests: item.hidden_from_guests,
+    guestTags: item.guest_tags,
+    allergens: item.allergens,
     variants: variants.map((v) => ({
       id: v.id,
       name: v.name,

@@ -931,6 +931,43 @@
     "retry": "Try again",
     "pricesNote": "Prices are in rupees.",
     "service": "A service charge of {{pct}} is added to the bill.",
-    "askStaff": "Please ask our staff about allergies or anything not listed."
+    "askStaff": "Please ask our staff about allergies or anything not listed.",
+    "contains": "Contains:",
+    "vegOnly": "Vegetarian only"
+  },
+  "guest": {
+    "title": "Guest menu",
+    "hint": "What guests see on the QR menu. Optional: leave empty to show just the name and price.",
+    "hide": "Hide from the guest menu",
+    "hideHint": "Still sold at the till. Use for staff meals or off-menu specials.",
+    "hiddenChip": "Hidden from guests",
+    "description": "Short description",
+    "descriptionUr": "Short description (Urdu)",
+    "tags": "Labels",
+    "allergens": "Contains",
+    "allergenHint": "Tick only what the dish contains. Guests see \"Contains: …\"; nothing is ever shown as \"free from\".",
+    "photo": "Photo",
+    "choosePhoto": "Choose photo",
+    "replacePhoto": "Replace photo",
+    "removePhoto": "Remove photo",
+    "photoHint": "It is shrunk automatically, so a phone photo is fine. Saved when you press Save.",
+    "photoBad": "That file could not be read as a photo.",
+    "tag": {
+      "HALAL": "Halal",
+      "VEGETARIAN": "Vegetarian",
+      "SPICY": "Spicy",
+      "CHEF": "Chef's pick",
+      "NEW": "New"
+    },
+    "allergen": {
+      "MILK": "Milk",
+      "GLUTEN": "Gluten",
+      "NUTS": "Nuts",
+      "EGG": "Egg",
+      "SOY": "Soy",
+      "FISH": "Fish",
+      "SESAME": "Sesame",
+      "SHELLFISH": "Shellfish"
+    }
   }
 }

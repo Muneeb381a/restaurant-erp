@@ -32,12 +32,19 @@ interface MenuPayload {
     kind: string;
     categoryId: string | null;
     available: boolean;
+    description: string | null;
+    descriptionUr: string | null;
+    hiddenFromGuests: boolean;
+    guestTags: string[];
+    allergens: string[];
+    imageVer: number | null;
     variants: { name: string; nameUr: string | null; isDefault: boolean; pricePaisa: number }[];
     deal: {
       slots: {
         name: string;
         qty: number;
         options: {
+          itemId: string;
           itemName: string;
           itemNameUr: string | null;
           variantName: string;
@@ -103,6 +110,10 @@ export function publicRouter(ctx: AppContext): Router {
         throw new AppError(404, 'MENU_NOT_PUBLIC', 'The menu is not published');
 
       const menu = JSON.parse((await getMenu(ctx, { branchId: branch.id })).body) as MenuPayload;
+      // items the owner keeps off the guest menu, and categories left with nothing to show
+      const hidden = new Set(menu.items.filter((i) => i.hiddenFromGuests).map((i) => i.id));
+      const shown = menu.items.filter((i) => !hidden.has(i.id));
+      const usedCategories = new Set(shown.map((i) => i.categoryId));
       const body = JSON.stringify({
         restaurant: {
           name: branch.name,
@@ -114,20 +125,28 @@ export function publicRouter(ctx: AppContext): Router {
         note: typeof s['menu.public_note'] === 'string' ? s['menu.public_note'] : null,
         serviceChargeBps:
           typeof s['billing.service_charge_bps'] === 'number' ? s['billing.service_charge_bps'] : 0,
-        categories: menu.categories.map((c) => ({
-          id: c.id,
-          parentId: c.parentId,
-          name: c.name,
-          nameUr: c.nameUr,
-          sort: c.sort,
-        })),
-        items: menu.items.map((i) => ({
+        categories: menu.categories
+          .filter((c) => usedCategories.has(c.id))
+          .map((c) => ({
+            id: c.id,
+            parentId: c.parentId,
+            name: c.name,
+            nameUr: c.nameUr,
+            sort: c.sort,
+          })),
+        items: shown.map((i) => ({
           id: i.id,
           name: i.name,
           nameUr: i.nameUr,
           isDeal: i.kind === 'DEAL',
           categoryId: i.categoryId,
           available: i.available,
+          description: i.description,
+          descriptionUr: i.descriptionUr,
+          tags: i.guestTags,
+          allergens: i.allergens,
+          // the version in the address lets phones keep a photo for a day and still see a new one at once
+          imageUrl: i.imageVer ? `/api/v1/public/items/${i.id}/image?v=${i.imageVer}` : null,
           variants: i.variants.map((v) => ({
             name: v.name,
             nameUr: v.nameUr,
@@ -136,12 +155,14 @@ export function publicRouter(ctx: AppContext): Router {
           dealSlots: (i.deal?.slots ?? []).map((sl) => ({
             name: sl.name,
             qty: sl.qty,
-            options: sl.options.map((o) => ({
-              name: o.itemName,
-              nameUr: o.itemNameUr,
-              variant: o.variantName,
-              available: o.available,
-            })),
+            options: sl.options
+              .filter((o) => !hidden.has(o.itemId))
+              .map((o) => ({
+                name: o.itemName,
+                nameUr: o.itemNameUr,
+                variant: o.variantName,
+                available: o.available,
+              })),
           })),
         })),
       });
@@ -154,6 +175,49 @@ export function publicRouter(ctx: AppContext): Router {
         return;
       }
       res.type('application/json').send(body);
+    }),
+  );
+
+  /** A dish photo. Same gate as the menu: published, item active and not hidden from guests. */
+  r.get(
+    '/items/:id/image',
+    asyncHandler(async (req, res) => {
+      const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+      const row = await ctx.db
+        .selectFrom('item_images')
+        .innerJoin('items', 'items.id', 'item_images.item_id')
+        .select([
+          'item_images.content_type as contentType',
+          'item_images.data as data',
+          'item_images.updated_at as updatedAt',
+          'items.branch_id as branchId',
+          'items.is_active as isActive',
+          'items.hidden_from_guests as hidden',
+        ])
+        .where('item_images.item_id', '=', id)
+        .executeTakeFirst();
+      const published = row
+        ? await ctx.db
+            .selectFrom('settings')
+            .select('value')
+            .where('branch_id', '=', row.branchId)
+            .where('key', '=', 'menu.public_enabled')
+            .executeTakeFirst()
+        : undefined;
+      if (!row || !row.isActive || row.hidden || published?.value !== true)
+        throw new AppError(404, 'NOT_FOUND', 'Photo not found');
+      const etag = `"${new Date(row.updatedAt).getTime()}"`;
+      res.setHeader('ETag', etag);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader(
+        'Cache-Control',
+        req.query.v ? 'public, max-age=86400, immutable' : 'public, max-age=300',
+      );
+      if (req.header('if-none-match') === etag) {
+        res.status(304).end();
+        return;
+      }
+      res.type(row.contentType).send(row.data);
     }),
   );
   return r;

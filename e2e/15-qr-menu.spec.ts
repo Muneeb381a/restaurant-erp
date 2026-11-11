@@ -63,3 +63,76 @@ test('QR menu: the owner publishes it, a guest with no login reads it, and switc
   await expect(guest.locator('main, h2').first()).toBeVisible();
   await guest.context().close();
 });
+
+// a real 1x1 PNG
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGO42aMNAAPSAZGjv8RZAAAAAElFTkSuQmCC',
+  'base64',
+);
+
+test('guest menu details: description, labels, allergens and a photo show; hidden items do not', async ({
+  page,
+  browser,
+}) => {
+  await loginOwner(page);
+  await page.getByRole('link', { name: 'Admin' }).click();
+
+  const create = async (name: string, hide: boolean): Promise<void> => {
+    await page.getByRole('button', { name: /New item/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'New item' });
+    await dialog.getByLabel('Name', { exact: true }).fill(name);
+    await dialog.getByLabel('Station').selectOption({ label: 'BBQ' });
+    await dialog.getByLabel('price DINE_IN').fill('300');
+    if (hide) {
+      await dialog.getByRole('switch', { name: 'Hide from the guest menu' }).click();
+    } else {
+      await dialog
+        .getByLabel('Short description', { exact: true })
+        .fill('Minced beef on the skewer');
+      await dialog.getByRole('button', { name: 'Halal', exact: true }).click();
+      await dialog.getByRole('button', { name: 'Milk', exact: true }).click();
+      await dialog
+        .getByLabel('Choose photo')
+        .setInputFiles({ name: 'dish.png', mimeType: 'image/png', buffer: PNG });
+      await expect(dialog.getByRole('button', { name: 'Replace photo' })).toBeVisible();
+    }
+    await dialog.getByRole('button', { name: 'Create' }).click();
+    await expect(page.getByRole('row').filter({ hasText: name })).toBeVisible();
+  };
+  await create('E2E Guest Dish', false);
+  await create('E2E Staff Meal', true);
+  await expect(
+    page.getByRole('row').filter({ hasText: 'E2E Staff Meal' }).getByText('Hidden from guests'),
+  ).toBeVisible();
+
+  await page.getByRole('link', { name: 'QR menu' }).click();
+  const visible = page.getByRole('switch', { name: 'Customers can see the menu' });
+  if ((await visible.getAttribute('aria-checked')) !== 'true') await visible.click();
+  await expect(visible).toHaveAttribute('aria-checked', 'true');
+  const link = (await page
+    .getByText(/\/m\?b=/)
+    .first()
+    .textContent())!.trim();
+
+  const guest = await (await browser.newContext()).newPage();
+  await guest.goto(link);
+  await expect(guest.getByText('E2E Guest Dish')).toBeVisible();
+  await expect(guest.getByText('Minced beef on the skewer')).toBeVisible();
+  await expect(guest.getByText('Halal', { exact: true })).toBeVisible();
+  await expect(guest.getByText(/Contains:\s*Milk/)).toBeVisible();
+  const photo = guest.getByRole('img', { name: 'E2E Guest Dish' });
+  await expect(photo).toBeVisible();
+  await expect
+    .poll(() => photo.evaluate((el: HTMLImageElement) => el.naturalWidth))
+    .toBeGreaterThan(0);
+  await expect(guest.getByText('E2E Staff Meal')).toHaveCount(0);
+
+  // the staff meal is still sold at the till: it is on the ordinary menu list
+  await page.getByRole('link', { name: 'Menu', exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'E2E Staff Meal' })).toBeVisible();
+
+  // turn the guest menu off again
+  await page.getByRole('link', { name: 'QR menu' }).click();
+  await visible.click();
+  await guest.context().close();
+});

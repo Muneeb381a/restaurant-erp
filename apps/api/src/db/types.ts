@@ -323,9 +323,14 @@ export interface ItemPrices {
 }
 
 export interface Items {
+  allergens: Generated<string[]>;
   branch_id: string;
   category_id: string | null;
   code: string | null;
+  description: string | null;
+  description_ur: string | null;
+  guest_tags: Generated<string[]>;
+  hidden_from_guests: Generated<boolean>;
   id: Generated<string>;
   is_active: Generated<boolean>;
   is_available: Generated<boolean>;
@@ -336,6 +341,13 @@ export interface Items {
   sort: Generated<number>;
   station_id: string | null;
   tax_category_id: string;
+}
+
+export interface ItemImages {
+  content_type: string;
+  data: Buffer;
+  item_id: string;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface ItemVariants {
@@ -795,6 +807,7 @@ export interface DB {
   ingredients: Ingredients;
   item_modifier_groups: ItemModifierGroups;
   item_prices: ItemPrices;
+  item_images: ItemImages;
   item_variants: ItemVariants;
   items: Items;
   khata_accounts: KhataAccounts;

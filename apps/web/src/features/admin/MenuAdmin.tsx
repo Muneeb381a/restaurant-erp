@@ -7,6 +7,7 @@ import { api } from '../../lib/api';
 import type { AdminItem, AdminMenu, AdminVariant, ImportResult } from '../../lib/types';
 import { DealEditor } from './DealEditor';
 import { Icon } from '../../components/Icon';
+import { emptyGuestInfo, GuestInfoFields, guestPayload, type GuestInfo } from './GuestInfo';
 import { Dialog, EmptyRow, ErrorText, Field, PageHead, Toggle } from './ui';
 
 const ADMIN_MENU_KEY = ['admin-menu'];
@@ -172,6 +173,9 @@ export function MenuAdmin() {
                             {item.code}
                             {item.kind !== 'STANDARD' ? ` · ${item.kind}` : ''}
                           </span>
+                          {item.hiddenFromGuests && (
+                            <span className="chip-mute mt-1">{t('guest.hiddenChip')}</span>
+                          )}
                         </span>
                       </td>
                       <td rowSpan={item.variants.length}>
@@ -403,6 +407,18 @@ function ItemDialog({
   const [categoryId, setCategoryId] = useState(item?.categoryId ?? '');
   const [stationId, setStationId] = useState(item?.stationId ?? '');
   const [searchTerms, setSearchTerms] = useState(item?.searchTerms ?? '');
+  const [guest, setGuest] = useState<GuestInfo>(() =>
+    item
+      ? {
+          ...emptyGuestInfo(),
+          description: item.description ?? '',
+          descriptionUr: item.descriptionUr ?? '',
+          hidden: item.hiddenFromGuests,
+          tags: item.guestTags,
+          allergens: item.allergens,
+        }
+      : emptyGuestInfo(),
+  );
   const [variants, setVariants] = useState<{ name: string; prices: PriceInputs }[]>([
     { name: 'Regular', prices: {} },
   ]);
@@ -416,12 +432,22 @@ function ItemDialog({
         categoryId: categoryId || null,
         stationId: stationId || null,
         searchTerms: searchTerms.trim() || null,
+        ...guestPayload(guest),
+      };
+      const savePhoto = async (id: string): Promise<void> => {
+        if (guest.photo)
+          await api(`/items/${id}/image`, {
+            method: 'PUT',
+            rawBlob: { content: guest.photo, contentType: 'image/jpeg' },
+          });
+        else if (guest.removePhoto) await api(`/items/${id}/image`, { method: 'DELETE' });
       };
       if (item) {
         await api(`/items/${item.id}`, { method: 'PATCH', body: common });
+        await savePhoto(item.id);
         return;
       }
-      const created = await api<{ variants: { id: string }[] }>('/items', {
+      const created = await api<{ id: string; variants: { id: string }[] }>('/items', {
         method: 'POST',
         body: {
           ...common,
@@ -434,6 +460,7 @@ function ItemDialog({
       });
       for (const [i, v] of created.variants.entries())
         await savePrices(data, v.id, variants[i]?.prices ?? {});
+      await savePhoto(created.id);
     },
     onSuccess: () => {
       onDone();
@@ -575,6 +602,13 @@ function ItemDialog({
             )}
           </fieldset>
         )}
+
+        <GuestInfoFields
+          itemId={item?.id ?? null}
+          hasImage={item?.hasImage ?? false}
+          value={guest}
+          onChange={setGuest}
+        />
 
         <ErrorText error={error} />
         <div className="flex justify-end gap-2">

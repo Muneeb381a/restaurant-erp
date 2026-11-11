@@ -33,4 +33,20 @@ depend on the internet (CLAUDE.md rule 9), so the menu must work over the restau
   not `localhost`. The admin page warns about localhost. Over plain HTTP on a LAN there is nothing sensitive
   to protect: the page only shows the public menu.
 - Turning the switch off closes it immediately for new loads (cached copies live <= 30 s).
-- Future: a per-table QR (`?t=<table>`) for table-aware ordering, photos, allergens (OPEN-QUESTIONS #37).
+- **Decided:** one QR for the whole restaurant, not one per table.
+
+## Addendum: guest information (migration 0014)
+- Per dish, all optional and display-only: short description (en/ur), labels (`HALAL`, `VEGETARIAN`, `SPICY`,
+  `CHEF`, `NEW`), allergens (`MILK`, `GLUTEN`, `NUTS`, `EGG`, `SOY`, `FISH`, `SESAME`, `SHELLFISH`), a photo, and
+  `hidden_from_guests`. Label and allergen codes are CHECK-constrained and listed in `@erp/domain`.
+- Allergens are shown only as "Contains: …". The system never claims a dish is "free from" something: it cannot
+  know about cross-contact in the kitchen, so the page also tells guests to ask staff.
+- **Hidden items** are removed from the guest menu, from deal contents that list them, from categories left
+  empty, and their photo returns 404. They stay on the till's menu and are sold as usual.
+- **Photos** live in `item_images` (bytea, one per item, <= 600 kB) so the till needs no file server. The admin
+  browser shrinks every upload to a <= 800 px JPEG; the server checks the first bytes (JPEG/PNG/WebP only, an SVG
+  or a mislabelled file is refused), caps the size (413) and serves with `nosniff`. Guest URLs carry a version
+  (`?v=`) so phones cache a photo for a day and still see a replacement immediately. Staff preview through an
+  authenticated `GET /items/:id/image`.
+- The guest page can filter "Vegetarian only" when at least one dish carries that label. CSV import/export does
+  not carry these fields (they are edited per dish in the dialog).
