@@ -25,6 +25,7 @@ await adminClient.query(`CREATE DATABASE "${dbName}"`);
 await adminClient.end();
 
 console.log('migrated:', (await migrateUp(url, 'core')).join(', '));
+console.log('migrated (phase2):', (await migrateUp(url, 'phase2')).join(', '));
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const seed = await readFile(path.resolve(here, '../../../db/003_seed_dev.sql'), 'utf8');

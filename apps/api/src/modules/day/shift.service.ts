@@ -556,3 +556,53 @@ export function reprintReport(
     return { copy, printers };
   });
 }
+
+/**
+ * Takes cash out of the caller's own open drawer inside an existing transaction (a paid-out), for
+ * purchases, supplier payments and expenses. Locks the shift, refuses more than the drawer holds,
+ * and is idempotent per `key`. Returns the shift so the caller can record where the money came from.
+ */
+export async function drawerPayout(
+  trx: Queryable,
+  a: Actor,
+  input: { amountPaisa: number; reason: string; key: string },
+): Promise<{ shiftId: string }> {
+  const mine = await trx
+    .selectFrom('shifts')
+    .select('id')
+    .where('opened_by', '=', a.userId)
+    .where('status', '=', 'OPEN')
+    .executeTakeFirst();
+  if (!mine) throw new AppError(409, 'SHIFT_NOT_OPEN', 'Open your shift to pay from the drawer');
+  const shift = await lockShift(trx, a.branchId, mine.id);
+  const existing = await trx
+    .selectFrom('cash_movements')
+    .select('id')
+    .where('idempotency_key', '=', input.key)
+    .executeTakeFirst();
+  if (existing) return { shiftId: shift.id };
+  const report = await shiftReport(trx, a.branchId, shift.id);
+  assertCanTakeOut(input.amountPaisa, report.expectedCashPaisa);
+  await trx
+    .insertInto('cash_movements')
+    .values({
+      shift_id: shift.id,
+      kind: 'PAID_OUT',
+      amount_paisa: input.amountPaisa,
+      reason: input.reason,
+      created_by: a.userId,
+      idempotency_key: input.key,
+    })
+    .execute();
+  await audit(
+    trx,
+    a,
+    'CASH_PAID_OUT',
+    'shift',
+    shift.id,
+    { expectedCashPaisa: report.expectedCashPaisa },
+    { amountPaisa: input.amountPaisa },
+    input.reason,
+  );
+  return { shiftId: shift.id };
+}

@@ -259,6 +259,20 @@ export interface DocCounters {
   last_no: Generated<number>;
 }
 
+export interface Expenses {
+  amount_paisa: Int8;
+  branch_id: string;
+  business_day_id: string | null;
+  category: string;
+  created_at: Generated<Timestamp>;
+  created_by: string;
+  id: Generated<string>;
+  idempotency_key: string | null;
+  note: string | null;
+  paid_from: string;
+  shift_id: string | null;
+}
+
 export interface FiscalJobs {
   attempts: Generated<number>;
   branch_id: string;
@@ -275,6 +289,22 @@ export interface FiscalJobs {
   response: Json | null;
   status: Generated<string>;
   updated_at: Generated<Timestamp>;
+}
+
+export interface Ingredients {
+  avg_cost_per_base: Generated<Numeric>;
+  base_uom: string;
+  branch_id: string;
+  category: string | null;
+  id: Generated<string>;
+  is_active: Generated<boolean>;
+  is_prep: Generated<boolean>;
+  name: string;
+  name_ur: string | null;
+  purchase_to_base: Numeric;
+  purchase_uom: string;
+  reorder_level: Numeric | null;
+  yield_bps: Generated<number>;
 }
 
 export interface ItemModifierGroups {
@@ -388,6 +418,7 @@ export interface OrderItemModifiers {
 }
 
 export interface OrderItems {
+  cost_paisa_snapshot: Int8 | null;
   course: Generated<number>;
   created_at: Generated<Timestamp>;
   created_by: string;
@@ -485,6 +516,12 @@ export interface Pgmigrations {
   run_on: Timestamp;
 }
 
+export interface PgmigrationsPhase2 {
+  id: Generated<number>;
+  name: string;
+  run_on: Timestamp;
+}
+
 export interface PriceLists {
   branch_id: string;
   code: string;
@@ -526,6 +563,46 @@ export interface PrintJobs {
   seq: Generated<Int8>;
   status: Generated<string>;
   title: string;
+}
+
+export interface PurchaseLines {
+  id: Generated<string>;
+  ingredient_id: string;
+  line_total_paisa: Int8;
+  purchase_id: string;
+  qty_purchase_uom: Numeric;
+  unit_cost_paisa: Int8;
+}
+
+export interface Purchases {
+  branch_id: string;
+  business_day_id: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string;
+  id: Generated<string>;
+  idempotency_key: string | null;
+  invoice_ref: string | null;
+  paid_paisa: Generated<Int8>;
+  payment_source: string | null;
+  shift_id: string | null;
+  status: Generated<string>;
+  supplier_id: string | null;
+  total_paisa: Generated<Int8>;
+}
+
+export interface RecipeLines {
+  id: Generated<string>;
+  ingredient_id: string;
+  qty_base: Numeric;
+  recipe_id: string;
+}
+
+export interface Recipes {
+  id: Generated<string>;
+  ingredient_id: string | null;
+  is_active: Generated<boolean>;
+  output_qty_base: Generated<Numeric>;
+  variant_id: string | null;
 }
 
 export interface Riders {
@@ -593,6 +670,68 @@ export interface Stations {
   name: string;
 }
 
+export interface StockMovements {
+  branch_id: string;
+  business_day_id: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<Int8>;
+  idempotency_key: string | null;
+  ingredient_id: string;
+  kind: string;
+  note: string | null;
+  qty_base: Numeric;
+  reason_code: string | null;
+  ref_id: string | null;
+  ref_type: string | null;
+  unit_cost_per_base: Numeric | null;
+}
+
+export interface StockOnHand {
+  branch_id: string | null;
+  ingredient_id: string | null;
+  qty_base: Numeric | null;
+}
+
+export interface StocktakeLines {
+  counted_qty: Numeric | null;
+  id: Generated<string>;
+  ingredient_id: string;
+  stocktake_id: string;
+  system_qty: Numeric;
+}
+
+export interface Stocktakes {
+  branch_id: string;
+  business_day_id: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string;
+  id: Generated<string>;
+  posted_at: Timestamp | null;
+  status: Generated<string>;
+}
+
+export interface SupplierPayments {
+  amount_paisa: Int8;
+  created_at: Generated<Timestamp>;
+  created_by: string;
+  id: Generated<string>;
+  idempotency_key: string | null;
+  purchase_id: string | null;
+  shift_id: string | null;
+  source: string;
+  supplier_id: string;
+}
+
+export interface Suppliers {
+  branch_id: string;
+  id: Generated<string>;
+  is_active: Generated<boolean>;
+  name: string;
+  notes: string | null;
+  phone: string | null;
+}
+
 export interface TaxCategories {
   code: string;
   id: Generated<string>;
@@ -648,7 +787,9 @@ export interface DB {
   devices: Devices;
   dining_tables: DiningTables;
   doc_counters: DocCounters;
+  expenses: Expenses;
   fiscal_jobs: FiscalJobs;
+  ingredients: Ingredients;
   item_modifier_groups: ItemModifierGroups;
   item_prices: ItemPrices;
   item_variants: ItemVariants;
@@ -666,9 +807,14 @@ export interface DB {
   payments: Payments;
   permissions: Permissions;
   pgmigrations: Pgmigrations;
+  pgmigrations_phase2: PgmigrationsPhase2;
   price_lists: PriceLists;
   print_jobs: PrintJobs;
   printers: Printers;
+  purchase_lines: PurchaseLines;
+  purchases: Purchases;
+  recipe_lines: RecipeLines;
+  recipes: Recipes;
   riders: Riders;
   role_permissions: RolePermissions;
   roles: Roles;
@@ -677,6 +823,12 @@ export interface DB {
   shifts: Shifts;
   station_printers: StationPrinters;
   stations: Stations;
+  stock_movements: StockMovements;
+  stock_on_hand: StockOnHand;
+  stocktake_lines: StocktakeLines;
+  stocktakes: Stocktakes;
+  supplier_payments: SupplierPayments;
+  suppliers: Suppliers;
   tax_categories: TaxCategories;
   tax_rules: TaxRules;
   users: Users;

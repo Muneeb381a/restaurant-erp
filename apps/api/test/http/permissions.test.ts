@@ -39,6 +39,7 @@ const ALL_PERMISSIONS = [
   'device.manage',
   'khata.collect',
   'customer.manage',
+  'expense.manage',
 ];
 const NOT_MANAGER = ['user.manage', 'tax.manage', 'settings.manage', 'device.manage'];
 
@@ -65,7 +66,7 @@ const GRANTS: Record<RoleCode, string[]> = {
   CAPTAIN: ['order.create', 'order.transfer', 'kot.reprint', 'bill.create'],
   KITCHEN: ['menu.availability'],
   STORE: ['stock.manage', 'report.view'],
-  ACCOUNTANT: ['report.view', 'report.financial', 'audit.view'],
+  ACCOUNTANT: ['report.view', 'report.financial', 'audit.view', 'expense.manage'],
 };
 
 const uuid = (): string => randomUUID();
@@ -424,6 +425,67 @@ const probes: Probe[] = [
     name: 'POST /fiscal/jobs/:id/retry',
     perm: 'tax.manage',
     call: (a) => a.post(`/fiscal/jobs/${uuid()}/retry`),
+  },
+  // ── inventory, purchasing, expenses (Phase 2)
+  {
+    name: 'GET /inventory/ingredients',
+    perm: 'report.view',
+    call: (a) => a.get('/inventory/ingredients'),
+  },
+  {
+    name: 'POST /inventory/ingredients',
+    perm: 'stock.manage',
+    call: (a) => a.post('/inventory/ingredients', { name: 'x' }),
+  },
+  {
+    name: 'PATCH /inventory/ingredients/:id',
+    perm: 'stock.manage',
+    call: (a) => a.patch(`/inventory/ingredients/${uuid()}`, { isActive: false }),
+  },
+  {
+    name: 'POST /inventory/wastage',
+    perm: 'stock.manage',
+    call: (a) =>
+      a
+        .post('/inventory/wastage', { ingredientId: uuid(), qty: 1, reasonCode: 'X' })
+        .set('Idempotency-Key', 'probe-key-0006'),
+  },
+  {
+    name: 'PUT /variants/:id/recipe',
+    perm: 'stock.manage',
+    call: (a) => a.put(`/variants/${uuid()}/recipe`, { lines: [] }),
+  },
+  {
+    name: 'POST /purchases',
+    perm: 'stock.manage',
+    call: (a) => a.post('/purchases', { lines: [] }).set('Idempotency-Key', 'probe-key-0007'),
+  },
+  {
+    name: 'POST /suppliers/:id/payments',
+    perm: 'expense.manage',
+    call: (a) =>
+      a
+        .post(`/suppliers/${uuid()}/payments`, { amountPaisa: 1, source: 'BANK' })
+        .set('Idempotency-Key', 'probe-key-0008'),
+  },
+  { name: 'POST /stocktakes', perm: 'stock.manage', call: (a) => a.post('/stocktakes') },
+  {
+    name: 'GET /inventory/food-cost',
+    perm: 'report.financial',
+    call: (a) => a.get('/inventory/food-cost?from=2026-01-01&to=2026-01-02'),
+  },
+  {
+    name: 'GET /expenses',
+    perm: 'expense.manage',
+    call: (a) => a.get('/expenses?from=2026-01-01&to=2026-01-02'),
+  },
+  {
+    name: 'POST /expenses',
+    perm: 'expense.manage',
+    call: (a) =>
+      a
+        .post('/expenses', { category: 'GAS', amountPaisa: 1, paidFrom: 'BANK' })
+        .set('Idempotency-Key', 'probe-key-0009'),
   },
 ];
 

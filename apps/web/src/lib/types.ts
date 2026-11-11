@@ -430,3 +430,90 @@ export interface TaxReadiness {
     ruleId?: string;
   }[];
 }
+
+export interface Ingredient {
+  id: string;
+  name: string;
+  nameUr: string | null;
+  category: string | null;
+  baseUom: 'g' | 'ml' | 'pcs';
+  purchaseUom: string;
+  purchaseToBase: string;
+  yieldBps: number;
+  isPrep: boolean;
+  isActive: boolean;
+  reorderLevel: string | null;
+  avgCostPerBase: string;
+  onHand: string;
+  stockValuePaisa: number;
+  needsReorder: boolean;
+}
+export interface Supplier {
+  id: string;
+  name: string;
+  phone: string | null;
+  purchasedPaisa: number;
+  paidPaisa: number;
+  owedPaisa: number;
+}
+export interface PurchaseRow {
+  id: string;
+  invoiceRef: string | null;
+  supplier: string | null;
+  totalPaisa: number;
+  paidPaisa: number;
+  owedPaisa: number;
+  createdAt: string;
+}
+export interface RecipeView {
+  outputQty: string;
+  costPaisa: number;
+  lines: { ingredientId: string; name: string; baseUom: string; qty: string; costPaisa: number }[];
+}
+export interface MarginRow {
+  variantId: string;
+  item: string;
+  variant: string;
+  costPaisa: number;
+  pricePaisa: number | null;
+  foodCostBps: number | null;
+}
+export interface StocktakeView {
+  id: string;
+  status: 'OPEN' | 'POSTED';
+  lines: {
+    ingredientId: string;
+    name: string;
+    baseUom: string;
+    systemQty: string;
+    countedQty: string | null;
+    varianceQty: string | null;
+  }[];
+}
+export interface FoodCostReport {
+  items: {
+    itemId: string;
+    name: string;
+    qty: number;
+    revenuePaisa: number;
+    costPaisa: number;
+    marginPaisa: number;
+    foodCostBps: number;
+    uncostedLines: number;
+  }[];
+  totals: { revenuePaisa: number; costPaisa: number; marginPaisa: number; foodCostBps: number };
+  wastagePaisa: number;
+  staffMealPaisa: number;
+}
+export interface ExpenseList {
+  items: {
+    id: string;
+    category: string;
+    amountPaisa: number;
+    paidFrom: string;
+    note: string | null;
+    createdAt: string;
+  }[];
+  totalPaisa: number;
+  byCategory: { category: string; totalPaisa: number }[];
+}

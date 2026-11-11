@@ -22,6 +22,7 @@ import { bumpVersion, lockOrder, nextDocNo } from '../orders/orders.repo';
 import { assertEditable, checkVersion, type Actor } from '../orders/orders.service';
 import { chargeKhata, khataForBill } from '../khata/khata.service';
 import { enqueueFiscal } from '../fiscal/fiscal.service';
+import { consumeForOrder } from '../inventory/inventory.service';
 import { loadTaxContext, taxFor, type TaxContext } from '../tax/tax.service';
 import { creditNotesOf } from './credit.service';
 import { enqueuePrintJob } from '../printing/print.service';
@@ -993,6 +994,8 @@ export async function settleBill(
       })
       .where('id', '=', billId)
       .execute();
+    // ingredients leave stock (and the line's food cost is stored) before the order is frozen
+    await consumeForOrder(trx, a, order.id, now);
     await trx
       .updateTable('orders')
       .set({ status: 'SETTLED', closed_at: now })

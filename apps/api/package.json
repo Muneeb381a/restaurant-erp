@@ -7,7 +7,7 @@
     "dev": "tsx watch --env-file-if-exists=../../.env src/main.ts",
     "start": "tsx --env-file-if-exists=../../.env src/main.ts",
     "worker": "tsx --env-file-if-exists=../../.env src/worker.ts",
-    "db:migrate": "tsx --env-file-if-exists=../../.env scripts/db-migrate.ts core",
+    "db:migrate": "tsx --env-file-if-exists=../../.env scripts/db-migrate.ts",
     "db:migrate:phase2": "tsx --env-file-if-exists=../../.env scripts/db-migrate.ts phase2",
     "db:reset": "tsx --env-file-if-exists=../../.env scripts/db-reset.ts",
     "db:codegen": "kysely-codegen --env-file=../../.env --dialect=postgres --out-file=src/db/types.ts --camel-case=false && tsx scripts/patch-types.ts",

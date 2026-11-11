@@ -67,7 +67,7 @@ export interface TestApp {
 }
 
 export async function startApp(): Promise<TestApp> {
-  const tdb = await startDb(['core']);
+  const tdb = await startDb(['core', 'phase2']);
   const kdb = new Kysely<DB>({
     dialect: new PostgresDialect({ pool: new pg.Pool({ connectionString: tdb.url, max: 6 }) }),
   });
