@@ -379,3 +379,115 @@ html[lang='ur'] body {
   margin-inline: 0.6rem;
   color: var(--gold);
 }
+
+/* ── phones: a data table becomes a stack of cards (cells are labelled by lib/responsive-tables.ts) */
+@media (max-width: 767px) {
+  .dt {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+  .dt table,
+  .dt tbody,
+  .dt tr,
+  .dt td {
+    display: block;
+    width: 100%;
+    min-width: 0 !important;
+  }
+  .dt thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .dt tbody tr {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.1rem 0.5rem;
+    margin-bottom: 0.75rem;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid #cfc8b8;
+    border-radius: 0.75rem;
+    background: #fff;
+  }
+  /* a further size of the same item sits attached under its card */
+  .dt tbody tr[data-cont] {
+    margin-top: -0.75rem;
+    border-top: 1px dashed #cfc8b8;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+  /* each cell: its column name small on top, the value under it, two cells per line */
+  .dt tbody td,
+  .dt tbody tr:last-child td {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 0.15rem;
+    min-width: 0;
+    padding: 0.35rem 0;
+    border: 0;
+    text-align: start;
+    position: static !important;
+    box-shadow: none !important;
+  }
+  .dt tbody td::before {
+    content: attr(data-label);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #6b6558;
+  }
+  /* two cells per line, numbers three per line */
+  .dt tbody td {
+    grid-column: span 3;
+  }
+  .dt tbody td.num {
+    grid-column: span 2;
+  }
+  /* no column name (actions, the title): full line, no label */
+  .dt tbody td[data-label=''],
+  .dt tbody td:first-child {
+    grid-column: 1 / -1;
+  }
+  .dt tbody td[data-label='']::before,
+  .dt tbody td:first-child::before {
+    display: none;
+  }
+  .dt tbody td[data-label=''] {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+  }
+  .dt tbody td:first-child {
+    font-size: 1.02rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid #eee7d6;
+  }
+  .dt tbody .num {
+    text-align: start;
+  }
+  .dt .cell-input {
+    width: 100%;
+    min-height: 2.5rem;
+    padding-inline: 0.5rem;
+    text-align: start;
+    border-color: #cfc8b8;
+    background: #fff;
+  }
+  /* an empty cell (e.g. no category) would only show its label */
+  .dt tbody td:empty {
+    display: none;
+  }
+  .dt tbody tr:hover td {
+    background: transparent;
+  }
+  .dt tbody tr[data-cont] td:first-child {
+    font-size: 0.95rem;
+  }
+}

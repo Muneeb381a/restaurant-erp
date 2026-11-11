@@ -17,6 +17,7 @@ import { ADMIN_SECTIONS } from '../admin/AdminLayout';
 import { useKitchenBoard } from '../kitchen/KitchenPage';
 import { setLanguage, type Lang } from '../../i18n';
 import { DayCloseDialog, ShiftDialog } from './ShiftDialogs';
+import { watchResponsiveTables } from '../../lib/responsive-tables';
 
 /** Auth guard + app frame: navigation by task, one Day/Shift control, account menu. */
 export function Shell() {
@@ -56,6 +57,7 @@ function SignedIn() {
   const tablesBilled = (floor.data?.tables ?? []).filter((x) => x.status === 'BILLED').length;
   const offline = (printers.data ?? []).filter((p) => p.state === 'OFFLINE');
   useEffect(() => startLive(qc), [qc]);
+  useEffect(() => watchResponsiveTables(), []); // wide tables become cards on phones
 
   const [floatOpen, setFloatOpen] = useState(false);
   // the dialog keeps its own copy: closing the shift empties the 'current shift' query
