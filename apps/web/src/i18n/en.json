@@ -468,7 +468,14 @@
     "en": "English (text)",
     "ur": "اردو (bitmap)",
     "languageHint": "Urdu receipts are printed as a picture so every printer can show them.",
-    "printOnSend": "Print kitchen tickets when an order is sent"
+    "printOnSend": "Print kitchen tickets when an order is sent",
+    "hint": "Restaurant details and the few switches that change how bills, receipts and the kitchen behave.",
+    "restaurantHint": "Printed at the top of every receipt.",
+    "billingHint": "Applied to every new bill.",
+    "roundHint": "Totals end in whole rupees; the difference is shown on the bill.",
+    "receiptHint": "How the printed bill looks.",
+    "kitchenHint": "What happens when an order goes to the kitchen.",
+    "printOnSendHint": "Turn off if the kitchen works from the screen only."
   },
   "orderActions": {
     "move": "Move to another table",
@@ -489,7 +496,14 @@
     "newRole": "New role",
     "code": "Code",
     "name": "Name",
-    "create": "Create"
+    "create": "Create",
+    "hint": "Decide what each kind of staff member may do. Changes apply the next time they sign in.",
+    "allowed": "{{count}} of {{total}} permissions allowed",
+    "unsaved": "Unsaved changes",
+    "all": "Select all",
+    "none": "Clear all",
+    "cannotGrant": "You do not hold this permission, so you cannot grant it.",
+    "noMatch": "No permission matches your search."
   },
   "taxPage": {
     "notice": "This software contains no tax rates. Enter the categories and rates given by your tax authority or accountant, name who confirmed each one, and only then switch tax on. Until then, bills carry no tax.",
