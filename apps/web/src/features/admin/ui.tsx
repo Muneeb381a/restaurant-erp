@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Icon, type IconName } from '../../components/Icon';
 import { Modal } from '../../components/Modal';
 import { ApiError } from '../../lib/api';
 
@@ -61,14 +62,63 @@ export function Toggle({
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!on)}
-      className={`relative inline-flex h-8 w-14 shrink-0 items-center rounded-full transition disabled:opacity-40 ${on ? 'bg-emerald-600' : 'bg-slate-300'}`}
+      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition disabled:opacity-40 ${on ? 'bg-emerald-600' : 'bg-slate-300'}`}
     >
       <span
-        className={`inline-block size-6 rounded-full bg-white shadow transition ${on ? 'translate-x-7 rtl:-translate-x-7' : 'translate-x-1 rtl:-translate-x-1'}`}
+        className={`inline-block size-5 rounded-full bg-white shadow transition ${on ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'}`}
       />
     </button>
   );
 }
 
-export const th = 'px-3 py-2 text-start text-sm font-semibold text-slate-600';
-export const td = 'px-3 py-2 align-top';
+// the .dt table styles (index.css) set header and cell look; these stay for places that still pass classes
+export const th = '';
+export const td = '';
+
+/** Title, one plain sentence about the page, and its main actions: the head of every admin screen. */
+export function PageHead({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-end gap-3">
+      <div className="me-auto min-w-0">
+        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+        {hint && <p className="hint max-w-2xl">{hint}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** A table row that says what is missing and what to do next, instead of a bare "Nothing yet". */
+export function EmptyRow({
+  cols,
+  icon,
+  text,
+  children,
+}: {
+  cols: number;
+  icon: IconName;
+  text: string;
+  children?: ReactNode;
+}) {
+  return (
+    <tr>
+      <td colSpan={cols} className="!py-10 text-center">
+        <div className="mx-auto flex max-w-md flex-col items-center gap-3 text-slate-600">
+          <span className="flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+            <Icon name={icon} size={24} />
+          </span>
+          <p>{text}</p>
+          {children}
+        </div>
+      </td>
+    </tr>
+  );
+}

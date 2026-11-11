@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api';
 import { usePrinterHealth } from '../../lib/queries';
 import type { PrinterRow, PrintJobRow } from '../../lib/types';
-import { Dialog, ErrorText, Field, Toggle, td, th } from './ui';
+import { Icon } from '../../components/Icon';
+import { Dialog, EmptyRow, ErrorText, Field, PageHead, Toggle } from './ui';
 
 interface StationRow {
   id: string;
@@ -13,10 +14,10 @@ interface StationRow {
 }
 
 const STATE_STYLE: Record<string, string> = {
-  OK: 'bg-emerald-100 text-emerald-800',
-  OFFLINE: 'bg-rose-100 text-rose-800',
-  UNKNOWN: 'bg-slate-100 text-slate-600',
-  INACTIVE: 'bg-slate-100 text-slate-500',
+  OK: 'chip-ok',
+  OFFLINE: 'chip-bad',
+  UNKNOWN: 'chip-mute',
+  INACTIVE: 'chip-mute',
 };
 
 export function PrintersAdmin() {
@@ -99,12 +100,12 @@ export function PrintersAdmin() {
 
   return (
     <div className="space-y-4 p-4">
-      <div className="flex items-center gap-2">
-        <h2 className="me-auto text-xl font-bold">{t('admin.printers')}</h2>
+      <PageHead title={t('admin.printers')} hint={t('admin.printersPage.hint')}>
         <button className="btn-primary" onClick={() => setEditing('new')}>
-          + {t('admin.printersPage.add')}
+          <Icon name="plus" size={18} />
+          {t('admin.printersPage.add')}
         </button>
-      </div>
+      </PageHead>
       {notice && (
         <p role="status" className="rounded-lg bg-emerald-50 p-3 text-emerald-800">
           {notice}
@@ -112,20 +113,23 @@ export function PrintersAdmin() {
       )}
       <ErrorText error={error} />
 
-      <div className="card overflow-x-auto">
-        <table className="w-full min-w-[44rem] text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50">
+      <div className="dt">
+        <table className="min-w-[48rem]">
+          <thead>
             <tr>
-              <th className={th}>{t('admin.name')}</th>
-              <th className={th}>{t('admin.printersPage.connection')}</th>
-              <th className={th}>{t('admin.printersPage.paper')}</th>
-              <th className={th}>{t('admin.printersPage.state')}</th>
-              <th className={th}>{t('admin.printersPage.queued')}</th>
-              <th className={th}>{t('admin.active')}</th>
-              <th className={th} />
+              <th>{t('admin.name')}</th>
+              <th>{t('admin.printersPage.connection')}</th>
+              <th>{t('admin.printersPage.paper')}</th>
+              <th>{t('admin.printersPage.state')}</th>
+              <th>{t('admin.printersPage.queued')}</th>
+              <th>{t('admin.active')}</th>
+              <th />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
+            {(printers.data ?? []).length === 0 && (
+              <EmptyRow cols={7} icon="printer" text={t('admin.printersPage.empty')} />
+            )}
             {(printers.data ?? []).map((p) => {
               const h = healthOf(p.id);
               const label = h
@@ -135,36 +139,37 @@ export function PrintersAdmin() {
                 : '';
               return (
                 <tr key={p.id}>
-                  <td className={td}>
-                    <div className="font-medium">{p.name}</div>
-                    <div className="text-xs text-slate-500">{p.kind}</div>
+                  <td>
+                    <span className="flex items-center gap-3">
+                      <span className="flex size-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                        <Icon name="printer" size={20} />
+                      </span>
+                      <span className="name">
+                        {p.name}
+                        <span className="sub">{p.kind}</span>
+                      </span>
+                    </span>
                   </td>
-                  <td className={td}>
+                  <td>
                     {p.conn_type}
                     {p.host ? ` · ${p.host}:${p.port}` : ''}
                   </td>
-                  <td className={td}>{p.paper_mm}</td>
-                  <td className={td}>
-                    {h && (
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-semibold ${STATE_STYLE[h.state]}`}
-                      >
-                        {label}
-                      </span>
-                    )}
+                  <td className="num">{p.paper_mm}</td>
+                  <td>
+                    {h && <span className={STATE_STYLE[h.state]}>{label}</span>}
                     {h?.lastError && (
                       <div className="mt-1 max-w-56 text-xs text-rose-700">{h.lastError}</div>
                     )}
                   </td>
-                  <td className={td}>{h?.queued ?? 0}</td>
-                  <td className={td}>
+                  <td className="num">{h?.queued ?? 0}</td>
+                  <td>
                     <Toggle
                       on={p.is_active}
                       label={`${t('admin.active')} ${p.name}`}
                       onChange={(on) => toggle.mutate({ id: p.id, on })}
                     />
                   </td>
-                  <td className={`${td} whitespace-nowrap`}>
+                  <td className="whitespace-nowrap text-end">
                     <button
                       className="btn-secondary me-1"
                       disabled={!p.is_active || testPage.isPending}
@@ -184,46 +189,53 @@ export function PrintersAdmin() {
         </table>
       </div>
 
-      <section className="card space-y-2 p-4">
+      <section className="space-y-2">
         <h3 className="text-lg font-semibold">{t('admin.printersPage.stations')}</h3>
-        <div className="overflow-x-auto">
-          <table className="text-sm">
+        <p className="hint">{t('admin.printersPage.stationsHint')}</p>
+        <div className="dt">
+          <table>
             <thead>
               <tr>
-                <th className={th}>{t('admin.station')}</th>
+                <th>{t('admin.station')}</th>
                 {kotPrinters.map((p) => (
-                  <th key={p.id} className={th}>
-                    {p.name}
-                  </th>
+                  <th key={p.id}>{p.name}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {(stations.data ?? []).map((s, i) => {
-                const mapped = pending[s.id] ?? mappings[i]?.data ?? [];
-                return (
-                  <tr key={s.id}>
-                    <td className={`${td} font-medium`}>{s.code}</td>
-                    {kotPrinters.map((p) => (
-                      <td key={p.id} className={td}>
-                        <input
-                          type="checkbox"
-                          className="size-6"
-                          aria-label={`${s.code} → ${p.name}`}
-                          checked={mapped.includes(p.id)}
-                          onChange={(e) => {
-                            const printerIds = e.target.checked
-                              ? [...mapped, p.id]
-                              : mapped.filter((x) => x !== p.id);
-                            setPending((prev) => ({ ...prev, [s.id]: printerIds }));
-                            map.mutate({ stationId: s.id, printerIds });
-                          }}
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
+              {kotPrinters.length > 0 &&
+                (stations.data ?? []).map((s, i) => {
+                  const mapped = pending[s.id] ?? mappings[i]?.data ?? [];
+                  return (
+                    <tr key={s.id}>
+                      <td className="name">{s.code}</td>
+                      {kotPrinters.map((p) => (
+                        <td key={p.id}>
+                          <input
+                            type="checkbox"
+                            className="size-6 accent-emerald-700"
+                            aria-label={`${s.code} → ${p.name}`}
+                            checked={mapped.includes(p.id)}
+                            onChange={(e) => {
+                              const printerIds = e.target.checked
+                                ? [...mapped, p.id]
+                                : mapped.filter((x) => x !== p.id);
+                              setPending((prev) => ({ ...prev, [s.id]: printerIds }));
+                              map.mutate({ stationId: s.id, printerIds });
+                            }}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              {kotPrinters.length === 0 && (
+                <EmptyRow
+                  cols={1 + kotPrinters.length}
+                  icon="printer"
+                  text={t('admin.printersPage.noKot')}
+                />
+              )}
             </tbody>
           </table>
         </div>
@@ -232,7 +244,10 @@ export function PrintersAdmin() {
       <section className="card space-y-2 p-4">
         <h3 className="text-lg font-semibold">{t('admin.printersPage.failedJobs')}</h3>
         {(failed.data ?? []).length === 0 ? (
-          <p className="text-slate-500">{t('admin.printersPage.noFailed')}</p>
+          <p className="flex items-center gap-2 text-emerald-800">
+            <Icon name="check" size={18} />
+            {t('admin.printersPage.noFailed')}
+          </p>
         ) : (
           <ul className="divide-y divide-slate-100 text-sm">
             {(failed.data ?? []).map((j) => (

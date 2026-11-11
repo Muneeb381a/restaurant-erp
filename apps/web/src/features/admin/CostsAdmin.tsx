@@ -5,7 +5,7 @@ import { api } from '../../lib/api';
 import { formatRs, ltr, parseRs } from '../../lib/money';
 import { can, useMe } from '../../lib/queries';
 import type { ExpenseList, FoodCostReport } from '../../lib/types';
-import { ErrorText, Field, td, th } from './ui';
+import { EmptyRow, ErrorText, Field, PageHead } from './ui';
 
 const SOURCES = ['DRAWER_CASH', 'OWNER_CASH', 'BANK'] as const;
 const today = (): string => new Date().toISOString().slice(0, 10);
@@ -60,25 +60,26 @@ export function CostsAdmin() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <h1 className="me-auto text-2xl font-bold">{t('costPage.title')}</h1>
-        <Field label={t('costPage.from')}>
-          <input
-            type="date"
-            className="input w-auto"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-          />
-        </Field>
-        <Field label={t('costPage.to')}>
-          <input
-            type="date"
-            className="input w-auto"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-          />
-        </Field>
-      </div>
+      <PageHead title={t('costPage.title')} hint={t('costPage.hint')}>
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label={t('costPage.from')}>
+            <input
+              type="date"
+              className="input w-auto"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+            />
+          </Field>
+          <Field label={t('costPage.to')}>
+            <input
+              type="date"
+              className="input w-auto"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+            />
+          </Field>
+        </div>
+      </PageHead>
 
       {food.data && (
         <section className="card space-y-3 p-4">
@@ -112,35 +113,56 @@ export function CostsAdmin() {
               <span className="text-amber-800">{t('costPage.uncosted', { n: uncosted })}</span>
             )}
           </div>
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th className={th}>{t('costPage.item')}</th>
-                <th className={th}>{t('costPage.qty')}</th>
-                <th className={th}>{t('costPage.revenue')}</th>
-                <th className={th}>{t('costPage.cost')}</th>
-                <th className={th}>{t('costPage.pct')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {food.data.items.map((i) => (
-                <tr key={i.itemId} className="border-t border-slate-100">
-                  <td className={td}>{i.name}</td>
-                  <td className={td}>{ltr(String(i.qty))}</td>
-                  <td className={td}>{ltr(formatRs(i.revenuePaisa))}</td>
-                  <td className={td}>{ltr(formatRs(i.costPaisa))}</td>
-                  <td className={td}>
-                    {i.costPaisa > 0 ? ltr(`${(i.foodCostBps / 100).toFixed(1)}%`) : '—'}
-                  </td>
+          <div className="dt">
+            <table className="min-w-[32rem]">
+              <thead>
+                <tr>
+                  <th>{t('costPage.item')}</th>
+                  <th className="num">{t('costPage.qty')}</th>
+                  <th className="num">{t('costPage.revenue')}</th>
+                  <th className="num">{t('costPage.cost')}</th>
+                  <th className="num">{t('costPage.pct')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {food.data.items.map((i) => {
+                  const tone =
+                    i.costPaisa === 0
+                      ? ''
+                      : i.foodCostBps <= 3000
+                        ? 'chip-ok'
+                        : i.foodCostBps <= 4000
+                          ? 'chip-warn'
+                          : 'chip-bad';
+                  return (
+                    <tr key={i.itemId}>
+                      <td className="name">{i.name}</td>
+                      <td className="num">{ltr(String(i.qty))}</td>
+                      <td className="num">{ltr(formatRs(i.revenuePaisa))}</td>
+                      <td className="num">{ltr(formatRs(i.costPaisa))}</td>
+                      <td className="num">
+                        {i.costPaisa > 0 ? (
+                          <span className={tone}>
+                            {ltr(`${(i.foodCostBps / 100).toFixed(1)}%`)}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {food.data.items.length === 0 && (
+                  <EmptyRow cols={5} icon="chart" text={t('costPage.noSales')} />
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
 
       <section className="card space-y-3 p-4">
-        <h2 className="text-lg font-bold">{t('costPage.expenses')}</h2>
+        <h2 className="text-lg font-semibold">{t('costPage.expenses')}</h2>
         <div className="flex flex-wrap items-end gap-2">
           <Field label={t('costPage.category')}>
             <input
@@ -189,19 +211,35 @@ export function CostsAdmin() {
         <ErrorText error={add.error} />
         {expenses.data && (
           <>
-            <div className="flex justify-between font-semibold">
+            <div className="flex items-baseline justify-between rounded-lg bg-slate-100 px-4 py-3 text-lg font-semibold">
               <span>{t('costPage.total')}</span>
               <span data-testid="expense-total">{ltr(formatRs(expenses.data.totalPaisa))}</span>
             </div>
-            <ul className="divide-y divide-slate-100">
-              {expenses.data.items.map((e) => (
-                <li key={e.id} className="flex items-center gap-2 py-2">
-                  <span className="rounded bg-slate-100 px-2 text-xs">{e.category}</span>
-                  <span className="me-auto text-sm text-slate-600">{e.note}</span>
-                  <span>{ltr(formatRs(e.amountPaisa))}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="dt">
+              <table className="min-w-[28rem]">
+                <thead>
+                  <tr>
+                    <th>{t('costPage.category')}</th>
+                    <th>{t('costPage.note')}</th>
+                    <th className="num">{t('costPage.amount')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expenses.data.items.map((e) => (
+                    <tr key={e.id}>
+                      <td>
+                        <span className="chip-mute">{e.category}</span>
+                      </td>
+                      <td className="text-slate-700">{e.note}</td>
+                      <td className="num">{ltr(formatRs(e.amountPaisa))}</td>
+                    </tr>
+                  ))}
+                  {expenses.data.items.length === 0 && (
+                    <EmptyRow cols={3} icon="cash" text={t('costPage.noExpenses')} />
+                  )}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
       </section>
@@ -211,9 +249,9 @@ export function CostsAdmin() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-slate-50 p-3">
-      <div className="text-xl font-bold">{value}</div>
-      <div className="text-sm text-slate-500">{label}</div>
+    <div className="rounded-lg border border-slate-300 bg-slate-50 p-3 text-start">
+      <div className="micro">{label}</div>
+      <div className="money text-xl font-semibold">{value}</div>
     </div>
   );
 }

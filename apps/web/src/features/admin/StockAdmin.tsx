@@ -6,7 +6,8 @@ import { formatRs, ltr } from '../../lib/money';
 import { can, useMe } from '../../lib/queries';
 import type { Ingredient, StocktakeView } from '../../lib/types';
 import { parseSignedRs } from './DealEditor';
-import { Dialog, ErrorText, Field, td, th } from './ui';
+import { Icon } from '../../components/Icon';
+import { Dialog, EmptyRow, ErrorText, Field, PageHead } from './ui';
 
 const newKey = (): string => `ui-${crypto.randomUUID()}`;
 export const useIngredients = (search = '', low = false) =>
@@ -34,81 +35,73 @@ export function StockAdmin() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="me-auto text-2xl font-bold">{t('stockPage.title')}</h1>
-        <input
-          className="input w-56"
-          placeholder={t('stockPage.search')}
-          aria-label={t('stockPage.search')}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <label className="flex min-h-touch items-center gap-2">
-          <input
-            type="checkbox"
-            className="size-5"
-            checked={low}
-            onChange={(e) => setLow(e.target.checked)}
-          />
-          {t('stockPage.lowOnly')}
-        </label>
+      <PageHead title={t('stockPage.title')} hint={t('stockPage.hint')}>
         {write && (
           <>
             <button className="btn-secondary" onClick={() => setDialog('waste')}>
               {t('stockPage.wastage')}
             </button>
             <button className="btn-primary" onClick={() => setDialog('new')}>
-              + {t('stockPage.newIngredient')}
+              <Icon name="plus" size={18} />
+              {t('stockPage.newIngredient')}
             </button>
           </>
         )}
+      </PageHead>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full max-w-xs">
+          <Icon
+            name="search"
+            size={18}
+            className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-slate-500"
+          />
+          <input
+            className="input ps-10"
+            placeholder={t('stockPage.search')}
+            aria-label={t('stockPage.search')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <button
+          className="seg-item border border-slate-400 bg-white"
+          aria-pressed={low}
+          onClick={() => setLow(!low)}
+        >
+          <Icon name="alert" size={16} className="me-1.5" />
+          {t('stockPage.lowOnly')}
+        </button>
       </div>
 
-      <div className="card overflow-x-auto">
-        <table className="w-full">
+      <div className="dt">
+        <table className="min-w-[40rem]">
           <thead>
             <tr>
-              <th className={th}>{t('stockPage.name')}</th>
-              <th className={th}>{t('stockPage.onHand')}</th>
-              <th className={th}>{t('stockPage.avgCost')}</th>
-              <th className={th}>{t('stockPage.value')}</th>
-              <th className={th} />
+              <th>{t('stockPage.name')}</th>
+              <th className="num">{t('stockPage.onHand')}</th>
+              <th className="num">{t('stockPage.avgCost')}</th>
+              <th className="num">{t('stockPage.value')}</th>
+              <th />
             </tr>
           </thead>
           <tbody>
             {(list.data ?? []).map((i) => (
-              <tr
-                key={i.id}
-                className="border-t border-slate-100"
-                data-testid={`ingredient-${i.name}`}
-              >
-                <td className={td}>
+              <tr key={i.id} data-testid={`ingredient-${i.name}`}>
+                <td className="name">
                   {i.name}
-                  {i.isPrep && <span className="ms-2 rounded bg-slate-100 px-1 text-xs">prep</span>}
+                  {i.isPrep && <span className="chip-info ms-2">prep</span>}
                 </td>
-                <td
-                  className={`${td} ${Number(i.onHand) < 0 ? 'font-semibold text-rose-700' : ''}`}
-                >
+                <td className={`num ${Number(i.onHand) < 0 ? 'font-semibold !text-rose-700' : ''}`}>
                   {ltr(`${i.onHand} ${i.baseUom}`)}
                 </td>
-                <td className={td}>{ltr(Number(i.avgCostPerBase).toFixed(2))}</td>
-                <td className={td}>{ltr(formatRs(i.stockValuePaisa))}</td>
-                <td className={td}>
-                  {i.needsReorder && (
-                    <span className="rounded bg-amber-100 px-2 py-1 text-xs text-amber-900">
-                      {t('stockPage.low')}
-                    </span>
-                  )}
+                <td className="num">{ltr(Number(i.avgCostPerBase).toFixed(2))}</td>
+                <td className="num">{ltr(formatRs(i.stockValuePaisa))}</td>
+                <td className="text-end">
+                  {i.needsReorder && <span className="chip-warn">{t('stockPage.low')}</span>}
                 </td>
               </tr>
             ))}
-            {list.data?.length === 0 && (
-              <tr>
-                <td colSpan={5} className="p-4 text-slate-500">
-                  {t('stockPage.none')}
-                </td>
-              </tr>
-            )}
+            {list.data?.length === 0 && <EmptyRow cols={5} icon="box" text={t('stockPage.none')} />}
           </tbody>
         </table>
       </div>

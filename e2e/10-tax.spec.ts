@@ -115,8 +115,8 @@ test('the bill total follows how it is paid: 16 % for cash, 8 % for card', async
   await page.getByRole('button', { name: /^Take payment/ }).click();
   await expect(page.getByRole('heading', { name: 'Paid' })).toBeVisible();
   await page.getByRole('link', { name: 'Bills', exact: true }).click();
-  await expect(page.getByRole('link', { name: /Rs 432/ }).first()).toBeVisible();
-  await expect(page.getByRole('link', { name: /Rs 464/ }).first()).toBeVisible();
+  await expect(page.getByRole('row', { name: /Rs 432/ }).first()).toBeVisible();
+  await expect(page.getByRole('row', { name: /Rs 464/ }).first()).toBeVisible();
 });
 
 test('the owner can switch tax off again; nothing else changes', async ({ page }) => {

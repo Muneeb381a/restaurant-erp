@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
 import { can, useMe } from '../../lib/queries';
-import { ErrorText, Field } from './ui';
+import { EmptyRow, ErrorText, Field } from './ui';
 
 interface Summary {
   pending: number;
@@ -116,44 +116,57 @@ export function FiscalAdmin() {
       <section className="card space-y-2 p-4">
         <h2 className="text-lg font-bold">{t('fiscalPage.queue')}</h2>
         <ErrorText error={retry.error} />
-        <ul className="divide-y divide-slate-100">
-          {(jobs.data ?? []).length === 0 && (
-            <li className="py-2 text-slate-500">{t('fiscalPage.empty')}</li>
-          )}
-          {(jobs.data ?? []).map((j) => (
-            <li key={j.id} className="flex flex-wrap items-center gap-2 py-2">
-              <span className="font-medium">
-                {j.docType === 'BILL' ? t('fiscalPage.bill') : t('fiscalPage.creditNote')}
-              </span>
-              <span
-                className={`rounded px-2 text-xs ${j.permanent ? 'bg-rose-100 text-rose-800' : 'bg-slate-100'}`}
-              >
-                {j.permanent
-                  ? t('fiscalPage.rejected')
-                  : j.status === 'FAILED'
-                    ? t('fiscalPage.retrying')
-                    : t('fiscalPage.pending')}
-              </span>
-              <span className="text-xs text-slate-500">
-                {t('fiscalPage.attempts', { n: j.attempts })}
-              </span>
-              {j.lastError && (
-                <span className="min-w-0 flex-1 truncate text-sm text-slate-600">
-                  {j.lastError}
-                </span>
+        <div className="dt">
+          <table className="min-w-[32rem]">
+            <thead>
+              <tr>
+                <th>{t('fiscalPage.document')}</th>
+                <th>{t('fiscalPage.status')}</th>
+                <th className="num">{t('fiscalPage.attemptsHead')}</th>
+                <th>{t('fiscalPage.lastError')}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {(jobs.data ?? []).length === 0 && (
+                <EmptyRow cols={5} icon="check" text={t('fiscalPage.empty')} />
               )}
-              {manage && (
-                <button
-                  className="btn-secondary ms-auto"
-                  disabled={retry.isPending}
-                  onClick={() => retry.mutate(j.id)}
-                >
-                  {t('admin.retry')}
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
+              {(jobs.data ?? []).map((j) => (
+                <tr key={j.id}>
+                  <td className="name">
+                    {j.docType === 'BILL' ? t('fiscalPage.bill') : t('fiscalPage.creditNote')}
+                  </td>
+                  <td>
+                    <span
+                      className={
+                        j.permanent ? 'chip-bad' : j.status === 'FAILED' ? 'chip-warn' : 'chip-info'
+                      }
+                    >
+                      {j.permanent
+                        ? t('fiscalPage.rejected')
+                        : j.status === 'FAILED'
+                          ? t('fiscalPage.retrying')
+                          : t('fiscalPage.pending')}
+                    </span>
+                  </td>
+                  <td className="num">{j.attempts}</td>
+                  <td className="max-w-[18rem] truncate text-slate-700">{j.lastError}</td>
+                  <td className="text-end">
+                    {manage && (
+                      <button
+                        className="btn-secondary"
+                        disabled={retry.isPending}
+                        onClick={() => retry.mutate(j.id)}
+                      >
+                        {t('admin.retry')}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="card space-y-3 p-4">

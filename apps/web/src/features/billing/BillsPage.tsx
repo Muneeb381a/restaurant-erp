@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
@@ -10,6 +10,7 @@ import type { BillListItem } from '../../lib/types';
 /** Find a bill (by number and/or business day) to view, reprint or refund it. */
 export function BillsPage() {
   const { t } = useTranslation();
+  const nav = useNavigate();
   const [date, setDate] = useState('');
   const [billNo, setBillNo] = useState('');
   const query = new URLSearchParams({
@@ -44,27 +45,51 @@ export function BillsPage() {
           />
         </label>
       </div>
-      <ul className="card divide-y divide-slate-200">
-        {(list.data ?? []).map((b) => (
-          <li key={b.id}>
-            <Link
-              to={`/order/${b.orderId}/pay`}
-              className="flex min-h-touch items-center gap-3 p-3"
-            >
-              <span className="font-semibold">{ltr(`#${b.billNo}`)}</span>
-              <span className="text-sm text-slate-600">{ltr(b.businessDate)}</span>
-              <span className={`ms-auto ${b.status === 'SETTLED' ? 'chip-ok' : 'chip-warn'}`}>
-                {t(`refund.status.${b.status}`)}
-              </span>
-              <span className="money w-24 text-end font-semibold">
-                {ltr(formatRs(b.totalPaisa))}
-              </span>
-              <Icon name="chevronRight" size={18} data-flip className="text-slate-500" />
-            </Link>
-          </li>
-        ))}
-        {list.data?.length === 0 && <li className="p-4 text-slate-600">{t('refund.none')}</li>}
-      </ul>
+      <div className="dt">
+        <table className="min-w-[28rem]">
+          <thead>
+            <tr>
+              <th>{t('refund.billNo')}</th>
+              <th>{t('refund.date')}</th>
+              <th>{t('refund.state')}</th>
+              <th className="num">{t('bill.total')}</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {(list.data ?? []).map((b) => (
+              <tr
+                key={b.id}
+                className="cursor-pointer"
+                onClick={() => nav(`/order/${b.orderId}/pay`)}
+              >
+                <td className="name">
+                  <Link to={`/order/${b.orderId}/pay`} onClick={(e) => e.stopPropagation()}>
+                    {ltr(`#${b.billNo}`)}
+                  </Link>
+                </td>
+                <td className="money text-slate-700">{ltr(b.businessDate)}</td>
+                <td>
+                  <span className={b.status === 'SETTLED' ? 'chip-ok' : 'chip-warn'}>
+                    {t(`refund.status.${b.status}`)}
+                  </span>
+                </td>
+                <td className="num font-semibold">{ltr(formatRs(b.totalPaisa))}</td>
+                <td className="w-8 text-slate-500">
+                  <Icon name="chevronRight" size={18} data-flip />
+                </td>
+              </tr>
+            ))}
+            {list.data?.length === 0 && (
+              <tr>
+                <td colSpan={5} className="!py-10 text-center text-slate-600">
+                  {t('refund.none')}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

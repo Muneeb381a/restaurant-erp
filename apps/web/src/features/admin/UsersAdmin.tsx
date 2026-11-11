@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Icon } from '../../components/Icon';
 import { api } from '../../lib/api';
 import type { RoleRow, UserRow } from '../../lib/types';
-import { Dialog, ErrorText, Field, Toggle, td, th } from './ui';
+import { Avatar } from '../shell/Shell';
+import { Dialog, EmptyRow, ErrorText, Field, PageHead, Toggle } from './ui';
 
 export function UsersAdmin() {
   const { t } = useTranslation();
@@ -36,44 +38,54 @@ export function UsersAdmin() {
 
   return (
     <div className="space-y-4 p-4">
-      <div className="flex items-center gap-2">
-        <h2 className="me-auto text-xl font-bold">{t('admin.users')}</h2>
+      <PageHead title={t('admin.users')} hint={t('admin.usersPage.hint')}>
         <button className="btn-primary" onClick={() => setDialog('new')}>
-          + {t('admin.usersPage.newUser')}
+          <Icon name="plus" size={18} />
+          {t('admin.usersPage.newUser')}
         </button>
-      </div>
+      </PageHead>
       <ErrorText error={error} />
-      <div className="card overflow-x-auto">
-        <table className="w-full min-w-[40rem] text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50">
+      <div className="dt">
+        <table className="min-w-[44rem]">
+          <thead>
             <tr>
-              <th className={th}>{t('admin.usersPage.fullName')}</th>
-              <th className={th}>{t('admin.usersPage.username')}</th>
-              <th className={th}>{t('admin.usersPage.role')}</th>
-              <th className={th}>{t('admin.active')}</th>
-              <th className={th} />
+              <th>{t('admin.usersPage.fullName')}</th>
+              <th>{t('admin.usersPage.role')}</th>
+              <th>{t('admin.active')}</th>
+              <th />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {(users.data ?? []).map((u) => (
-              <tr key={u.id} className={u.is_active ? '' : 'text-slate-400'}>
-                <td className={`${td} font-medium`}>{u.full_name}</td>
-                <td className={td}>{u.username}</td>
-                <td className={td}>{u.role_code}</td>
-                <td className={td}>
+              <tr key={u.id} className={u.is_active ? '' : 'opacity-60'}>
+                <td>
+                  <span className="flex items-center gap-3">
+                    <Avatar name={u.full_name} size={36} />
+                    <span className="name">
+                      {u.full_name}
+                      <span className="sub">{u.username}</span>
+                    </span>
+                  </span>
+                </td>
+                <td>
+                  <span className="chip-mute">
+                    {t(`role.${u.role_code}`, { defaultValue: u.role_code })}
+                  </span>
+                  {lockedNow(u) && (
+                    <span className="chip-bad ms-2">{t('admin.usersPage.locked')}</span>
+                  )}
+                </td>
+                <td>
                   <Toggle
                     on={u.is_active}
                     label={`${t('admin.active')} ${u.username}`}
                     onChange={(on) => toggle.mutate({ id: u.id, on })}
                   />
                 </td>
-                <td className={`${td} whitespace-nowrap`}>
+                <td className="whitespace-nowrap text-end">
                   {lockedNow(u) && (
-                    <button
-                      className="btn-secondary me-1 text-rose-700"
-                      onClick={() => unlock.mutate(u.id)}
-                    >
-                      {t('admin.usersPage.locked')} · {t('admin.usersPage.unlock')}
+                    <button className="btn-danger-quiet me-1" onClick={() => unlock.mutate(u.id)}>
+                      {t('admin.usersPage.unlock')}
                     </button>
                   )}
                   <button
@@ -86,6 +98,9 @@ export function UsersAdmin() {
                 </td>
               </tr>
             ))}
+            {users.isSuccess && users.data.length === 0 && (
+              <EmptyRow cols={4} icon="user" text={t('admin.usersPage.empty')} />
+            )}
           </tbody>
         </table>
       </div>

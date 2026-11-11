@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
 import type { AdminMenu, MarginRow, RecipeView } from '../../lib/types';
-import { Dialog, ErrorText, td, th } from './ui';
+import { Icon } from '../../components/Icon';
+import { Dialog, EmptyRow, ErrorText, PageHead } from './ui';
 import { useIngredients } from './StockAdmin';
 
 interface Row {
@@ -26,6 +27,8 @@ export function RecipesAdmin() {
     queryFn: async () => (await api<{ items: MarginRow[] }>('/inventory/margins')).items,
   });
   const [editing, setEditing] = useState<Row | null>(null);
+  const [search, setSearch] = useState('');
+  const [missing, setMissing] = useState(false);
 
   const withRecipe = new Map((margins.data ?? []).map((m) => [m.variantId, m]));
   const rows: Row[] = (menu.data?.items ?? [])
@@ -44,53 +47,101 @@ export function RecipesAdmin() {
       }),
     );
 
+  const shown = rows.filter(
+    (r) =>
+      (!missing || r.costPaisa === null) &&
+      (!search.trim() ||
+        `${r.item} ${r.variant}`.toLowerCase().includes(search.trim().toLowerCase())),
+  );
+  const withoutRecipe = rows.filter((r) => r.costPaisa === null).length;
+
   return (
     <div className="mx-auto max-w-4xl space-y-4 p-4">
-      <h1 className="text-2xl font-bold">{t('recipePage.title')}</h1>
-      <p className="text-sm text-slate-600">{t('recipePage.hint')}</p>
-      <div className="card overflow-x-auto">
-        <table className="w-full">
+      <PageHead title={t('recipePage.title')} hint={t('recipePage.hint')} />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full max-w-xs">
+          <Icon
+            name="search"
+            size={18}
+            className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-slate-500"
+          />
+          <input
+            className="input ps-10"
+            placeholder={t('common.search')}
+            aria-label={t('common.search')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <button
+          className="seg-item border border-slate-400 bg-white"
+          aria-pressed={missing}
+          onClick={() => setMissing(!missing)}
+        >
+          {t('recipePage.onlyMissing', { count: withoutRecipe })}
+        </button>
+      </div>
+      <div className="dt">
+        <table className="min-w-[36rem]">
           <thead>
             <tr>
-              <th className={th}>{t('recipePage.item')}</th>
-              <th className={th}>{t('recipePage.cost')}</th>
-              <th className={th}>{t('recipePage.price')}</th>
-              <th className={th}>{t('recipePage.foodCost')}</th>
-              <th className={th} />
+              <th>{t('recipePage.item')}</th>
+              <th className="num">{t('recipePage.cost')}</th>
+              <th className="num">{t('recipePage.price')}</th>
+              <th className="num">{t('recipePage.foodCost')}</th>
+              <th />
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr
-                key={r.variantId}
-                className="border-t border-slate-100"
-                data-testid={`recipe-row-${r.item}${r.variant ? `-${r.variant}` : ''}`}
-              >
-                <td className={td}>
-                  {r.item} {r.variant && <span className="text-slate-500">({r.variant})</span>}
-                </td>
-                <td className={td}>
-                  {r.costPaisa === null ? (
-                    <span className="text-slate-400">{t('recipePage.noRecipe')}</span>
-                  ) : (
-                    ltr(formatRs(r.costPaisa))
-                  )}
-                </td>
-                <td className={td}>{r.pricePaisa === null ? '—' : ltr(formatRs(r.pricePaisa))}</td>
-                <td className={td}>
-                  {r.foodCostBps === null ? '—' : ltr(`${(r.foodCostBps / 100).toFixed(1)}%`)}
-                </td>
-                <td className={td}>
-                  <button
-                    className="btn-secondary"
-                    onClick={() => setEditing(r)}
-                    aria-label={`${t('recipePage.edit')} ${r.item}`}
-                  >
-                    {t('recipePage.edit')}
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {shown.map((r) => {
+              const bps = r.foodCostBps;
+              const tone =
+                bps === null
+                  ? ''
+                  : bps <= 3000
+                    ? 'chip-ok'
+                    : bps <= 4000
+                      ? 'chip-warn'
+                      : 'chip-bad';
+              return (
+                <tr
+                  key={r.variantId}
+                  data-testid={`recipe-row-${r.item}${r.variant ? `-${r.variant}` : ''}`}
+                >
+                  <td className="name">
+                    {r.item}{' '}
+                    {r.variant && <span className="font-normal text-slate-600">({r.variant})</span>}
+                  </td>
+                  <td className="num">
+                    {r.costPaisa === null ? (
+                      <span className="chip-warn">{t('recipePage.noRecipe')}</span>
+                    ) : (
+                      ltr(formatRs(r.costPaisa))
+                    )}
+                  </td>
+                  <td className="num">
+                    {r.pricePaisa === null ? '—' : ltr(formatRs(r.pricePaisa))}
+                  </td>
+                  <td className="num">
+                    {bps === null ? (
+                      '—'
+                    ) : (
+                      <span className={tone}>{ltr(`${(bps / 100).toFixed(1)}%`)}</span>
+                    )}
+                  </td>
+                  <td className="text-end">
+                    <button
+                      className="btn-secondary"
+                      onClick={() => setEditing(r)}
+                      aria-label={`${t('recipePage.edit')} ${r.item}`}
+                    >
+                      {t('recipePage.edit')}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {shown.length === 0 && <EmptyRow cols={5} icon="search" text={t('recipePage.none')} />}
           </tbody>
         </table>
       </div>

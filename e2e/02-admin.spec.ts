@@ -171,7 +171,7 @@ test('users: create a captain, reset the PIN, and the new PIN signs in; captains
   await dialog.getByLabel('Role').selectOption({ label: 'Captain / Waiter' });
   await dialog.getByLabel('PIN (4-8 digits)').fill('5555');
   await dialog.getByRole('button', { name: 'Create' }).click();
-  await expect(page.getByRole('row').filter({ hasText: 'e2e.captain' })).toContainText('CAPTAIN');
+  await expect(page.getByRole('row').filter({ hasText: 'e2e.captain' })).toContainText('Captain');
 
   await page.getByRole('button', { name: 'Reset PIN e2e.captain' }).click();
   await page.getByRole('dialog').getByLabel('New PIN').fill('6666');

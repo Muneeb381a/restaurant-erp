@@ -6,7 +6,8 @@ import { localName } from '../../i18n';
 import { api } from '../../lib/api';
 import type { AdminItem, AdminMenu, AdminVariant, ImportResult } from '../../lib/types';
 import { DealEditor } from './DealEditor';
-import { Dialog, ErrorText, Field, Toggle, td, th } from './ui';
+import { Icon } from '../../components/Icon';
+import { Dialog, EmptyRow, ErrorText, Field, PageHead, Toggle } from './ui';
 
 const ADMIN_MENU_KEY = ['admin-menu'];
 const CHANNEL_ORDER = ['DINE_IN', 'TAKEAWAY', 'DELIVERY'];
@@ -51,6 +52,9 @@ export function MenuAdmin() {
     onError: setError,
   });
 
+  const hasVariantCol = (menu.data?.items ?? []).some(
+    (i) => !(i.kind === 'STANDARD' && i.variants.length === 1),
+  );
   const items = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (menu.data?.items ?? []).filter(
@@ -84,13 +88,33 @@ export function MenuAdmin() {
 
   return (
     <div className="space-y-3 p-4">
+      <PageHead title={t('admin.menu')} hint={t('admin.menuPage.priceHint')}>
+        <button className="btn-secondary" onClick={() => void exportCsv()}>
+          {t('admin.menuPage.export')}
+        </button>
+        <button className="btn-secondary" onClick={() => setImporting(true)}>
+          {t('admin.menuPage.import')}
+        </button>
+        <button className="btn-primary" onClick={() => setEditing('new')}>
+          <Icon name="plus" size={18} />
+          {t('admin.menuPage.newItem')}
+        </button>
+      </PageHead>
       <div className="flex flex-wrap items-center gap-2">
-        <input
-          className="input max-w-xs"
-          placeholder={t('admin.search')}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="relative w-full max-w-sm">
+          <Icon
+            name="search"
+            size={18}
+            className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-slate-500"
+          />
+          <input
+            className="input ps-10"
+            placeholder={t('admin.search')}
+            aria-label={t('admin.search')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
         <select
           className="input max-w-52"
           aria-label={t('admin.category')}
@@ -104,73 +128,69 @@ export function MenuAdmin() {
             </option>
           ))}
         </select>
-        <span className="me-auto text-sm text-slate-500">{t('admin.menuPage.priceHint')}</span>
-        <button className="btn-secondary" onClick={() => void exportCsv()}>
-          {t('admin.menuPage.export')}
-        </button>
-        <button className="btn-secondary" onClick={() => setImporting(true)}>
-          {t('admin.menuPage.import')}
-        </button>
-        <button className="btn-primary" onClick={() => setEditing('new')}>
-          + {t('admin.menuPage.newItem')}
-        </button>
+        <span className="chip-mute ms-auto">
+          {t('admin.menuPage.countN', { count: items.length })}
+        </span>
       </div>
       <ErrorText error={error} />
 
-      <div className="card overflow-x-auto">
-        <table className="w-full min-w-[64rem] text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50">
+      <div className="dt dt-tight">
+        <table className="min-w-[50rem]">
+          <thead>
             <tr>
-              <th className={`${th} min-w-[15rem]`}>{t('admin.name')}</th>
-              <th className={th}>{t('admin.category')}</th>
-              <th className={th}>{t('admin.station')}</th>
-              <th className={th}>{t('admin.menuPage.variant')}</th>
+              <th className="min-w-[15rem]">{t('admin.name')}</th>
+              <th>{t('admin.category')}</th>
+              <th>{t('admin.station')}</th>
+              {hasVariantCol && <th>{t('admin.menuPage.variant')}</th>}
               {lists.map((l) => (
-                <th key={l.id} className={th}>
-                  {l.code}
+                <th key={l.id} className="num">
+                  {t(`admin.menuPage.list.${l.code}`, { defaultValue: l.code })}
                 </th>
               ))}
-              <th className={th}>{t('admin.menuPage.available')}</th>
-              <th className={th}>{t('admin.active')}</th>
-              <th className={th} />
+              <th>{t('admin.menuPage.available')}</th>
+              <th>{t('admin.active')}</th>
+              <th />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {items.length === 0 && (
-              <tr>
-                <td className={td} colSpan={8 + data.priceLists.length}>
-                  {t('admin.menuPage.noItems')}
-                </td>
-              </tr>
+              <EmptyRow
+                cols={7 + (hasVariantCol ? 1 : 0) + data.priceLists.length}
+                icon="search"
+                text={t('admin.menuPage.noItems')}
+              />
             )}
             {items.map((item) =>
               item.variants.map((v, idx) => (
-                <tr key={v.id} className={item.isActive ? '' : 'bg-slate-50 text-slate-400'}>
+                <tr key={v.id} className={item.isActive ? '' : 'opacity-55'}>
                   {idx === 0 ? (
                     <>
-                      <td className={td} rowSpan={item.variants.length}>
-                        <div className="font-medium text-slate-900">
+                      <td rowSpan={item.variants.length}>
+                        <span className="name">
                           {localName(lang, item.name, item.nameUr)}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {item.code} · {item.kind}
-                        </div>
+                          <span className="sub">
+                            {item.code}
+                            {item.kind !== 'STANDARD' ? ` · ${item.kind}` : ''}
+                          </span>
+                        </span>
                       </td>
-                      <td className={td} rowSpan={item.variants.length}>
-                        {categoryName(item.categoryId)}
+                      <td rowSpan={item.variants.length}>
+                        {categoryName(item.categoryId) || <span className="text-slate-400">–</span>}
                       </td>
-                      <td className={td} rowSpan={item.variants.length}>
-                        {stationCode(item.stationId)}
+                      <td rowSpan={item.variants.length}>
+                        <span className="chip-mute">{stationCode(item.stationId)}</span>
                       </td>
                     </>
                   ) : null}
-                  <td className={td}>
-                    {item.kind === 'STANDARD' && item.variants.length === 1
-                      ? ''
-                      : localName(lang, v.name, v.nameUr)}
-                  </td>
+                  {hasVariantCol && (
+                    <td>
+                      {item.kind === 'STANDARD' && item.variants.length === 1
+                        ? ''
+                        : localName(lang, v.name, v.nameUr)}
+                    </td>
+                  )}
                   {lists.map((l) => (
-                    <td key={l.id} className={td}>
+                    <td key={l.id} className="num">
                       <PriceCell
                         variant={v}
                         listId={l.id}
@@ -182,7 +202,7 @@ export function MenuAdmin() {
                   ))}
                   {idx === 0 ? (
                     <>
-                      <td className={td} rowSpan={item.variants.length}>
+                      <td rowSpan={item.variants.length}>
                         <Toggle
                           on={item.isAvailable}
                           label={`${t('admin.menuPage.available')} ${item.name}`}
@@ -191,7 +211,7 @@ export function MenuAdmin() {
                           }
                         />
                       </td>
-                      <td className={td} rowSpan={item.variants.length}>
+                      <td rowSpan={item.variants.length}>
                         <Toggle
                           on={item.isActive}
                           label={`${t('admin.active')} ${item.name}`}
@@ -200,7 +220,10 @@ export function MenuAdmin() {
                           }
                         />
                       </td>
-                      <td className={`${td} whitespace-nowrap`} rowSpan={item.variants.length}>
+                      <td
+                        className="sticky end-0 whitespace-nowrap bg-white text-end shadow-[-8px_0_8px_-8px_rgba(30,27,22,.15)]"
+                        rowSpan={item.variants.length}
+                      >
                         <button className="btn-secondary me-1" onClick={() => setEditing(item)}>
                           {t('admin.edit')}
                         </button>
@@ -306,7 +329,7 @@ function PriceCell({
 
   return (
     <input
-      className={`input !min-h-9 w-24 text-end ${invalid ? 'border-rose-500' : ''}`}
+      className={`cell-input ${invalid ? '!border-rose-500 bg-rose-50' : ''}`}
       inputMode="decimal"
       aria-label={`${listCode} ${t('admin.menuPage.variant')} ${variant.name}`}
       placeholder="—"

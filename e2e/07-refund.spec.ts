@@ -30,7 +30,7 @@ test('the cashier sells two tikka for cash', async ({ page }) => {
   // a cashier may look the bill up but cannot refund it
   await page.getByRole('link', { name: 'Bills', exact: true }).click();
   await page
-    .getByRole('link', { name: /Rs 800/ })
+    .getByRole('row', { name: /Rs 800/ })
     .first()
     .click();
   await expect(page.getByRole('heading', { name: 'Paid' })).toBeVisible();
@@ -49,7 +49,7 @@ test('a manager returns one tikka, then the rest; the server computes every amou
 
   await page.getByRole('link', { name: 'Bills', exact: true }).click();
   await page
-    .getByRole('link', { name: /Rs 800/ })
+    .getByRole('row', { name: /Rs 800/ })
     .first()
     .click();
   await page.getByRole('button', { name: 'Refund', exact: true }).click();

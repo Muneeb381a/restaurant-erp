@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api';
 import type { TableRow } from '../../lib/types';
-import { Dialog, ErrorText, Field, Toggle, td, th } from './ui';
+import { Icon } from '../../components/Icon';
+import { Dialog, EmptyRow, ErrorText, Field, PageHead, Toggle } from './ui';
 
 interface AreaRow {
   id: string;
@@ -40,36 +41,43 @@ export function TablesAdmin() {
 
   return (
     <div className="space-y-4 p-4">
-      <div className="flex items-center gap-2">
-        <h2 className="me-auto text-xl font-bold">{t('admin.tables')}</h2>
+      <PageHead title={t('admin.tables')} hint={t('admin.tablesPage.hint')}>
         <button className="btn-secondary" onClick={() => setDialog('area')}>
-          + {t('admin.tablesPage.newArea')}
+          {t('admin.tablesPage.newArea')}
         </button>
         <button className="btn-primary" onClick={() => setDialog('table')}>
-          + {t('admin.tablesPage.newTable')}
+          <Icon name="plus" size={18} />
+          {t('admin.tablesPage.newTable')}
         </button>
-      </div>
+      </PageHead>
       <ErrorText error={error} />
-      <p className="text-sm text-slate-500">
-        {t('admin.tablesPage.areas')}: {(areas.data ?? []).map((a) => a.name).join(', ') || '—'}
-      </p>
-      <div className="card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50">
+      {(areas.data ?? []).length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="micro">{t('admin.tablesPage.areas')}</span>
+          {(areas.data ?? []).map((a) => (
+            <span key={a.id} className="chip-mute">
+              {a.name}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="dt">
+        <table className="min-w-[32rem]">
+          <thead>
             <tr>
-              <th className={th}>{t('admin.code')}</th>
-              <th className={th}>{t('admin.tablesPage.area')}</th>
-              <th className={th}>{t('admin.tablesPage.seats')}</th>
-              <th className={th}>{t('admin.active')}</th>
+              <th>{t('admin.code')}</th>
+              <th>{t('admin.tablesPage.area')}</th>
+              <th className="num">{t('admin.tablesPage.seats')}</th>
+              <th>{t('admin.active')}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {(tables.data ?? []).map((tb) => (
-              <tr key={tb.id} className={tb.is_active ? '' : 'text-slate-400'}>
-                <td className={`${td} font-medium`}>{tb.code}</td>
-                <td className={td}>{areaName(tb.area_id)}</td>
-                <td className={td}>{tb.seats}</td>
-                <td className={td}>
+              <tr key={tb.id} className={tb.is_active ? '' : 'opacity-55'}>
+                <td className="name">{tb.code}</td>
+                <td>{areaName(tb.area_id) || <span className="text-slate-400">–</span>}</td>
+                <td className="num">{tb.seats}</td>
+                <td>
                   <Toggle
                     on={tb.is_active}
                     label={`${t('admin.active')} ${tb.code}`}
@@ -78,6 +86,9 @@ export function TablesAdmin() {
                 </td>
               </tr>
             ))}
+            {tables.isSuccess && tables.data.length === 0 && (
+              <EmptyRow cols={4} icon="tables" text={t('admin.tablesPage.empty')} />
+            )}
           </tbody>
         </table>
       </div>

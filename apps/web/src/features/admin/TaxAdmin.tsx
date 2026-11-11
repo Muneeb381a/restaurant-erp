@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiError, api } from '../../lib/api';
 import { parseRs } from '../../lib/money';
 import type { TaxCategory, TaxReadiness, TaxRuleRow } from '../../lib/types';
-import { ErrorText, Field, Toggle } from './ui';
+import { EmptyRow, ErrorText, Field, Toggle } from './ui';
 
 interface Branch {
   tax_authority: string;
@@ -273,37 +273,39 @@ export function TaxAdmin() {
       </section>
 
       <section className="card space-y-3 p-4">
-        <h2 className="text-lg font-bold">
+        <h2 className="text-lg font-semibold">
           {t('taxPage.rules')} {authority !== 'NONE' ? `(${authority})` : ''}
         </h2>
         <p className="text-sm text-slate-600">{t('taxPage.rulesHint')}</p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="dt">
+          <table className="min-w-[44rem]">
             <thead>
-              <tr className="text-start text-slate-600">
-                <th className="px-2 py-1 text-start">{t('taxPage.category')}</th>
-                <th className="px-2 py-1 text-start">{t('taxPage.class')}</th>
-                <th className="px-2 py-1 text-start">{t('taxPage.rate')}</th>
-                <th className="px-2 py-1 text-start">{t('taxPage.from')}</th>
-                <th className="px-2 py-1 text-start">{t('taxPage.to')}</th>
-                <th className="px-2 py-1 text-start">{t('taxPage.verifiedBy')}</th>
+              <tr>
+                <th>{t('taxPage.category')}</th>
+                <th>{t('taxPage.class')}</th>
+                <th className="num">{t('taxPage.rate')}</th>
+                <th>{t('taxPage.from')}</th>
+                <th>{t('taxPage.to')}</th>
+                <th>{t('taxPage.verifiedBy')}</th>
                 <th />
               </tr>
             </thead>
             <tbody>
               {myRules.map((r) => (
-                <tr
-                  key={r.id}
-                  className="border-t border-slate-100"
-                  data-testid={`rule-${r.categoryCode}-${r.paymentClass}`}
-                >
-                  <td className="px-2 py-1">{r.categoryCode}</td>
-                  <td className="px-2 py-1">{t(`taxPage.classes.${r.paymentClass}`)}</td>
-                  <td className="px-2 py-1 font-semibold">{pctText(r.rateBps)}</td>
-                  <td className="px-2 py-1">{r.effectiveFrom}</td>
-                  <td className="px-2 py-1">{r.effectiveTo ?? '—'}</td>
-                  <td className="px-2 py-1">
-                    {r.verifiedBy ?? (
+                <tr key={r.id} data-testid={`rule-${r.categoryCode}-${r.paymentClass}`}>
+                  <td className="name">{r.categoryCode}</td>
+                  <td>
+                    <span className="chip-mute">{t(`taxPage.classes.${r.paymentClass}`)}</span>
+                  </td>
+                  <td className="num font-semibold">{pctText(r.rateBps)}</td>
+                  <td className="money">{r.effectiveFrom}</td>
+                  <td className="money">
+                    {r.effectiveTo ?? <span className="chip-ok">{t('taxPage.current')}</span>}
+                  </td>
+                  <td>
+                    {r.verifiedBy ? (
+                      <span className="chip-ok">{r.verifiedBy}</span>
+                    ) : (
                       <button
                         className="btn-secondary"
                         onClick={() => {
@@ -316,7 +318,7 @@ export function TaxAdmin() {
                       </button>
                     )}
                   </td>
-                  <td className="px-2 py-1">
+                  <td className="text-end">
                     {!r.effectiveTo && (
                       <button
                         className="btn-secondary"
@@ -333,11 +335,7 @@ export function TaxAdmin() {
                 </tr>
               ))}
               {myRules.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-2 py-3 text-slate-500">
-                    {t('taxPage.noRules')}
-                  </td>
-                </tr>
+                <EmptyRow cols={7} icon="receipt" text={t('taxPage.noRules')} />
               )}
             </tbody>
           </table>

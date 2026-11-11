@@ -133,7 +133,13 @@
       "addVariant": "Add variant",
       "dealNote": "Deal contents are edited through the API for now.",
       "noItems": "No items match",
-      "priceSaved": "Price saved"
+      "priceSaved": "Price saved",
+      "countN": "{{count}} items",
+      "list": {
+        "DINE_IN": "Dine-in",
+        "TAKEAWAY": "Takeaway",
+        "DELIVERY": "Delivery"
+      }
     },
     "importer": {
       "title": "Import menu from CSV",
@@ -163,14 +169,20 @@
       "ok": "OK",
       "offline": "Offline",
       "unknown": "Not used yet",
-      "inactive": "Switched off"
+      "inactive": "Switched off",
+      "hint": "Kitchen and receipt printers on your network. A red bar shows on every screen if one goes offline.",
+      "empty": "No printers yet. Add your kitchen printer with “Add printer”, then print a test page.",
+      "stationsHint": "Tick which kitchen printer prints each station’s tickets.",
+      "noKot": "Add a kitchen printer first, then map the stations to it."
     },
     "tablesPage": {
       "areas": "Areas",
       "newArea": "New area",
       "newTable": "New table",
       "seats": "Seats",
-      "area": "Area"
+      "area": "Area",
+      "hint": "The tables on your floor. They appear on the Tables screen straight away.",
+      "empty": "No tables yet. Add an area (Main Hall, Terrace) and then its tables."
     },
     "usersPage": {
       "newUser": "New user",
@@ -182,7 +194,9 @@
       "resetPin": "Reset PIN",
       "newPin": "New PIN",
       "locked": "Locked",
-      "unlock": "Unlock"
+      "unlock": "Unlock",
+      "hint": "Everyone who signs in. Deactivate people who leave; their past work stays on record.",
+      "empty": "No users yet. Add the first person with “New user”."
     },
     "settings": "Settings",
     "dealEditor": {
@@ -396,7 +410,13 @@
       "ADJUST_UP": "Increase",
       "ADJUST_DOWN": "Decrease",
       "REFUND": "Refund"
-    }
+    },
+    "hint": "Regular customers who pay later. Each has a credit limit that the till enforces.",
+    "customer": "Customer",
+    "usage": "Credit used",
+    "when": "When",
+    "what": "Entry",
+    "change": "Balance change"
   },
   "refund": {
     "title": "Refund / return",
@@ -426,7 +446,8 @@
     "status": {
       "SETTLED": "Paid",
       "PRE_BILLED": "Unpaid"
-    }
+    },
+    "state": "Status"
   },
   "settingsPage": {
     "restaurant": "Restaurant",
@@ -508,7 +529,8 @@
     "noRules": "No rates yet.",
     "addRule": "Add rate",
     "pickAuthority": "Choose the tax authority above first.",
-    "saved": "Saved"
+    "saved": "Saved",
+    "current": "In force"
   },
   "fiscalPage": {
     "notice": "Bills and credit notes are reported to the tax authority in the background, so a sale never waits for the internet. Anything stuck shows up here. Real authority connections (PRA, SRB, ...) need the authority's API details; until then use the test provider.",
@@ -531,7 +553,11 @@
     "balanced": "Everything sold was reported.",
     "unbalanced": "Some documents are not reported yet.",
     "taxSold": "Tax on bills",
-    "taxReported": "Tax already reported"
+    "taxReported": "Tax already reported",
+    "document": "Document",
+    "status": "Status",
+    "attemptsHead": "Attempts",
+    "lastError": "Last message"
   },
   "stockPage": {
     "title": "Stock",
@@ -580,7 +606,8 @@
       "g": "grams",
       "ml": "millilitres",
       "pcs": "pieces"
-    }
+    },
+    "hint": "What is on the shelf, what it cost you and what it is worth. Sales reduce it automatically through recipes."
   },
   "purchasePage": {
     "title": "Purchases",
@@ -610,7 +637,9 @@
     "phone": "Phone",
     "name": "Name",
     "add": "Add",
-    "unit": "unit"
+    "unit": "unit",
+    "noPurchases": "No purchases yet. Record goods you receive above.",
+    "noSuppliers": "No suppliers yet."
   },
   "recipePage": {
     "title": "Recipes and margins",
@@ -626,7 +655,9 @@
     "saved": "Recipe saved",
     "hint": "Quantities are per ONE piece sold; for items sold by weight, per 1000 g.",
     "remove": "Remove",
-    "item": "Item"
+    "item": "Item",
+    "onlyMissing": "Only dishes without a recipe ({{count}})",
+    "none": "No dishes match."
   },
   "costPage": {
     "title": "Costs",
@@ -652,7 +683,10 @@
     "OWNER_CASH": "Owner cash",
     "BANK": "Bank",
     "item": "Item",
-    "qty": "Qty"
+    "qty": "Qty",
+    "hint": "Food cost per dish and the running costs you enter. They feed the dashboard profit.",
+    "noSales": "No sales in this period.",
+    "noExpenses": "No expenses in this period."
   },
   "dash": {
     "title": "Business overview",

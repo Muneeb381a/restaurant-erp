@@ -5,7 +5,7 @@ import { api } from '../../lib/api';
 import { formatRs, ltr, parseRs } from '../../lib/money';
 import { can, useMe } from '../../lib/queries';
 import type { PurchaseRow, Supplier } from '../../lib/types';
-import { Dialog, ErrorText, Field } from './ui';
+import { Dialog, EmptyRow, ErrorText, Field } from './ui';
 import { useIngredients } from './StockAdmin';
 
 const SOURCES = ['DRAWER_CASH', 'OWNER_CASH', 'BANK'] as const;
@@ -218,46 +218,70 @@ export function PurchasesAdmin() {
         <ErrorText error={post.error} />
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
-        <div className="card space-y-2 p-4">
-          <h2 className="text-lg font-bold">{t('purchasePage.recent')}</h2>
-          <ul className="divide-y divide-slate-100">
-            {(purchases.data ?? []).map((p) => (
-              <li key={p.id} className="flex items-center gap-2 py-2">
-                <span className="me-auto">
-                  {p.supplier ?? '—'}{' '}
-                  {p.invoiceRef && (
-                    <span className="text-sm text-slate-500">{ltr(p.invoiceRef)}</span>
-                  )}
-                </span>
-                <span>{ltr(formatRs(p.totalPaisa))}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="card space-y-2 p-4">
-          <h2 className="text-lg font-bold">{t('purchasePage.suppliers')}</h2>
-          <ul className="divide-y divide-slate-100">
-            {(suppliers.data ?? []).map((s) => (
-              <li
-                key={s.id}
-                className="flex items-center gap-2 py-2"
-                data-testid={`supplier-${s.name}`}
-              >
-                <span className="me-auto">{s.name}</span>
-                <span
-                  className={s.owedPaisa > 0 ? 'font-semibold text-rose-700' : 'text-slate-500'}
-                >
-                  {t('purchasePage.owed')} {ltr(formatRs(s.owedPaisa))}
-                </span>
-                {canPay && s.owedPaisa > 0 && (
-                  <button className="btn-secondary" onClick={() => setPaying(s)}>
-                    {t('purchasePage.pay')}
-                  </button>
+      <section className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold">{t('purchasePage.recent')}</h2>
+          <div className="dt">
+            <table className="min-w-[20rem]">
+              <thead>
+                <tr>
+                  <th>{t('purchasePage.supplier')}</th>
+                  <th className="num">{t('purchasePage.total')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(purchases.data ?? []).map((p) => (
+                  <tr key={p.id}>
+                    <td className="name">
+                      {p.supplier ?? '—'}
+                      {p.invoiceRef && <span className="sub">{ltr(p.invoiceRef)}</span>}
+                    </td>
+                    <td className="num">{ltr(formatRs(p.totalPaisa))}</td>
+                  </tr>
+                ))}
+                {(purchases.data ?? []).length === 0 && (
+                  <EmptyRow cols={2} icon="box" text={t('purchasePage.noPurchases')} />
                 )}
-              </li>
-            ))}
-          </ul>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold">{t('purchasePage.suppliers')}</h2>
+          <div className="dt">
+            <table className="min-w-[24rem]">
+              <thead>
+                <tr>
+                  <th>{t('purchasePage.supplier')}</th>
+                  <th className="num">{t('purchasePage.owed')}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {(suppliers.data ?? []).map((s) => (
+                  <tr key={s.id} data-testid={`supplier-${s.name}`}>
+                    <td className="name">{s.name}</td>
+                    <td
+                      className={`num font-semibold ${s.owedPaisa > 0 ? '!text-rose-700' : '!text-slate-500'}`}
+                    >
+                      <span className="sr-only">{t('purchasePage.owed')} </span>
+                      {ltr(formatRs(s.owedPaisa))}
+                    </td>
+                    <td className="text-end">
+                      {canPay && s.owedPaisa > 0 && (
+                        <button className="btn-secondary" onClick={() => setPaying(s)}>
+                          {t('purchasePage.pay')}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {(suppliers.data ?? []).length === 0 && (
+                  <EmptyRow cols={3} icon="user" text={t('purchasePage.noSuppliers')} />
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 

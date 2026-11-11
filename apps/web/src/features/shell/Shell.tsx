@@ -455,7 +455,7 @@ const initials = (name: string): string =>
     .map((w) => w.charAt(0).toUpperCase())
     .join('') || '?';
 
-function Avatar({ name, size = 36 }: { name: string; size?: number }) {
+export function Avatar({ name, size = 36 }: { name: string; size?: number }) {
   return (
     <span
       aria-hidden="true"

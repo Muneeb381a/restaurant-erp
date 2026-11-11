@@ -36,9 +36,9 @@ async function chooseKhata(page: Page, name: string): Promise<void> {
 test('a manager creates a khata account with a credit limit', async ({ page }) => {
   await login(page, 'manager');
   await page.getByRole('link', { name: 'Khata', exact: true }).click();
-  await page.getByRole('button', { name: '+ New account' }).click();
+  await page.getByRole('button', { name: 'New account' }).click();
   await page.getByLabel('Customer name').fill('Haji Rashid');
-  await page.getByLabel('Phone').fill('0300-5550101');
+  await page.getByLabel('Phone', { exact: true }).fill('0300-5550101');
   await page.getByLabel('Credit limit (Rs)').fill('1000');
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('link', { name: /Haji Rashid/ })).toBeVisible();
@@ -49,7 +49,7 @@ test('a manager creates a khata account with a credit limit', async ({ page }) =
   await login(page, 'cashier');
   await page.getByRole('link', { name: 'Khata', exact: true }).click();
   await expect(page.getByRole('link', { name: /Haji Rashid/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: '+ New account' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'New account' })).toHaveCount(0);
 });
 
 test('credit sales run up the balance until the limit stops the next one', async ({ page }) => {
@@ -109,7 +109,7 @@ test('the customer pays part of the balance at the counter and the ledger shows 
   await expect(page.getByText('Saved')).toBeVisible();
   await expect(page.getByTestId('khata-balance')).toContainText('Rs 700');
 
-  const ledger = page.getByRole('listitem').filter({ hasText: /Credit sale|Payment/ });
+  const ledger = page.getByRole('row').filter({ hasText: /Credit sale|Payment/ });
   await expect(ledger.filter({ hasText: 'Payment' })).toHaveCount(1);
   await expect(ledger.filter({ hasText: 'Credit sale' })).toHaveCount(3);
 

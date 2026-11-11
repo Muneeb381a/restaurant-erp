@@ -121,6 +121,47 @@ html[lang='ur'] body {
     @apply text-sm text-slate-600;
   }
 
+  /* ── data tables: quiet header, roomy rows, numbers on the right, row highlight */
+  .dt {
+    @apply overflow-x-auto rounded-xl border border-slate-300 bg-white;
+  }
+  .dt table {
+    @apply w-full border-collapse text-sm;
+  }
+  .dt thead th {
+    @apply sticky top-0 border-b border-slate-300 bg-slate-100 px-4 py-2.5 text-start text-xs font-semibold uppercase tracking-wide text-slate-600;
+  }
+  .dt tbody td {
+    @apply border-b border-slate-200 px-4 py-3 align-middle;
+  }
+  .dt tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .dt tbody tr:hover td {
+    @apply bg-slate-50;
+  }
+  .dt-tight thead th,
+  .dt-tight tbody td {
+    @apply px-2.5;
+  }
+  .dt .num {
+    @apply money text-end;
+  }
+  .dt thead th.num {
+    @apply text-end;
+  }
+  .dt .name {
+    @apply font-semibold text-slate-900;
+  }
+  .dt .sub {
+    @apply block text-xs font-normal text-slate-600;
+  }
+
+  /* ── a value edited in place inside a table: looks like text until you point at it */
+  .cell-input {
+    @apply min-h-9 w-24 rounded-md border border-transparent bg-transparent px-2 text-end tabular-nums text-slate-900 outline-none hover:border-slate-400 hover:bg-white focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-200;
+  }
+
   /* ── PIN pad key */
   .key {
     @apply inline-flex h-14 select-none items-center justify-center rounded-xl border border-slate-300 bg-white text-2xl font-medium text-slate-900 transition-colors hover:bg-slate-100 active:translate-y-px active:bg-slate-200;
