@@ -106,8 +106,8 @@ function SignedIn() {
       </nav>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-2 border-b border-slate-300 bg-white px-3 py-2">
-          <Link to="/" className="me-auto text-lg font-semibold tracking-tight">
+        <header className="flex items-center justify-end gap-2 border-b border-slate-300 bg-white px-3 py-2">
+          <Link to="/" className="me-auto hidden text-lg font-semibold tracking-tight sm:block">
             {t('app.title')}
           </Link>
           <DayShiftControl

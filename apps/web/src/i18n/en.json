@@ -66,7 +66,8 @@
     "minAgo": "{{count}} min",
     "counterTitle": "Takeaway & delivery",
     "noCounter": "No open takeaway or delivery orders.",
-    "noTables": "No tables to show."
+    "noTables": "No tables to show.",
+    "inProgress": "In progress"
   },
   "admin": {
     "title": "Admin",
@@ -230,7 +231,8 @@
     "size": "Size",
     "required": "Required",
     "optional": "optional",
-    "pickN": "choose {{count}}"
+    "pickN": "choose {{count}}",
+    "viewOrder": "View order · {{count}} items"
   },
   "bill": {
     "bill": "Bill",
@@ -286,7 +288,8 @@
     "cashShort": "Still short",
     "changeDiscount": "Change discount",
     "discountHint": "A discount above your limit needs a manager’s approval.",
-    "approverHint": "Ask a manager to enter their username and PIN to approve this."
+    "approverHint": "Ask a manager to enter their username and PIN to approve this.",
+    "extra": "Extra"
   },
   "cash": {
     "drawer": "Cash drawer",

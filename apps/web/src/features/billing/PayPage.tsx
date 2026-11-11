@@ -310,8 +310,8 @@ export function PayPage() {
           </h1>
         </div>
         <ul className="divide-y divide-slate-200">
-          {b.lines.map((l) => (
-            <li key={l.id} className="flex justify-between gap-2 py-2">
+          {groupLines(b.lines).map((l) => (
+            <li key={l.key} className="flex justify-between gap-2 py-2">
               <span>
                 <span className="text-slate-600">{ltr(`${l.qty}×`)}</span> {l.description}
               </span>
@@ -367,7 +367,7 @@ export function PayPage() {
         <div className="flex items-baseline justify-between">
           <h2 className="text-xl font-semibold">{t('bill.pay')}</h2>
           <div className="text-end">
-            <div className="label">{remaining > 0 ? t('bill.due') : t('bill.paid')}</div>
+            <div className="label">{remaining < 0 ? t('bill.extra') : t('bill.due')}</div>
             <div
               data-testid="remaining"
               className={`money text-3xl font-semibold ${remaining === 0 && rows.length > 0 ? 'text-emerald-700' : ''}`}
@@ -510,7 +510,7 @@ export function PayPage() {
           );
         })}
 
-        <div className="space-y-2">
+        <div className="sticky bottom-0 -mx-4 -mb-4 space-y-2 rounded-b-xl border-t border-slate-200 bg-white p-4">
           <button
             className="btn-primary btn-lg w-full"
             disabled={blocker !== null || settle.isPending}
@@ -562,6 +562,30 @@ export function PayPage() {
       )}
     </div>
   );
+}
+
+/** The bill lists each tap separately; the guest reads it better with identical dishes merged. */
+function groupLines(
+  lines: Bill['lines'],
+): { key: string; qty: number; description: string; netPaisa: number }[] {
+  const out = new Map<
+    string,
+    { key: string; qty: number; description: string; netPaisa: number }
+  >();
+  for (const l of lines) {
+    const cur = out.get(l.description);
+    if (cur) {
+      cur.qty += l.qty;
+      cur.netPaisa += l.netPaisa;
+    } else
+      out.set(l.description, {
+        key: l.id,
+        qty: l.qty,
+        description: l.description,
+        netPaisa: l.netPaisa,
+      });
+  }
+  return [...out.values()];
 }
 
 function Row({ label, paisa }: { label: string; paisa: number }) {

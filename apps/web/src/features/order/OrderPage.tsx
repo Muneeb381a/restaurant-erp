@@ -35,6 +35,7 @@ export function OrderPage() {
   const [sheet, setSheet] = useState<MenuItem | null>(null);
   const [voiding, setVoiding] = useState<OrderLine | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [cartOpen, setCartOpen] = useState(false); // phones: the cart is a full-screen sheet
 
   const apply = (o: Order): void => {
     // an older fetch that is still in flight must not overwrite this newer version (If-Match!)
@@ -282,10 +283,25 @@ export function OrderPage() {
             );
           })}
         </div>
+        {liveLines.length > 0 && (
+          <div className="border-t border-slate-300 bg-white p-2 md:hidden">
+            <button
+              className="btn-primary btn-lg w-full justify-between"
+              onClick={() => setCartOpen(true)}
+            >
+              <span>
+                {t('order.viewOrder', { count: liveLines.reduce((n, l) => n + l.qty, 0) })}
+              </span>
+              <span className="money">{ltr(formatRs(o.subtotalPaisa))}</span>
+            </button>
+          </div>
+        )}
       </section>
 
       {/* ── cart */}
-      <aside className="flex max-h-[50vh] min-h-0 w-full flex-col bg-white md:max-h-none md:w-[24rem]">
+      <aside
+        className={`${cartOpen ? 'fixed inset-0 z-30 flex' : 'hidden'} min-h-0 w-full flex-col bg-white md:static md:z-auto md:flex md:w-[24rem]`}
+      >
         <div className="flex items-center gap-2 border-b border-slate-300 px-4 py-3">
           <div className="me-auto min-w-0">
             <h1 className="truncate text-lg font-semibold">
@@ -297,6 +313,13 @@ export function OrderPage() {
               </span>
             )}
           </div>
+          <button
+            className="btn-quiet px-2 md:hidden"
+            aria-label={t('common.close')}
+            onClick={() => setCartOpen(false)}
+          >
+            <Icon name="chevronDown" />
+          </button>
           {o.status === 'OPEN' && (
             <OrderActions
               order={o}

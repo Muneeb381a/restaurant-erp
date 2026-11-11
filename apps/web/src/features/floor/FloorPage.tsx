@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
-import { useCounterOrders, useDay, useFloor } from '../../lib/queries';
+import { can, useCounterOrders, useDay, useFloor, useMe, useShift } from '../../lib/queries';
 import type { FloorTable, Order } from '../../lib/types';
 
 type Filter = 'ALL' | FloorTable['status'];
@@ -28,6 +28,12 @@ export function FloorPage() {
   const floor = useFloor();
   const counter = useCounterOrders();
   const day = useDay();
+  const me = useMe();
+  const shift = useShift();
+  const openDay = useMutation({
+    mutationFn: () => api('/business-days/open', { method: 'POST', body: {} }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['day'] }),
+  });
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('ALL');
 
@@ -101,12 +107,27 @@ export function FloorPage() {
       </div>
 
       {dayClosed && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-400 bg-amber-50 p-4 text-amber-900">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-400 bg-amber-50 p-4 text-amber-900">
           <Icon name="info" />
-          <div>
+          <div className="me-auto">
             <p className="font-semibold">{t('floor.noDay')}</p>
             <p className="text-sm">{t('floor.noDayHint')}</p>
           </div>
+          {can(me.data, 'day.open') && (
+            <button
+              className="btn-primary"
+              disabled={openDay.isPending}
+              onClick={() => openDay.mutate()}
+            >
+              {t('shell.openDay')}
+            </button>
+          )}
+        </div>
+      )}
+      {!dayClosed && day.data && shift.isSuccess && !shift.data && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-400 bg-amber-50 p-4 text-amber-900">
+          <Icon name="info" />
+          <p className="text-sm font-medium">{t('shell.startShiftHint')}</p>
         </div>
       )}
       {error && (
@@ -204,7 +225,7 @@ export function FloorPage() {
                       {ltr(formatRs(o.subtotalPaisa))}
                     </span>
                     <span className={o.status === 'BILLED' ? 'chip-info' : 'chip-warn'}>
-                      {o.status === 'BILLED' ? t('floor.billReady') : t('floor.occupied')}
+                      {o.status === 'BILLED' ? t('floor.billReady') : t('floor.inProgress')}
                     </span>
                   </span>
                 </Link>

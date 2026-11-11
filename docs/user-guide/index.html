@@ -1,0 +1,421 @@
+<title>Restaurant POS Guide</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: sticky contents on the left, one reading column on the right; screenshots are framed figures. */
+:root {
+  --bg: #f7f8f6;
+  --surface: #ffffff;
+  --fg: #1d2420;
+  --muted: #5b655f;
+  --line: #d9dfda;
+  --accent: #0e5a49;
+  --accent-soft: #e3f0ec;
+  --warn: #8a5a00;
+  --warn-soft: #fbf1d9;
+  --bad: #9f3322;
+  --bad-soft: #fbe9e5;
+  --font: "IBM Plex Sans", system-ui, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131815; --surface: #1b221e; --fg: #e8ede9; --muted: #a2aea6; --line: #2f3a34;
+    --accent: #6fc3a9; --accent-soft: #1d3029; --warn: #e6b457; --warn-soft: #33290f;
+    --bad: #f0907d; --bad-soft: #3a1e19; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131815; --surface: #1b221e; --fg: #e8ede9; --muted: #a2aea6; --line: #2f3a34;
+  --accent: #6fc3a9; --accent-soft: #1d3029; --warn: #e6b457; --warn-soft: #33290f;
+  --bad: #f0907d; --bad-soft: #3a1e19; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font: 400 1rem/1.65 var(--font);
+  padding-block: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 76rem; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem; padding-block: 1.5rem 4rem; }
+@media (min-width: 62rem) { .wrap { grid-template-columns: 15rem minmax(0, 1fr); gap: 3rem; } }
+
+nav.toc { font-size: .9rem; }
+@media (min-width: 62rem) { nav.toc { position: sticky; top: 1.5rem; align-self: start; max-height: calc(100vh - 3rem); overflow: auto; } }
+nav.toc .brand { font-weight: 700; font-size: 1.05rem; margin-bottom: .25rem; }
+nav.toc .sub { color: var(--muted); margin-bottom: 1rem; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: .1rem; }
+nav.toc a { display: block; padding: .3rem .6rem; border-radius: 6px; color: var(--fg); text-decoration: none; border-inline-start: 2px solid transparent; }
+nav.toc a:hover { background: var(--accent-soft); }
+nav.toc a.on { border-inline-start-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+details.tocm { border: 1px solid var(--line); border-radius: 8px; padding: .6rem .9rem; background: var(--surface); }
+details.tocm summary { cursor: pointer; font-weight: 600; }
+@media (min-width: 62rem) { details.tocm { display: none; } nav.toc ol.full { display: grid; } }
+@media (max-width: 61.99rem) { nav.toc ol.full { display: none; } nav.toc .brand, nav.toc .sub { display: none; } }
+
+main { min-width: 0; max-width: 46rem; }
+h1 { font-size: clamp(2rem, 5vw, 2.8rem); line-height: 1.12; letter-spacing: -.02em; margin: 0 0 .75rem; text-wrap: balance; }
+h2 { font-size: 1.65rem; line-height: 1.2; letter-spacing: -.01em; margin: 3.5rem 0 .75rem; padding-top: 1.5rem; border-top: 1px solid var(--line); text-wrap: balance; scroll-margin-top: 1rem; }
+h3 { font-size: 1.15rem; margin: 2rem 0 .4rem; scroll-margin-top: 1rem; }
+p { margin: .6rem 0; }
+.lead { font-size: 1.15rem; color: var(--muted); max-width: 40rem; }
+ul, ol { padding-inline-start: 1.3rem; margin: .5rem 0; }
+li { margin: .25rem 0; }
+a { color: var(--accent); }
+.eyebrow { font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+
+figure { margin: 1.25rem 0 1.5rem; }
+figure img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+figure.narrow { max-width: 22rem; }
+figcaption { font-size: .88rem; color: var(--muted); margin-top: .5rem; }
+.pair { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); align-items: start; }
+.pair figure { margin: 1rem 0; }
+
+.callout { border: 1px solid var(--line); border-inline-start: 4px solid var(--accent); background: var(--accent-soft); border-radius: 6px; padding: .75rem 1rem; margin: 1.1rem 0; }
+.callout.warn { border-inline-start-color: var(--warn); background: var(--warn-soft); }
+.callout.bad { border-inline-start-color: var(--bad); background: var(--bad-soft); }
+.callout strong:first-child { display: block; margin-bottom: .1rem; }
+
+.steps { list-style: none; padding: 0; counter-reset: s; display: grid; gap: .9rem; margin: 1rem 0; }
+.steps > li { counter-increment: s; display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: .75rem; margin: 0; }
+.steps > li::before { content: counter(s); width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent); color: var(--bg); font-weight: 700; display: grid; place-items: center; font-size: .95rem; }
+.steps > li > div > :first-child { margin-top: .1rem; }
+
+.tablewrap { overflow-x: auto; margin: 1rem 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .93rem; min-width: 32rem; }
+th, td { text-align: start; padding: .6rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .78rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; white-space: nowrap; }
+
+.chip { display: inline-block; font-size: .78rem; font-weight: 600; padding: .05rem .5rem; border-radius: 5px; background: var(--accent-soft); color: var(--accent); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.chip.bad { background: var(--bad-soft); color: var(--bad); }
+kbd, .ui { font-family: var(--font); font-weight: 600; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 0 .4rem; font-size: .92em; white-space: nowrap; }
+
+.flow { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin: 1rem 0; font-size: .9rem; font-weight: 600; }
+.flow span { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .3rem .7rem; }
+.flow i { color: var(--muted); font-style: normal; }
+.checklist { list-style: none; padding: 0; }
+.checklist li { padding-inline-start: 1.8rem; position: relative; }
+.checklist li::before { content: ""; position: absolute; inset-inline-start: 0; top: .35rem; width: 1rem; height: 1rem; border: 2px solid var(--accent); border-radius: 4px; }
+footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <div class="brand">Restaurant POS</div>
+  <div class="sub">Guide for owners and staff</div>
+  <details class="tocm"><summary>Contents</summary>
+    <ol id="toc-m"></ol>
+  </details>
+  <ol class="full" id="toc"></ol>
+</nav>
+
+<main>
+  <div class="eyebrow">How the system works</div>
+  <h1>Restaurant POS Guide</h1>
+  <p class="lead">One system for the whole restaurant: tables, orders, kitchen tickets, bills, payments, khata, the cash drawer, stock and day-end reports. This guide follows a normal day, then covers the owner's setup and the safety rules built into the system.</p>
+
+  <h2 id="overview">What it is</h2>
+  <p>Staff use it on a tablet, phone or counter PC through a web browser. The captain takes the order at the table, the kitchen printer prints the ticket, the cashier makes the bill and takes payment, and the owner sees the figures. Every device shows the same live picture: when one tablet opens a table, the others show it within a few seconds.</p>
+  <div class="tablewrap"><table>
+    <tr><th>It does</th><th>It guarantees</th></tr>
+    <tr><td>Tables, dine-in, takeaway and delivery orders</td><td>Money is counted in exact paisa. Nothing is rounded by guesswork.</td></tr>
+    <tr><td>Kitchen tickets per station (BBQ, Karahi, Tandoor…)</td><td>Bills and payments are never edited or deleted. Mistakes are fixed with a refund note that stays on record.</td></tr>
+    <tr><td>Bills, discounts, cash, card, wallets, split payments, khata</td><td>Every sensitive action (discount, void, refund, reprint, drawer open) needs permission, a reason, and is logged with who did it.</td></tr>
+    <tr><td>Cash drawer, shift close with cash count, day close</td><td>Taking an order, printing the kitchen ticket and printing the bill work without internet, on your own network.</td></tr>
+    <tr><td>Stock, purchases, recipes, expenses, food cost</td><td>The same payment cannot be charged twice, even if the tablet loses signal during payment.</td></tr>
+    <tr><td>Urdu and English screens, Urdu receipts</td><td>Tax stays off until your accountant enters the rates. The system contains no tax rates of its own.</td></tr>
+  </table></div>
+
+  <h2 id="roles">Who does what</h2>
+  <p>Each person signs in with their own username and a 4 to 8 digit PIN. What they can see and do depends on their role. The buttons they are not allowed to use are not shown, and the server refuses the action even if someone tries another way.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Role</th><th>Typical work</th></tr>
+    <tr><td>Owner</td><td>Everything, including menu, prices, users, roles, tax, reports and settings.</td></tr>
+    <tr><td>Manager</td><td>Starts and closes the day, approves large discounts, cancels bills, handles refunds, creates khata accounts, checks reports.</td></tr>
+    <tr><td>Cashier</td><td>Opens a shift, takes orders and payments, uses the cash drawer, receives khata payments, closes the shift.</td></tr>
+    <tr><td>Captain / waiter</td><td>Takes and sends orders, moves a party to another table. Cannot cancel an order.</td></tr>
+    <tr><td>Kitchen, store, accountant</td><td>Accounts for kitchen tickets, stock and purchasing, and figures. Their exact rights are set by the owner.</td></tr>
+  </table></div>
+  <div class="callout"><strong>Roles can be changed</strong>The owner can edit what each role may do in <span class="ui">Admin → Roles</span>, and create new roles, without any programmer.</div>
+
+  <h2 id="day">A day in the system</h2>
+  <div class="flow"><span>Sign in</span><i>→</i><span>Start day</span><i>→</i><span>Start shift</span><i>→</i><span>Take orders</span><i>→</i><span>Bill and pay</span><i>→</i><span>Close shift</span><i>→</i><span>Close day</span></div>
+
+  <h3 id="signin">1. Sign in</h3>
+  <div class="pair">
+    <div>
+      <p>Type your username, then your PIN on the number pad, and press <span class="ui">Sign in</span>. After a few wrong PINs the account locks for a short time, so nobody can guess a PIN.</p>
+      <p>The <span class="ui">اردو</span> button switches the whole app to Urdu. Your choice is remembered on that device.</p>
+    </div>
+    <figure class="narrow"><img src="img/login.png" alt="Sign-in screen with username field and PIN pad" loading="lazy"><figcaption>Sign-in with the PIN pad.</figcaption></figure>
+  </div>
+
+  <h3 id="start">2. Start the day and the shift</h3>
+  <p>A <strong>business day</strong> is the trading day that all sales are filed under, even if you close after midnight. A <strong>shift</strong> is one cashier's time on the till, with their own cash drawer count. Orders cannot be taken until a day is open.</p>
+  <figure><img src="img/floor-day-closed.png" alt="Tables screen with a yellow notice that the day has not started" loading="lazy"><figcaption>Before the day starts, the Tables screen says so and offers <span class="ui">Open day</span> to people who are allowed to.</figcaption></figure>
+  <p>The pill at the top right is the only place for day and shift. It always shows where you are, turns yellow when a step is missing, and its menu offers exactly the next step.</p>
+  <figure><img src="img/day-menu.png" alt="Day and shift menu with Open shift and Close day" loading="lazy"><figcaption>Open the pill: <span class="ui">Open shift</span> asks for the cash already in the drawer (the opening float).</figcaption></figure>
+
+  <h3 id="floor">3. The Tables screen</h3>
+  <figure><img src="img/floor.png" alt="Tables screen showing free, occupied and bill-ready tables and a takeaway order" loading="lazy"><figcaption>The Tables screen during service.</figcaption></figure>
+  <ul>
+    <li><strong>White tile</strong>: free table. Tap it to start an order.</li>
+    <li><strong>Yellow tile with a bar</strong>: guests are eating. It shows how long it has been open and the running amount.</li>
+    <li><strong>Dark blue tile</strong>: the bill is ready and waiting for payment.</li>
+    <li>The filter above the tables (<span class="ui">All / Free / Occupied / Billed</span>) shows how many tables are in each state.</li>
+    <li><strong>Takeaway &amp; delivery</strong> orders are listed under the tables, so you can always come back to one.</li>
+  </ul>
+  <div class="callout"><strong>Two people, one table</strong>If a captain opens a table a second before you do, you are taken to that same order instead of creating a duplicate.</div>
+
+  <h3 id="order">4. Take the order</h3>
+  <figure><img src="img/order-new.png" alt="Order screen with menu on the left and the order on the right" loading="lazy"><figcaption>Menu on the left, the order on the right.</figcaption></figure>
+  <ol class="steps">
+    <li><div><strong>Find the dish.</strong> Use the category tabs (BBQ, Bread, Karahi…) or the search box. Search works in English and Urdu.</div></li>
+    <li><div><strong>Tap to add.</strong> Tapping the same dish again adds one more to the same line. The green number on a dish shows how many are in the order.</div></li>
+    <li><div><strong>Dishes with choices open a small window</strong>: half or full, spice level, extras, a weight in grams for items sold by the kilo, or the options of a deal. Required choices are marked <span class="chip warn">Required</span>. You can add a note for the kitchen.</div></li>
+    <li><div><strong>Check the order.</strong> Each line says <span class="chip warn">Not sent</span> or <span class="chip">In kitchen</span>. Use − and + to change a quantity before sending.</div></li>
+  </ol>
+  <figure class="narrow"><img src="img/item-sheet.png" alt="Item window for Chicken Karahi with Half and Full sizes" loading="lazy"><figcaption>A dish with sizes. The price on this window is for guidance. The final price is always worked out by the server.</figcaption></figure>
+
+  <h3 id="send">5. Send to kitchen</h3>
+  <p>The big green button at the bottom is always the next step, and the line above it tells you why. With new items it is <span class="ui">Send to kitchen</span>. The system prints one ticket per station, so the tandoor and the karahi section each get only their own dishes. A short message confirms where the tickets went.</p>
+  <ul>
+    <li><span class="ui">Rush</span> marks the ticket as urgent.</li>
+    <li>If a station has no printer, the order is still saved and you are told which station was not printed.</li>
+    <li>Once sent, a line cannot simply be removed. Voiding a sent dish asks for a reason and is recorded.</li>
+    <li>More dishes can be added and sent at any time, as many times as the guests order.</li>
+  </ul>
+
+  <h3 id="more">6. Hold, move, merge, cancel</h3>
+  <p>These are rare, so they sit under <span class="ui">More</span> at the top of the order.</p>
+  <div class="pair">
+    <figure><img src="img/order-more.png" alt="More menu showing Hold, Move to another table, Merge, Cancel order" loading="lazy"></figure>
+    <div>
+      <ul>
+        <li><strong>Hold</strong>: pause the order. Resume it later from the same menu.</li>
+        <li><strong>Move to another table</strong>: pick a free table; the whole order moves.</li>
+        <li><strong>Merge</strong>: add another table's order into this one (two parties paying together).</li>
+        <li><strong>Cancel order</strong>: only possible while nothing has gone to the kitchen, and needs a reason. Captains do not see it.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 id="bill">7. Make the bill</h3>
+  <p>When every item is in the kitchen, the green button becomes <span class="ui">Bill · Rs …</span>. While something is still unsent, the Bill button does not appear, so the kitchen and the bill never disagree.</p>
+  <figure><img src="img/pay-start.png" alt="Payment screen with the bill on the left and payment methods on the right" loading="lazy"><figcaption>The bill on the left. Payment on the right, with the amount still to collect at the top.</figcaption></figure>
+  <p>The bill shows identical dishes together, then subtotal, discount, service charge, tax (when it is switched on) and the total. All amounts come from the server. The screen never works out money on its own.</p>
+
+  <h3 id="discount">8. Discounts</h3>
+  <div class="pair">
+    <div>
+      <p><span class="ui">Discount</span> opens a small window: choose 5, 10, 15 or 20 percent and write the reason. A reason is always required.</p>
+      <p>Each role has a limit. A cashier can give 10 percent alone. Above the limit the screen asks for a <strong>manager's username and PIN</strong>, so the manager approves it on the spot without taking over the till. A wrong PIN is refused.</p>
+    </div>
+    <figure><img src="img/discount.png" alt="Discount window with percentage buttons and a reason field" loading="lazy"></figure>
+  </div>
+
+  <h3 id="pay">9. Take payment</h3>
+  <figure><img src="img/pay-cash.png" alt="Cash payment with amount received and change to return" loading="lazy"><figcaption>Cash: type what the guest handed over, or tap a note. The change to return appears at once.</figcaption></figure>
+  <ul>
+    <li>Tap a <strong>payment method</strong> tile: Cash, card, Easypaisa, JazzCash, bank QR, or Customer Khata. The amount is filled in for you.</li>
+    <li><strong>Split payment</strong>: add a second method. For example Rs 1,000 cash and the rest on card. The <strong>Remaining</strong> amount at the top counts down to zero.</li>
+    <li>Card and wallet payments need a reference (the slip or transaction number).</li>
+    <li>If something is missing, the sentence under the button says exactly what, for example <em>"Rs 500 still to be covered by a payment"</em>. The button <span class="ui">Take payment · Rs …</span> turns on when everything is right.</li>
+    <li>Pressing the button twice, or a retry after the network drops, cannot charge the guest twice.</li>
+  </ul>
+
+  <h3 id="paid">10. Paid</h3>
+  <div class="pair">
+    <figure><img src="img/paid.png" alt="Paid screen showing the change to return and a Done button" loading="lazy"></figure>
+    <div>
+      <p>The paid screen shows the <strong>change to return</strong> in large type. The receipt prints, and the cash drawer opens for cash. The table becomes free on the Tables screen.</p>
+      <p><span class="ui">Reprint</span> sends the receipt again. This is a sensitive action: it needs permission and is logged. <span class="ui">Done</span> returns to the tables.</p>
+    </div>
+  </div>
+
+  <h2 id="khata">Khata (credit customers)</h2>
+  <p>Regular customers who pay later get a khata account with a <strong>credit limit</strong>. This is a real ledger, not a note.</p>
+  <div class="pair">
+    <figure><img src="img/khata-new.png" alt="New khata account form" loading="lazy"><figcaption>A manager creates the account with name, phone and limit.</figcaption></figure>
+    <figure><img src="img/khata-list.png" alt="List of khata accounts with balances" loading="lazy"><figcaption>The Khata list shows who owes what.</figcaption></figure>
+  </div>
+  <ul>
+    <li>At payment, choose <span class="ui">Customer Khata</span> and pick the customer. The amount is added to what they owe.</li>
+    <li>If the sale would take them over their limit, the system refuses it and shows how much credit is left. This cannot be skipped.</li>
+    <li>When the customer pays, open <span class="ui">Khata</span>, choose the account and record the payment. The ledger shows every sale and payment in order.</li>
+    <li>Entries are never edited. A correction is a new entry.</li>
+  </ul>
+
+  <h2 id="bills">Old bills, refunds and corrections</h2>
+  <figure><img src="img/bills.png" alt="Bills list with date and bill number search" loading="lazy"><figcaption><span class="ui">Bills</span> finds any bill by business day or number.</figcaption></figure>
+  <p>A paid bill is final. It cannot be edited or deleted. This protects you from missing money and from disputes.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Situation</th><th>What to do</th></tr>
+    <tr><td>Bill made by mistake, not yet paid</td><td>Open it and press <span class="ui">Cancel bill</span> (manager). A reason is required. The order opens again so it can be corrected and re-billed.</td></tr>
+    <tr><td>Guest returns a dish after paying</td><td>Open the paid bill, press the refund button, choose the dish and give a reason. The system creates a <strong>credit note</strong>, pays the money back, and reverses the tax on those items. The original bill stays untouched.</td></tr>
+    <tr><td>Guest wants a second copy</td><td><span class="ui">Reprint</span> on the paid screen. It is logged.</td></tr>
+  </table></div>
+
+  <h2 id="cash">Cash drawer, shift and day close</h2>
+  <p>Press <span class="ui">Drawer</span> in the left menu.</p>
+  <div class="pair">
+    <figure><img src="img/drawer.png" alt="Cash drawer window" loading="lazy"></figure>
+    <figure><img src="img/cash-move.png" alt="Paid-out, cash-in and drop form" loading="lazy"></figure>
+  </div>
+  <ul>
+    <li><strong>Paid out</strong>: cash taken out for an expense (gas, vegetables). Amount and reason are required.</li>
+    <li><strong>Cash in</strong>: cash added to the drawer. <strong>Drop</strong>: extra cash moved to the safe.</li>
+    <li><strong>No sale</strong>: opens the drawer without a sale. A reason is required and it is logged, so nobody can open the drawer unseen.</li>
+    <li><strong>Close shift</strong>: the cashier counts the cash and enters it. The system compares it with what it expects and prints a slip. A difference needs a short note. Closing a shift is the end of that cashier's responsibility.</li>
+    <li><strong>Close day</strong> (manager): ends the trading day and produces the day report with sales, payment methods, cash differences and tax. If orders are still open, the system lists them (for example "#12, #15") and refuses to close until they are paid or cancelled. Nothing is left behind silently.</li>
+  </ul>
+
+  <h2 id="admin">Owner setup (Admin)</h2>
+  <p>The <span class="ui">Admin</span> area has its own menu on the left, grouped by job. Each person sees only the parts they are allowed to use.</p>
+
+  <h3>Menu and tables</h3>
+  <figure><img src="img/admin-menu.png" alt="Menu admin with prices per channel" loading="lazy"><figcaption>Prices are edited right in the table. Each channel (dine-in, takeaway, delivery) can have its own price.</figcaption></figure>
+  <ul>
+    <li><strong>Edit a price</strong>: type it and press Enter. Old bills keep the price they were sold at.</li>
+    <li><strong>Available switch</strong>: turn a dish off when it is finished (it shows "Sold out" at the till).</li>
+    <li><strong>New item</strong>: name in English and Urdu, kitchen station, variants (half/full), prices per channel.</li>
+    <li><strong>Import / Export CSV</strong>: load a whole menu from Excel. The check step lists every problem by line number before anything is applied.</li>
+    <li><strong>Tables</strong>: add areas (Main Hall, Terrace) and tables. A new table appears on the floor straight away.</li>
+  </ul>
+  <figure><img src="img/admin-tables.png" alt="Tables admin" loading="lazy"></figure>
+
+  <h3>People and access</h3>
+  <div class="pair">
+    <figure><img src="img/admin-users.png" alt="Users admin" loading="lazy"><figcaption>Create staff, reset a PIN, unlock or deactivate. Staff are deactivated, never deleted, so old records keep their names.</figcaption></figure>
+    <figure><img src="img/admin-roles.png" alt="Roles admin" loading="lazy"><figcaption>Choose what each role can do.</figcaption></figure>
+  </div>
+
+  <h3>Printers and settings</h3>
+  <div class="pair">
+    <figure><img src="img/admin-printers.png" alt="Printers admin" loading="lazy"><figcaption>Add each network printer, send a test page, and choose which printer takes which kitchen station. Failed print jobs can be retried.</figcaption></figure>
+    <figure><img src="img/admin-settings.png" alt="Restaurant settings" loading="lazy"><figcaption>Name (English and Urdu), address and phone for the receipt, service charge, round-to-rupee, and the receipt language.</figcaption></figure>
+  </div>
+  <p>If the receipt language is set to Urdu, the receipt is drawn as a picture so any thermal printer prints proper Urdu.</p>
+  <div class="callout warn"><strong>Printer offline</strong>A red bar appears at the top on every screen when a printer cannot be reached, with the number of waiting tickets. Tickets are kept and print when the printer is back.</div>
+
+  <h3>Stock, purchases, recipes and costs</h3>
+  <p>This part is optional but gives the owner true food cost.</p>
+  <div class="pair">
+    <figure><img src="img/admin-stock.png" alt="Stock admin" loading="lazy"><figcaption><strong>Stock</strong>: quantity on hand, average cost, value, low-stock filter, wastage and staff meals, and stock counts.</figcaption></figure>
+    <figure><img src="img/admin-purchases.png" alt="Purchases admin" loading="lazy"><figcaption><strong>Purchases</strong>: record goods received from a supplier with quantity and price. The system keeps what you owe each supplier.</figcaption></figure>
+    <figure><img src="img/admin-recipes.png" alt="Recipes admin" loading="lazy"><figcaption><strong>Recipes</strong>: what goes into each dish. When a bill is paid, those ingredients leave stock automatically.</figcaption></figure>
+    <figure><img src="img/admin-costs.png" alt="Costs admin" loading="lazy"><figcaption><strong>Costs</strong>: rent, salaries, gas and other expenses, and the food-cost report per dish.</figcaption></figure>
+  </div>
+  <ul>
+    <li>Stock is reduced when a bill is paid, using the recipe. If you sell something before the delivery is entered, stock may show a minus number. Sales are never blocked.</li>
+    <li>A stock count compares the shelf with the system and turns each difference into a recorded adjustment.</li>
+    <li>Purchases cannot be edited afterwards. Mistakes are corrected by a new entry.</li>
+  </ul>
+
+  <h3 id="tax">Tax</h3>
+  <figure><img src="img/admin-tax.png" alt="Tax admin with the switch off" loading="lazy"></figure>
+  <div class="callout warn"><strong>Tax is off until your accountant sets it up</strong>The software contains no tax rates. Tax rules differ by city and change over time, so the rates must come from your tax authority or accountant. Until then, bills carry no tax.</div>
+  <ul>
+    <li>The owner or accountant enters the tax authority, NTN/STRN, the tax <em>categories</em>, and the <em>rates</em> with the date they start. Rates can differ for cash and for card or wallet payments.</li>
+    <li>For each rate, the person who confirmed it is recorded. The switch cannot be turned on while anything is missing, and the page lists exactly what is missing.</li>
+    <li>Tax is worked out when the bill is paid, using the rule that applies on that date and for that payment type. A past bill never changes when a rate changes later.</li>
+    <li>Refunds reverse tax at the same rate the original bill used.</li>
+  </ul>
+
+  <h3 id="fiscal">Fiscal reporting</h3>
+  <figure><img src="img/admin-fiscal.png" alt="Fiscal admin" loading="lazy"></figure>
+  <p>Where the tax authority requires invoices to be reported online, each paid bill is queued and sent in the background. The cashier is never kept waiting, and the bill shows <em>fiscal invoice: pending</em> until the number arrives. If the internet is down, reports wait and retry. A reconciliation view shows anything that was refused or is stuck.</p>
+  <div class="callout bad"><strong>Not connected yet</strong>The connection to the actual authority (PRA, SRB, KPRA or FBR) is built as a plug-in and tested with a stand-in provider only. Connecting to the real service needs your authority's technical specification and your registration credentials.</div>
+
+  <h2 id="urdu">Urdu and other screen sizes</h2>
+  <div class="pair">
+    <figure><img src="img/account-menu.png" alt="Account menu with language and log out" loading="lazy"><figcaption>Language is in the account menu, top right.</figcaption></figure>
+    <figure><img src="img/urdu-order.png" alt="Order screen in Urdu, right to left" loading="lazy"><figcaption>The whole screen mirrors for Urdu, with Urdu dish names.</figcaption></figure>
+  </div>
+  <div class="pair">
+    <figure class="narrow"><img src="img/phone-order.png" alt="Order screen on a phone" loading="lazy"><figcaption>On a phone the menu fills the screen. The bar at the bottom shows the order total.</figcaption></figure>
+    <figure class="narrow"><img src="img/phone-cart.png" alt="Order sheet on a phone" loading="lazy"><figcaption>Tap it to see the order and send it.</figcaption></figure>
+  </div>
+  <p>Buttons are large enough for a finger. The same system works on a tablet at the counter, a phone in a waiter's hand, or a PC at the cashier.</p>
+
+  <h2 id="safety">Built-in safety</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Rule</th><th>What it means for you</th></tr>
+    <tr><td>No deleting history</td><td>Payments, stock movements, khata entries and the audit log can only be added to. The database itself refuses edits and deletes.</td></tr>
+    <tr><td>Paid bills are final</td><td>Corrections are credit notes that sit next to the original.</td></tr>
+    <tr><td>Everything sensitive is logged</td><td>Discounts, voids after the kitchen, refunds, reprints, no-sale drawer opens and shift reopens record who, when and why.</td></tr>
+    <tr><td>Approval by a second person</td><td>Large discounts need a manager's PIN, and the limit depends on the role.</td></tr>
+    <tr><td>Works without internet</td><td>Orders, kitchen tickets, bills and payment run on the restaurant network. Only online reporting needs the internet, and it waits and retries.</td></tr>
+    <tr><td>One change at a time</td><td>If two devices change the same order together, the second is told it was updated and the screen reloads, so nothing is lost.</td></tr>
+  </table></div>
+
+  <h2 id="golive">Before opening day: checklist</h2>
+  <ul class="checklist">
+    <li>Restaurant name, address and phone entered; receipt language chosen.</li>
+    <li>Menu imported or entered, with Urdu names, kitchen stations and prices for each channel; a few dishes tested at the till.</li>
+    <li>Areas and tables created to match the floor.</li>
+    <li>Printers added, test page printed, every kitchen station mapped to a printer.</li>
+    <li>Staff created with their own PIN; roles checked; the discount limit set.</li>
+    <li>Payment methods checked (cash, card, wallets); a test bill paid and refunded.</li>
+    <li>Cashiers practised: open shift, order, bill, split payment, drawer paid-out, close shift with a count.</li>
+    <li>Tax: left off, or set up with your accountant who confirms each rate.</li>
+    <li>If stock is used: ingredients, opening stock, recipes for the main dishes.</li>
+  </ul>
+
+  <h2 id="later">Not built yet</h2>
+  <p>These are planned and not part of the system today:</p>
+  <ul>
+    <li>Delivery management: riders, delivery addresses, cash on delivery settlement.</li>
+    <li>WhatsApp order and receipt messages.</li>
+    <li>Advance orders and large-party (dawat) bookings with advance payments.</li>
+    <li>A4 invoices for company customers.</li>
+    <li>Export to an accounting package.</li>
+    <li>The live connection to the tax authority (see Fiscal reporting).</li>
+  </ul>
+
+  <h2 id="faq">Common questions</h2>
+  <h3>The internet is down. Can we keep selling?</h3>
+  <p>Yes. Taking orders, printing kitchen tickets, billing and payment use only your local network. Online fiscal reports wait and are sent when the internet returns.</p>
+  <h3>A guest wants to change the order after the kitchen got it.</h3>
+  <p>Add the new dish and send it. To remove a dish that was already sent, use <span class="ui">Void</span> and enter a reason. The kitchen is told.</p>
+  <h3>The table does not show on the screen, or looks wrong.</h3>
+  <p>Screens update by themselves within a few seconds. If a device lost its connection to the server, it reconnects and refreshes on its own.</p>
+  <h3>Someone entered a wrong amount.</h3>
+  <p>Before payment, remove the payment line and enter it again. After payment, ask a manager to refund through a credit note.</p>
+  <h3>A cashier forgot to close their shift.</h3>
+  <p>The manager cannot close the day while a shift is open. The cashier counts the cash and closes it first, with a note for any difference.</p>
+  <h3>Can I see how much each dish costs me?</h3>
+  <p>Yes, once recipes and purchases are entered. The cost report shows food cost per dish and in total.</p>
+
+  <footer>This guide describes the system as built today. Screens shown use sample data (a demo menu and tables).</footer>
+</main>
+</div>
+
+<script>
+// Contents built from the headings, with the current section highlighted while scrolling.
+(function () {
+  var heads = Array.prototype.slice.call(document.querySelectorAll('main h2'));
+  var lists = [document.getElementById('toc'), document.getElementById('toc-m')];
+  var links = [];
+  heads.forEach(function (h) {
+    lists.forEach(function (ol) {
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      a.href = '#' + h.id; a.textContent = h.textContent;
+      li.appendChild(a); ol.appendChild(li); links.push(a);
+    });
+  });
+  if (!('IntersectionObserver' in window)) return;
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      links.forEach(function (a) { a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id); });
+    });
+  }, { rootMargin: '0px 0px -75% 0px' });
+  heads.forEach(function (h) { io.observe(h); });
+})();
+</script>
