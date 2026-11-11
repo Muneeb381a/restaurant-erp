@@ -45,26 +45,29 @@ test('the owner adds an ingredient with opening stock and writes the Tikka recip
 test('selling two Tikka takes 200 g out of stock, with the cost kept', async ({ page }) => {
   await login(page, 'cashier');
   const hasShift = await page
-    .getByText('Shift ✓')
+    .getByText('Shift open')
     .waitFor({ timeout: 5000 })
     .then(() => true)
     .catch(() => false);
   if (!hasShift) {
-    await page.getByRole('button', { name: 'Open shift' }).click();
+    await page.getByRole('button', { name: /^Day / }).click();
+    await page.getByRole('button', { name: 'Open shift' }).first().click();
     await page.getByRole('textbox').fill('5000');
-    await page.getByRole('button', { name: 'Confirm' }).click();
-    await expect(page.getByText('Shift ✓')).toBeVisible();
+    await page.getByRole('button', { name: 'Open shift' }).last().click();
+    await expect(page.getByText('Shift open')).toBeVisible();
   }
   await page.getByRole('button', { name: /L1/ }).click();
-  await page.getByRole('button', { name: /Chicken Tikka \(Leg\)/ }).click();
+  await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
   await page.locator('aside').getByRole('button', { name: 'plus' }).first().click();
   await expect(page.locator('aside')).toContainText('Rs 800');
   await page.getByRole('button', { name: 'Send to kitchen' }).click();
-  await expect(page.locator('aside')).toContainText('Sent to the kitchen');
-  await page.getByRole('button', { name: 'Bill', exact: true }).click();
-  await page.getByRole('button', { name: '+ Cash', exact: true }).click();
-  await page.getByRole('button', { name: 'Settle bill' }).click();
-  await expect(page.getByText('✓ Paid')).toBeVisible();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
+  ).toContainText('Sent to the kitchen');
+  await page.getByRole('button', { name: /^Bill/ }).click();
+  await page.getByRole('button', { name: 'Cash', exact: true }).click();
+  await page.getByRole('button', { name: /^Take payment/ }).click();
+  await expect(page.getByRole('heading', { name: 'Paid' })).toBeVisible();
 });
 
 test('purchases raise stock, suppliers are paid later, wastage and expenses are recorded', async ({

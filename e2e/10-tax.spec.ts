@@ -72,45 +72,48 @@ test('the owner sets tax up from scratch: authority, confirmed rates, then ON', 
 test('the bill total follows how it is paid: 16 % for cash, 8 % for card', async ({ page }) => {
   await login(page, 'cashier');
   const hasShift = await page
-    .getByText('Shift ✓')
+    .getByText('Shift open')
     .waitFor({ timeout: 5000 })
     .then(() => true)
     .catch(() => false);
   if (!hasShift) {
-    await page.getByRole('button', { name: 'Open shift' }).click();
+    await page.getByRole('button', { name: /^Day / }).click();
+    await page.getByRole('button', { name: 'Open shift' }).first().click();
     await page.getByRole('textbox').fill('5000');
-    await page.getByRole('button', { name: 'Confirm' }).click();
-    await expect(page.getByText('Shift ✓')).toBeVisible();
+    await page.getByRole('button', { name: 'Open shift' }).last().click();
+    await expect(page.getByText('Shift open')).toBeVisible();
   }
   const sell = async (table: string): Promise<void> => {
     await page.getByRole('link', { name: 'Restaurant POS' }).click();
     await page.getByRole('button', { name: new RegExp(table) }).click();
-    await page.getByRole('button', { name: /Chicken Tikka \(Leg\)/ }).click();
+    await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
     await expect(page.locator('aside')).toContainText('Rs 400');
     await page.getByRole('button', { name: 'Send to kitchen' }).click();
-    await expect(page.locator('aside')).toContainText('Sent to the kitchen');
-    await page.getByRole('button', { name: 'Bill', exact: true }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
+    ).toContainText('Sent to the kitchen');
+    await page.getByRole('button', { name: /^Bill/ }).click();
     await expect(page).toHaveURL(/\/pay$/);
   };
 
   // cash (the default view of the bill): 400 + 16 % = 464
   await sell('M1');
   await expect(page.getByTestId('bill-total')).toContainText('Rs 464');
-  await page.getByRole('button', { name: '+ Cash', exact: true }).click();
+  await page.getByRole('button', { name: 'Cash', exact: true }).click();
   await expect(page.getByTestId('bill-total')).toContainText('Rs 464');
   await expect(page.getByText(/Tax 16%/)).toBeVisible();
   await expect(page.getByTestId('remaining')).toContainText('Rs 0');
-  await page.getByRole('button', { name: 'Settle bill' }).click();
-  await expect(page.getByText('✓ Paid')).toBeVisible();
+  await page.getByRole('button', { name: /^Take payment/ }).click();
+  await expect(page.getByRole('heading', { name: 'Paid' })).toBeVisible();
 
   // card: the same bill is 400 + 8 % = 432 once the tender is all digital
   await sell('M2');
-  await page.getByRole('button', { name: '+ Debit/Credit Card' }).click();
+  await page.getByRole('button', { name: 'Debit/Credit Card', exact: true }).click();
   await expect(page.getByTestId('bill-total')).toContainText('Rs 432');
   await page.getByLabel(/Reference/).fill('RRN-TAX-1');
   await expect(page.getByTestId('remaining')).toContainText('Rs 0');
-  await page.getByRole('button', { name: 'Settle bill' }).click();
-  await expect(page.getByText('✓ Paid')).toBeVisible();
+  await page.getByRole('button', { name: /^Take payment/ }).click();
+  await expect(page.getByRole('heading', { name: 'Paid' })).toBeVisible();
   await page.getByRole('link', { name: 'Bills', exact: true }).click();
   await expect(page.getByRole('link', { name: /Rs 432/ }).first()).toBeVisible();
   await expect(page.getByRole('link', { name: /Rs 464/ }).first()).toBeVisible();

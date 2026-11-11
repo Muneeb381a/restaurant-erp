@@ -43,7 +43,8 @@ test('capture the main screens', async ({ page }) => {
   await page.screenshot({ path: `${OUT}/06-floor-urdu.png` });
 
   // tablet portrait
-  await page.getByRole('button', { name: 'English' }).click();
+  await page.getByRole('button', { name: 'اکاؤنٹ', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'English' }).click();
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.getByRole('button', { name: /T1/ }).click();
   await expect(page.locator('aside')).toContainText('Rs');
@@ -86,7 +87,8 @@ test('capture the admin screens', async ({ page }) => {
   await page.screenshot({ path: `${OUT}/12-admin-users.png` });
 
   await page.goto('/admin/menu');
-  await page.getByRole('button', { name: 'اردو' }).click();
+  await page.getByRole('button', { name: 'Account', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'اردو' }).click();
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/13-admin-menu-urdu.png` });
 });

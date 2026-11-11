@@ -36,7 +36,7 @@
     "navTables": "Tables",
     "navBills": "Bills",
     "navKhata": "Khata",
-    "navDrawer": "Cash",
+    "navDrawer": "Drawer",
     "navAdmin": "Admin",
     "mainNav": "Main navigation",
     "dayOpen": "Day open",
@@ -59,7 +59,14 @@
     "noDay": "Open the business day to take orders",
     "items": "{{count}} items",
     "guests": "{{count}} guests",
-    "seats": "{{count}} seats"
+    "seats": "{{count}} seats",
+    "noDayHint": "Open the day from the Day control at the top right.",
+    "filter": "Filter tables",
+    "billReady": "Bill ready",
+    "minAgo": "{{count}} min",
+    "counterTitle": "Takeaway & delivery",
+    "noCounter": "No open takeaway or delivery orders.",
+    "noTables": "No tables to show."
   },
   "admin": {
     "title": "Admin",
@@ -171,7 +178,11 @@
     "stock": "Stock",
     "purchases": "Purchases",
     "recipes": "Recipes",
-    "costs": "Costs"
+    "costs": "Costs",
+    "groupMenu": "Menu & tables",
+    "groupStock": "Stock & costs",
+    "groupPeople": "People & access",
+    "groupBusiness": "Business"
   },
   "order": {
     "title": "Order",
@@ -203,7 +214,23 @@
     "missingStation": "No kitchen station set for: {{items}}",
     "nothingToSend": "Nothing new to send",
     "billIt": "Bill",
-    "payIt": "Payment"
+    "payIt": "Payment",
+    "more": "More",
+    "helperEmpty": "Tap items on the left to add them to this order.",
+    "helperHeld": "This order is on hold. Resume it from More to continue.",
+    "helperUnsent": "{{count}} new item(s) not sent to the kitchen yet.",
+    "helperSent": "Everything is in the kitchen. Make the bill when the guest asks.",
+    "helperBilled": "The bill is ready. Take payment to finish.",
+    "helperSettled": "This order is paid.",
+    "categories": "Menu categories",
+    "noMatch": "No items match.",
+    "voided": "Voided",
+    "notSent": "Not sent",
+    "inKitchen": "In kitchen",
+    "size": "Size",
+    "required": "Required",
+    "optional": "optional",
+    "pickN": "choose {{count}}"
   },
   "bill": {
     "bill": "Bill",
@@ -232,7 +259,7 @@
     "reference": "Reference (card RRN / txn id)",
     "exact": "Exact",
     "remove": "Remove",
-    "settle": "Settle bill",
+    "settle": "Take payment",
     "change": "Change to return",
     "changeNone": "No change",
     "done": "Done",
@@ -250,7 +277,16 @@
     "receiptSent": "Receipt printing",
     "noMethods": "No payment methods are set up",
     "fiscalPending": "Fiscal invoice: pending",
-    "fiscalNo": "Fiscal invoice"
+    "fiscalNo": "Fiscal invoice",
+    "chooseMethod": "Choose how the guest is paying.",
+    "toAssign": "{{amount}} still to be covered by a payment.",
+    "over": "Payments are {{amount}} more than the bill.",
+    "checkRows": "Fill in the highlighted payment details.",
+    "addAnother": "Split with another method",
+    "cashShort": "Still short",
+    "changeDiscount": "Change discount",
+    "discountHint": "A discount above your limit needs a manager’s approval.",
+    "approverHint": "Ask a manager to enter their username and PIN to approve this."
   },
   "cash": {
     "drawer": "Cash drawer",
@@ -393,7 +429,9 @@
     "noOthers": "No other open orders to merge",
     "occupied": "That table already has an order",
     "hasSent": "Items were already sent to the kitchen: void them first",
-    "cancelHint": "The whole order is cancelled and the table is freed. It cannot be undone."
+    "cancelHint": "The whole order is cancelled and the table is freed. It cannot be undone.",
+    "moveHint": "Pick a free table. The whole order moves there.",
+    "mergeHint": "Pick the table whose order should be added to this one."
   },
   "rolesPage": {
     "pick": "Choose a role on the left.",

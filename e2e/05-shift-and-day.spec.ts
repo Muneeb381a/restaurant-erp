@@ -66,10 +66,10 @@ test('cashier records a paid-out, opens the drawer with no sale, and closes the 
   page,
 }) => {
   await login(page, 'cashier');
-  await expect(page.getByText('Shift ✓')).toBeVisible();
+  await expect(page.getByText('Shift open')).toBeVisible();
 
   // ── paid-out: needs a reason; more than the drawer holds is refused
-  await page.getByRole('button', { name: 'Cash drawer' }).click();
+  await page.getByRole('button', { name: 'Drawer', exact: true }).click();
   await page.getByRole('button', { name: 'Paid out / cash in / drop' }).click();
   await page.getByLabel('Amount (Rs)').fill('9999999');
   await page.getByLabel('Reason', { exact: true }).fill('Vegetables');
@@ -105,8 +105,8 @@ test('cashier records a paid-out, opens the drawer with no sale, and closes the 
   await expect
     .poll(() => jobs.some((j) => text(j).includes('SHIFT CLOSE')), { timeout: 15_000 })
     .toBe(true);
-  await expect(page.getByRole('button', { name: 'Open shift' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Cash drawer' })).toHaveCount(0);
+  await expect(page.getByText('No shift')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Drawer', exact: true })).toHaveCount(0);
 });
 
 test('a manager cannot close the day while orders are still open; cashiers have no such button', async ({
@@ -115,15 +115,17 @@ test('a manager cannot close the day while orders are still open; cashiers have 
 }) => {
   const cashierPage = await (await browser.newContext()).newPage();
   await login(cashierPage, 'cashier');
-  await expect(cashierPage.getByRole('button', { name: 'Close day' })).toHaveCount(0);
+  await cashierPage.getByRole('button', { name: /^Day / }).click();
+  await expect(cashierPage.getByRole('menuitem', { name: 'Close day' })).toHaveCount(0);
   await cashierPage.context().close();
 
   await login(page, 'manager');
-  await page.getByRole('button', { name: 'Close day' }).click();
+  await page.getByRole('button', { name: /^Day / }).click();
+  await page.getByRole('menuitem', { name: 'Close day' }).click();
   await expect(page.getByText('This ends the trading day')).toBeVisible();
   await page.getByRole('button', { name: 'Close day' }).last().click();
   // the server lists exactly what is blocking, nothing is abandoned silently
   await expect(page.getByText(/These orders are not settled or cancelled: #\d+/)).toBeVisible();
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByText(/Business day:/)).toBeVisible(); // still open
+  await expect(page.getByText(/Day open/)).toBeVisible(); // still open
 });

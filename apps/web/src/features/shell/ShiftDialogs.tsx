@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Modal as SharedModal } from '../../components/Modal';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr, parseRs } from '../../lib/money';
 import type { Shift } from '../../lib/types';
@@ -17,13 +18,11 @@ interface DayClosed {
 const newKey = (): string => `ui-${crypto.randomUUID()}`;
 
 function Modal({ title, children }: { title: string; children: React.ReactNode }) {
+  // these dialogs carry half-typed amounts and counts: they close only through their own buttons
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
-      <div className="card w-full max-w-sm space-y-3 p-5">
-        <h2 className="text-xl font-bold">{title}</h2>
-        {children}
-      </div>
-    </div>
+    <SharedModal title={title} size="sm" dismissible={false} onClose={() => undefined}>
+      <div className="space-y-3">{children}</div>
+    </SharedModal>
   );
 }
 
@@ -247,7 +246,7 @@ export function ShiftDialog({ shift, onClose }: { shift: Shift; onClose: () => v
         {t('cash.noSale')}
       </button>
       <button
-        className="btn-danger w-full"
+        className="btn-danger-quiet w-full"
         onClick={() => {
           setMessage(null);
           setMode('close');

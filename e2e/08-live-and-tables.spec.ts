@@ -69,7 +69,8 @@ test('a manager moves an order to another table, merges two orders, and cancels 
 
   // ── move L1 → L2
   await page.getByRole('button', { name: /L1/ }).click();
-  await page.getByRole('button', { name: 'Move to another table' }).click();
+  await page.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('menuitem', { name: 'Move to another table' }).click();
   await page.getByRole('button', { name: /L2/ }).click();
   await expect(page.locator('aside')).toContainText('L2');
   await page.getByRole('link', { name: /Back/ }).click();
@@ -82,7 +83,8 @@ test('a manager moves an order to another table, merges two orders, and cancels 
   await expect(page.locator('aside')).toContainText('Rs 400');
   await page.getByRole('link', { name: /Back/ }).click();
   await page.getByRole('button', { name: /L2/ }).click();
-  await page.getByRole('button', { name: 'Merge another table into this order' }).click();
+  await page.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('menuitem', { name: 'Merge another table into this order' }).click();
   await page.getByRole('button', { name: /L1/ }).click();
   await expect(page.locator('aside')).toContainText('Rs 450'); // naan 50 + tikka 400
   await page.getByRole('link', { name: /Back/ }).click();
@@ -90,7 +92,8 @@ test('a manager moves an order to another table, merges two orders, and cancels 
 
   // ── cancel the merged order (nothing was sent to the kitchen, so it is allowed)
   await page.getByRole('button', { name: /L2/ }).click();
-  await page.getByRole('button', { name: 'Cancel order' }).click();
+  await page.getByRole('button', { name: 'More' }).click();
+  await page.getByRole('menuitem', { name: 'Cancel order' }).click();
   await page.getByLabel('Reason').fill('Guests left');
   await page.getByRole('button', { name: 'Cancel order' }).last().click();
   await expect(page.getByRole('heading', { name: 'Tables' })).toBeVisible();
@@ -101,6 +104,7 @@ test('a captain can move tables but has no cancel button', async ({ page }) => {
   await login(page, 'captain');
   await page.getByRole('button', { name: /L3/ }).click();
   await page.getByRole('button', { name: /^Plain Naan/ }).click();
-  await expect(page.getByRole('button', { name: 'Move to another table' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Cancel order' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'More' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Move to another table' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Cancel order' })).toHaveCount(0);
 });

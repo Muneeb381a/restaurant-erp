@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Icon } from '../../components/Icon';
+import { Modal } from '../../components/Modal';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr, parseRs } from '../../lib/money';
 import { can, useBill, useMe, usePaymentMethods } from '../../lib/queries';
@@ -45,6 +47,7 @@ export function PayPage() {
   );
   const [approverWrong, setApproverWrong] = useState(false);
   const [voiding, setVoiding] = useState(false);
+  const [discounting, setDiscounting] = useState(false);
   const [refunding, setRefunding] = useState(false);
   const seq = useRef(0);
   // One key per payment attempt: a retry after a network drop can never charge twice.
@@ -213,48 +216,57 @@ export function PayPage() {
       return true;
     });
 
-  // ── receipt / change screen
+  // ── paid: receipt / change screen
   if (result || settled) {
     const change = result?.changeDuePaisa ?? b.changeDuePaisa;
     return (
-      <div className="mx-auto max-w-md space-y-4 p-6 text-center">
-        <div className="text-2xl font-bold text-emerald-700">✓ {t('bill.settled')}</div>
-        <div className="text-slate-600">
-          {t('bill.billNo')} {ltr(`#${b.billNo}`)} · {ltr(formatRs(b.totalPaisa))}
+      <div className="mx-auto max-w-md space-y-4 p-6">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <span className="flex size-14 items-center justify-center rounded-full bg-emerald-600 text-white">
+            <Icon name="check" size={32} />
+          </span>
+          <h1 className="text-2xl font-semibold">{t('bill.settled')}</h1>
+          <p className="text-slate-700">
+            {t('bill.billNo')} {ltr(`#${b.billNo}`)} ·{' '}
+            <span className="money">{ltr(formatRs(b.totalPaisa))}</span>
+          </p>
         </div>
-        <div className="card p-6">
-          <div className="text-sm text-slate-500">{t('bill.change')}</div>
-          <div data-testid="change-due" className="text-5xl font-bold">
+        <div className="card p-5 text-center">
+          <div className="label">{t('bill.change')}</div>
+          <div data-testid="change-due" className="money mt-1 text-5xl font-semibold">
             {change > 0 ? ltr(formatRs(change)) : t('bill.changeNone')}
           </div>
         </div>
         {b.fiscalInvoiceNo ? (
-          <p className="text-sm text-slate-600" data-testid="fiscal-no">
+          <p className="text-center text-sm text-slate-700" data-testid="fiscal-no">
             {t('bill.fiscalNo')}: {ltr(b.fiscalInvoiceNo)}
           </p>
         ) : b.fiscalStatus === 'PENDING' || b.fiscalStatus === 'FAILED' ? (
-          <p className="text-sm text-amber-800" data-testid="fiscal-pending">
+          <p className="text-center text-sm text-amber-800" data-testid="fiscal-pending">
             {t('bill.fiscalPending')}
           </p>
         ) : null}
         {(b.creditNotes?.length ?? 0) > 0 && (
-          <div className="card space-y-1 p-3 text-start" data-testid="credit-notes">
+          <div className="card space-y-1 p-3" data-testid="credit-notes">
             <div className="font-semibold">{t('refund.history')}</div>
             {b.creditNotes!.map((c) => (
               <div key={c.id} className="flex justify-between text-sm">
                 <span>
                   {t('refund.note')} {ltr(`#${c.cnNo}`)} · {c.reason}
                 </span>
-                <span>{ltr(formatRs(-c.totalPaisa))}</span>
+                <span className="money">{ltr(formatRs(-c.totalPaisa))}</span>
               </div>
             ))}
           </div>
         )}
         {message && (
-          <p role="status" className="rounded-lg bg-emerald-50 p-2 text-emerald-900">
+          <p role="status" className="rounded-lg bg-emerald-50 p-2 text-center text-emerald-900">
             {message}
           </p>
         )}
+        <Link to="/" className="btn-primary btn-lg w-full">
+          {t('bill.done')}
+        </Link>
         <div className="flex gap-2">
           {can(me.data, 'bill.reprint') && (
             <button
@@ -262,6 +274,7 @@ export function PayPage() {
               disabled={reprint.isPending}
               onClick={() => reprint.mutate()}
             >
+              <Icon name="printer" size={18} />
               {t('bill.reprint')}
             </button>
           )}
@@ -270,38 +283,43 @@ export function PayPage() {
               {t('refund.button')}
             </button>
           )}
-          <Link to="/" className="btn-primary flex-1">
-            {t('bill.done')}
-          </Link>
         </div>
         {refunding && <RefundDialog bill={b} onClose={() => setRefunding(false)} />}
       </div>
     );
   }
 
+  // why the main button is not ready yet, in plain words
+  let blocker: string | null = null;
+  if (!payable) blocker = t('bill.notPayable');
+  else if (rows.length === 0) blocker = t('bill.chooseMethod');
+  else if (remaining > 0) blocker = t('bill.toAssign', { amount: ltr(formatRs(remaining)) });
+  else if (remaining < 0) blocker = t('bill.over', { amount: ltr(formatRs(-remaining)) });
+  else if (!rowsValid) blocker = t('bill.checkRows');
+
   return (
-    <div className="mx-auto grid max-w-5xl gap-4 p-3 md:grid-cols-2">
+    <div className="mx-auto grid max-w-5xl gap-4 p-3 md:grid-cols-2 md:p-4">
       {/* ── the bill */}
-      <section className="card space-y-3 p-4">
-        <div className="flex items-center gap-2">
-          <Link to={`/order/${id}`} className="btn-secondary">
-            ←
+      <section className="card flex flex-col p-4">
+        <div className="mb-2 flex items-center gap-2">
+          <Link to={`/order/${id}`} className="btn-quiet -ms-2 px-2" aria-label={t('common.back')}>
+            <Icon name="chevronLeft" data-flip />
           </Link>
-          <h1 className="me-auto text-xl font-bold">
+          <h1 className="me-auto text-xl font-semibold">
             {t('bill.billNo')} {ltr(`#${b.billNo}`)}
           </h1>
         </div>
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-slate-200">
           {b.lines.map((l) => (
             <li key={l.id} className="flex justify-between gap-2 py-2">
               <span>
-                {ltr(`${l.qty}×`)} {l.description}
+                <span className="text-slate-600">{ltr(`${l.qty}×`)}</span> {l.description}
               </span>
-              <span>{ltr(formatRs(l.netPaisa))}</span>
+              <span className="money">{ltr(formatRs(l.netPaisa))}</span>
             </li>
           ))}
         </ul>
-        <dl className="space-y-1 border-t border-slate-200 pt-2">
+        <dl className="mt-2 space-y-1 border-t border-slate-300 pt-3">
           <Row label={t('bill.subtotal')} paisa={b.subtotalPaisa} />
           {b.discountPaisa > 0 && <Row label={t('bill.discount')} paisa={-b.discountPaisa} />}
           {b.serviceChargePaisa > 0 && (
@@ -320,74 +338,103 @@ export function PayPage() {
           {shown.roundOffPaisa !== 0 && (
             <Row label={t('bill.roundOff')} paisa={shown.roundOffPaisa} />
           )}
-          <div className="flex justify-between text-2xl font-bold">
+          <div className="flex items-baseline justify-between pt-1 text-2xl font-semibold">
             <dt>{t('bill.total')}</dt>
-            <dd data-testid="bill-total">{ltr(formatRs(shown.totalPaisa))}</dd>
+            <dd data-testid="bill-total" className="money">
+              {ltr(formatRs(shown.totalPaisa))}
+            </dd>
           </div>
         </dl>
 
-        {payable && can(me.data, 'bill.discount') && (
-          <DiscountBox
-            busy={discount.isPending}
-            hasDiscount={b.discountPaisa > 0}
-            onApply={(pct, reason) => discount.mutate({ percentBps: pct, reason })}
-            onRemove={() => discount.mutate({ percentBps: 0 })}
-          />
-        )}
-        {payable && can(me.data, 'bill.void') && (
-          <button className="btn-secondary w-full text-rose-700" onClick={() => setVoiding(true)}>
-            {t('bill.voidBill')}
-          </button>
+        {payable && (
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-200 pt-3">
+            {can(me.data, 'bill.discount') && (
+              <button className="btn-secondary" onClick={() => setDiscounting(true)}>
+                {b.discountPaisa > 0 ? t('bill.changeDiscount') : t('bill.addDiscount')}
+              </button>
+            )}
+            {can(me.data, 'bill.void') && (
+              <button className="btn-quiet ms-auto text-rose-700" onClick={() => setVoiding(true)}>
+                {t('bill.voidBill')}
+              </button>
+            )}
+          </div>
         )}
       </section>
 
       {/* ── payment */}
-      <section className="card space-y-3 p-4">
-        <h2 className="text-xl font-bold">{t('bill.pay')}</h2>
+      <section className="card space-y-4 p-4">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-xl font-semibold">{t('bill.pay')}</h2>
+          <div className="text-end">
+            <div className="label">{remaining > 0 ? t('bill.due') : t('bill.paid')}</div>
+            <div
+              data-testid="remaining"
+              className={`money text-3xl font-semibold ${remaining === 0 && rows.length > 0 ? 'text-emerald-700' : ''}`}
+            >
+              {ltr(formatRs(Math.abs(remaining)))}
+            </div>
+          </div>
+        </div>
+
         {message && (
           <p role="alert" className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900">
             {message}
           </p>
         )}
         {(methods.data ?? []).length === 0 && (
-          <p className="text-slate-500">{t('bill.noMethods')}</p>
+          <p className="text-slate-600">{t('bill.noMethods')}</p>
         )}
-        <div className="flex flex-wrap gap-2">
-          {(methods.data ?? [])
-            .filter((m) => m.code !== 'KHATA' || can(me.data, 'khata.collect'))
-            .map((m) => (
-              <button
-                key={m.id}
-                className="btn-secondary"
-                disabled={!payable}
-                onClick={() => addRow(m)}
-              >
-                + {m.name}
-              </button>
-            ))}
+
+        <div>
+          <div className="label mb-1.5">
+            {rows.length === 0 ? t('bill.method') : t('bill.addAnother')}
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {(methods.data ?? [])
+              .filter((m) => m.code !== 'KHATA' || can(me.data, 'khata.collect'))
+              .map((m) => (
+                <button
+                  key={m.id}
+                  className="btn-secondary min-h-primary flex-col gap-0.5 text-sm"
+                  disabled={!payable}
+                  onClick={() => addRow(m)}
+                >
+                  <Icon
+                    name={m.code === 'CASH' ? 'cash' : m.code === 'KHATA' ? 'book' : 'receipt'}
+                    size={20}
+                  />
+                  {m.name}
+                </button>
+              ))}
+          </div>
         </div>
 
         {rows.map((r) => {
           const m = methodOf(r.methodId)!;
+          const amt = parseRs(r.amount) ?? 0;
+          const tn = r.tendered ? parseRs(r.tendered) : null;
           return (
             <div
               key={r.key}
-              className="space-y-2 rounded-lg border border-slate-200 p-3"
+              className="space-y-3 rounded-xl border border-slate-300 bg-slate-50 p-3"
               data-testid={`tender-${m.code}`}
             >
               <div className="flex items-center gap-2">
                 <span className="me-auto font-semibold">{m.name}</span>
                 <button
-                  className="btn-secondary"
+                  className="btn-quiet px-2 text-slate-700"
+                  aria-label={`${t('bill.remove')} ${m.name}`}
                   onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))}
                 >
+                  <Icon name="x" size={18} />
                   {t('bill.remove')}
                 </button>
               </div>
-              <label className="block text-sm">
-                {t('bill.amount')}
+              <label className="block space-y-1">
+                <span className="label">{t('bill.amount')}</span>
                 <input
-                  className="input"
+                  className="input money"
                   inputMode="decimal"
                   aria-label={`${m.name} ${t('bill.amount')}`}
                   value={r.amount}
@@ -395,11 +442,11 @@ export function PayPage() {
                 />
               </label>
               {m.opens_drawer && (
-                <div className="space-y-1">
-                  <label className="block text-sm">
-                    {t('bill.tendered')}
+                <div className="space-y-2">
+                  <label className="block space-y-1">
+                    <span className="label">{t('bill.tendered')}</span>
                     <input
-                      className="input"
+                      className="input money"
                       inputMode="decimal"
                       aria-label={t('bill.tendered')}
                       value={r.tendered}
@@ -423,12 +470,23 @@ export function PayPage() {
                       </button>
                     ))}
                   </div>
+                  {tn !== null && amt > 0 && (
+                    <div
+                      className={`flex items-baseline justify-between rounded-lg px-3 py-2 ${tn >= amt ? 'bg-emerald-50 text-emerald-900' : 'bg-rose-50 text-rose-800'}`}
+                      aria-live="polite"
+                    >
+                      <span>{tn >= amt ? t('bill.change') : t('bill.cashShort')}</span>
+                      <span className="money text-xl font-semibold">
+                        {ltr(formatRs(Math.abs(tn - amt)))}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
               {m.code === 'KHATA' && (
                 <div className="space-y-1">
                   <KhataPicker selected={r.khata} onSelect={(a) => patch(r.key, { khata: a })} />
-                  {r.khata && (parseRs(r.amount) ?? 0) > r.khata.availableCreditPaisa && (
+                  {r.khata && amt > r.khata.availableCreditPaisa && (
                     <p className="text-sm text-amber-800">
                       {t('khata.limitExceeded', {
                         available: ltr(formatRs(r.khata.availableCreditPaisa)),
@@ -438,8 +496,8 @@ export function PayPage() {
                 </div>
               )}
               {m.needs_reference && (
-                <label className="block text-sm">
-                  {t('bill.reference')}
+                <label className="block space-y-1">
+                  <span className="label">{t('bill.reference')}</span>
                   <input
                     className="input"
                     aria-label={t('bill.reference')}
@@ -452,19 +510,33 @@ export function PayPage() {
           );
         })}
 
-        <div className="flex justify-between text-lg">
-          <span>{remaining > 0 ? t('bill.due') : t('bill.paid')}</span>
-          <span data-testid="remaining">{ltr(formatRs(Math.abs(remaining)))}</span>
+        <div className="space-y-2">
+          <button
+            className="btn-primary btn-lg w-full"
+            disabled={blocker !== null || settle.isPending}
+            onClick={() => settle.mutate()}
+          >
+            {t('bill.settle')} · {ltr(formatRs(shown.totalPaisa))}
+          </button>
+          {blocker && <p className="hint text-center">{blocker}</p>}
         </div>
-        <button
-          className="btn-primary h-16 w-full text-xl"
-          disabled={!payable || !rowsValid || settle.isPending}
-          onClick={() => settle.mutate()}
-        >
-          {t('bill.settle')}
-        </button>
       </section>
 
+      {discounting && (
+        <DiscountDialog
+          busy={discount.isPending}
+          hasDiscount={b.discountPaisa > 0}
+          onClose={() => setDiscounting(false)}
+          onApply={(pct, reason) => {
+            discount.mutate({ percentBps: pct, reason });
+            setDiscounting(false);
+          }}
+          onRemove={() => {
+            discount.mutate({ percentBps: 0 });
+            setDiscounting(false);
+          }}
+        />
+      )}
       {needApprover && (
         <ApproverDialog
           busy={discount.isPending}
@@ -495,20 +567,22 @@ export function PayPage() {
 function Row({ label, paisa }: { label: string; paisa: number }) {
   return (
     <div className="flex justify-between">
-      <dt>{label}</dt>
-      <dd>{ltr(formatRs(paisa))}</dd>
+      <dt className="text-slate-700">{label}</dt>
+      <dd className="money">{ltr(formatRs(paisa))}</dd>
     </div>
   );
 }
 
-function DiscountBox({
+function DiscountDialog({
   busy,
   hasDiscount,
+  onClose,
   onApply,
   onRemove,
 }: {
   busy: boolean;
   hasDiscount: boolean;
+  onClose: () => void;
   onApply: (percentBps: number, reason: string) => void;
   onRemove: () => void;
 }) {
@@ -516,40 +590,53 @@ function DiscountBox({
   const [pct, setPct] = useState<number | null>(null);
   const [reason, setReason] = useState('');
   return (
-    <div className="space-y-2 border-t border-slate-200 pt-3">
-      <div className="font-semibold">{t('bill.addDiscount')}</div>
-      <div className="flex flex-wrap gap-2">
-        {[5, 10, 15, 20].map((p) => (
+    <Modal
+      title={t('bill.addDiscount')}
+      size="sm"
+      onClose={onClose}
+      footer={
+        <>
+          {hasDiscount && (
+            <button className="btn-secondary me-auto" disabled={busy} onClick={onRemove}>
+              {t('bill.removeDiscount')}
+            </button>
+          )}
+          <button className="btn-secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
           <button
-            key={p}
-            className={pct === p ? 'btn-primary' : 'btn-secondary'}
-            onClick={() => setPct(p)}
+            className="btn-primary"
+            disabled={busy || pct === null || reason.trim().length < 3}
+            onClick={() => onApply(pct! * 100, reason.trim())}
           >
-            {ltr(`${p}%`)}
+            {t('bill.apply')}
           </button>
-        ))}
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {[5, 10, 15, 20].map((p) => (
+            <button
+              key={p}
+              aria-pressed={pct === p}
+              className={`btn border ${pct === p ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-400 bg-white hover:bg-slate-100'}`}
+              onClick={() => setPct(p)}
+            >
+              {ltr(`${p}%`)}
+            </button>
+          ))}
+        </div>
+        <input
+          className="input"
+          placeholder={t('bill.discountReason')}
+          aria-label={t('bill.discountReason')}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+        />
+        <p className="hint">{t('bill.discountHint')}</p>
       </div>
-      <input
-        className="input"
-        placeholder={t('bill.discountReason')}
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-      />
-      <div className="flex gap-2">
-        <button
-          className="btn-secondary flex-1"
-          disabled={busy || pct === null || reason.trim().length < 3}
-          onClick={() => onApply(pct! * 100, reason.trim())}
-        >
-          {t('bill.apply')}
-        </button>
-        {hasDiscount && (
-          <button className="btn-secondary flex-1" disabled={busy} onClick={onRemove}>
-            {t('bill.removeDiscount')}
-          </button>
-        )}
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -568,9 +655,27 @@ function ApproverDialog({
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
-      <div className="card w-full max-w-sm space-y-3 p-5">
-        <h2 className="text-lg font-bold">{t('bill.approverTitle')}</h2>
+    <Modal
+      title={t('bill.approverTitle')}
+      size="sm"
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn-secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button
+            className="btn-primary"
+            disabled={busy || !username.trim() || !/^\d{4,8}$/.test(pin)}
+            onClick={() => onSubmit(username.trim(), pin)}
+          >
+            {t('common.confirm')}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <p className="hint">{t('bill.approverHint')}</p>
         {wrong && (
           <p role="alert" className="text-sm text-rose-700">
             {t('bill.approverWrong')}
@@ -580,6 +685,7 @@ function ApproverDialog({
           className="input"
           autoFocus
           placeholder={t('bill.approverUser')}
+          aria-label={t('bill.approverUser')}
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
@@ -588,23 +694,12 @@ function ApproverDialog({
           type="password"
           inputMode="numeric"
           placeholder={t('bill.approverPin')}
+          aria-label={t('bill.approverPin')}
           value={pin}
           onChange={(e) => setPin(e.target.value)}
         />
-        <div className="flex gap-2">
-          <button className="btn-secondary flex-1" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button
-            className="btn-primary flex-1"
-            disabled={busy || !username.trim() || !/^\d{4,8}$/.test(pin)}
-            onClick={() => onSubmit(username.trim(), pin)}
-          >
-            {t('common.confirm')}
-          </button>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -624,29 +719,33 @@ function ReasonDialog({
   const { t } = useTranslation();
   const [reason, setReason] = useState('');
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
-      <div className="card w-full max-w-sm space-y-3 p-5">
-        <h2 className="text-lg font-bold">{title}</h2>
-        <input
-          className="input"
-          autoFocus
-          placeholder={prompt}
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-        />
-        <div className="flex gap-2">
-          <button className="btn-secondary flex-1" onClick={onClose}>
+    <Modal
+      title={title}
+      size="sm"
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn-secondary" onClick={onClose}>
             {t('common.cancel')}
           </button>
           <button
-            className="btn-danger flex-1"
+            className="btn-danger"
             disabled={busy || reason.trim().length < 3}
             onClick={() => onSubmit(reason.trim())}
           >
             {t('common.confirm')}
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <input
+        className="input"
+        autoFocus
+        placeholder={prompt}
+        aria-label={prompt}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+      />
+    </Modal>
   );
 }

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Modal } from '../../components/Modal';
 import { ApiError } from '../../lib/api';
 
 /** Small shared pieces of the admin screens: modal, form field, error text, toggle. */
@@ -15,32 +16,17 @@ export function Dialog({
   children: ReactNode;
   wide?: boolean;
 }) {
-  const { t } = useTranslation();
   return (
-    <div
-      className="fixed inset-0 z-30 flex items-center justify-center bg-black/50 p-3"
-      role="dialog"
-      aria-label={title}
-    >
-      <div
-        className={`card max-h-[92vh] w-full overflow-auto p-5 ${wide ? 'max-w-3xl' : 'max-w-lg'}`}
-      >
-        <div className="mb-3 flex items-start justify-between gap-2">
-          <h2 className="text-xl font-bold">{title}</h2>
-          <button className="btn-secondary" onClick={onClose} aria-label={t('common.close')}>
-            ✕
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
+    <Modal title={title} onClose={onClose} size={wide ? 'lg' : 'md'}>
+      {children}
+    </Modal>
   );
 }
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block space-y-1">
-      <span className="text-sm text-slate-600">{label}</span>
+      <span className="label">{label}</span>
       {children}
     </label>
   );

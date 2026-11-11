@@ -94,19 +94,22 @@ test('cashier opens the day and a shift, then takes an order at table T1', async
   await expect(page.getByText('Open the business day to take orders')).toBeVisible();
   await expect(page.getByRole('button', { name: /T1/ })).toBeDisabled();
 
-  await page.getByRole('button', { name: 'Open day' }).click();
-  await expect(page.getByText(/Business day:.*\d{4}-\d{2}-\d{2}/)).toBeVisible();
-  await page.getByRole('button', { name: 'Open shift' }).click();
+  await page.getByRole('button', { name: /^Day / }).click();
+
+  await page.getByRole('button', { name: 'Open day' }).first().click();
+  await expect(page.getByText(/Day open/)).toBeVisible();
+  await page.getByRole('button', { name: /^Day / }).click();
+  await page.getByRole('button', { name: 'Open shift' }).first().click();
   await page.getByRole('textbox').fill('5000');
-  await page.getByRole('button', { name: 'Confirm' }).click();
-  await expect(page.getByText('Shift ✓')).toBeVisible();
+  await page.getByRole('button', { name: 'Open shift' }).last().click();
+  await expect(page.getByText('Shift open')).toBeVisible();
 
   await page.getByRole('button', { name: /T1/ }).click();
   await expect(page).toHaveURL(/\/order\//);
   await expect(page.getByText('No items yet')).toBeVisible();
 
   // a single-variant item is added with one tap; the SERVER prices it
-  await page.getByRole('button', { name: /Chicken Tikka \(Leg\)/ }).click();
+  await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
   await expect(page.locator('aside')).toContainText('Rs 360');
 
   // Half/Full item opens the sheet
@@ -122,7 +125,7 @@ test('cashier opens the day and a shift, then takes an order at table T1', async
   // a required modifier-free weighed item asks for a weight
   await page.getByRole('button', { name: /^Mutton Chops/ }).click();
   await expect(page.getByRole('button', { name: /^Add/ })).toBeDisabled();
-  await page.getByRole('button', { name: '500', exact: true }).click();
+  await page.getByRole('button', { name: /^\W*500\W*$/ }).click();
   await page.getByRole('button', { name: /^Add/ }).click();
   await expect(page.locator('aside')).toContainText('Rs 5,520'); // + 500 g of Rs 4,800/kg
 
@@ -132,8 +135,10 @@ test('cashier opens the day and a shift, then takes an order at table T1', async
 
   // send to the kitchen: lines become "Sent", and the tickets arrive at the (fake) printer
   await page.getByRole('button', { name: 'Send to kitchen' }).click();
-  await expect(page.locator('aside')).toContainText('Sent to the kitchen: BBQ, KARAHI');
-  await expect(page.getByRole('button', { name: 'Send to kitchen' })).toBeDisabled(); // nothing new left
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
+  ).toContainText('Sent to the kitchen: BBQ, KARAHI');
+  await expect(page.getByRole('button', { name: 'Send to kitchen' })).toHaveCount(0); // nothing new left
   await expect.poll(() => tickets.length, { timeout: 15_000 }).toBe(2); // one KOT per station
   const all = tickets.join('\n');
   expect(all).toContain('2 x Chicken Tikka (Leg)');
@@ -172,20 +177,23 @@ test('a captain on another tablet sees T1 occupied, and cannot take it', async (
 
 test('Urdu mode is right-to-left and shows Urdu item names', async ({ page }) => {
   await login(page, 'cashier');
-  await page.getByRole('button', { name: 'اردو' }).click();
+  await page.getByRole('button', { name: 'Account', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'اردو' }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   await expect(page.locator('html')).toHaveAttribute('lang', 'ur');
   await expect(page.getByRole('heading', { name: 'ٹیبلز' })).toBeVisible();
 
   await page.getByRole('button', { name: /T2/ }).click();
   await expect(page.getByRole('button', { name: /نان/ }).first()).toBeVisible(); // Urdu item name from the menu
-  await page.getByRole('button', { name: 'English' }).click();
+  await page.getByRole('button', { name: 'اکاؤنٹ', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'English' }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
 });
 
 test('signing out returns to the login screen and protects the floor', async ({ page }) => {
   await login(page, 'cashier');
-  await page.getByRole('button', { name: 'Log out' }).click();
+  await page.getByRole('button', { name: 'Account', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Log out' }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto('/');
   await expect(page).toHaveURL(/\/login$/);

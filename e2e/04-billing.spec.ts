@@ -80,25 +80,28 @@ test.afterAll(async () => {
 async function orderAndBill(page: Page, table: string): Promise<void> {
   // the shift status loads asynchronously: wait for it instead of guessing from the first paint
   const hasShift = await page
-    .getByText('Shift ✓')
+    .getByText('Shift open')
     .waitFor({ timeout: 5000 })
     .then(() => true)
     .catch(() => false);
   if (!hasShift) {
-    await page.getByRole('button', { name: 'Open shift' }).click();
+    await page.getByRole('button', { name: /^Day / }).click();
+    await page.getByRole('button', { name: 'Open shift' }).first().click();
     await page.getByRole('textbox').fill('5000');
-    await page.getByRole('button', { name: 'Confirm' }).click();
-    await expect(page.getByText('Shift ✓')).toBeVisible();
+    await page.getByRole('button', { name: 'Open shift' }).last().click();
+    await expect(page.getByText('Shift open')).toBeVisible();
   }
   await page.getByRole('button', { name: new RegExp(table) }).click();
-  await page.getByRole('button', { name: /Chicken Tikka \(Leg\)/ }).click();
+  await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
   await expect(page.locator('aside')).toContainText('Rs 400');
 
   // billing is refused until everything is in the kitchen
-  await expect(page.getByRole('button', { name: 'Bill', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /^Bill/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Send to kitchen' }).click();
-  await expect(page.locator('aside')).toContainText('Sent to the kitchen');
-  await page.getByRole('button', { name: 'Bill', exact: true }).click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
+  ).toContainText('Sent to the kitchen');
+  await page.getByRole('button', { name: /^Bill/ }).click();
   await expect(page).toHaveURL(/\/pay$/);
   await expect(page.getByTestId('bill-total')).toContainText('Rs 400');
 }
@@ -110,23 +113,24 @@ test('cash payment with a 10% discount: change is shown, the receipt prints and 
   await orderAndBill(page, 'T3');
 
   // 10% is within the cashier's limit: no manager needed, but a reason is
+  await page.getByRole('button', { name: 'Discount', exact: true }).click();
   await page.getByRole('button', { name: /10%/ }).click();
   await expect(page.getByRole('button', { name: 'Apply' })).toBeDisabled();
-  await page.getByPlaceholder('Reason (required)').fill('Regular guest');
+  await page.getByLabel('Reason (required)').fill('Regular guest');
   await page.getByRole('button', { name: 'Apply' }).click();
   await expect(page.getByTestId('bill-total')).toContainText('Rs 360');
 
-  await page.getByRole('button', { name: '+ Cash', exact: true }).click();
+  await page.getByRole('button', { name: 'Cash', exact: true }).click();
   await expect(page.getByTestId('remaining')).toContainText('Rs 0');
-  await expect(page.getByRole('button', { name: 'Settle bill' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /^Take payment/ })).toBeEnabled();
 
   // cash received below the amount keeps the button disabled
   await page.getByLabel('Cash received').fill('100');
-  await expect(page.getByRole('button', { name: 'Settle bill' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /^Take payment/ })).toBeDisabled();
   await page.getByRole('button', { name: /^\W*500\W*$/ }).click(); // quick amount 500, not 5000
-  await page.getByRole('button', { name: 'Settle bill' }).click();
+  await page.getByRole('button', { name: /^Take payment/ }).click();
 
-  await expect(page.getByText('✓ Paid')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Paid' })).toBeVisible();
   await expect(page.getByTestId('change-due')).toContainText('Rs 140'); // 500 − 360
 
   await expect.poll(() => receipts.length, { timeout: 15_000 }).toBe(1);
@@ -152,8 +156,9 @@ test('a 20% discount needs a manager PIN; the bill is then split between cash an
   await login(page, 'cashier');
   await orderAndBill(page, 'T4');
 
+  await page.getByRole('button', { name: 'Discount', exact: true }).click();
   await page.getByRole('button', { name: /20%/ }).click();
-  await page.getByPlaceholder('Reason (required)').fill('Birthday');
+  await page.getByLabel('Reason (required)').fill('Birthday');
   await page.getByRole('button', { name: 'Apply' }).click();
 
   // above the cashier's limit → manager approval dialog; a wrong PIN is refused
@@ -167,16 +172,16 @@ test('a 20% discount needs a manager PIN; the bill is then split between cash an
   await expect(page.getByTestId('bill-total')).toContainText('Rs 320'); // 400 − 20%
 
   // Rs 100 cash + the rest on card (card needs a reference)
-  await page.getByRole('button', { name: '+ Cash', exact: true }).click();
+  await page.getByRole('button', { name: 'Cash', exact: true }).click();
   await page.getByLabel('Cash Amount').fill('100');
   await expect(page.getByTestId('remaining')).toContainText('Rs 220');
-  await page.getByRole('button', { name: '+ Debit/Credit Card' }).click();
+  await page.getByRole('button', { name: 'Debit/Credit Card', exact: true }).click();
   await expect(page.getByTestId('remaining')).toContainText('Rs 0');
-  await expect(page.getByRole('button', { name: 'Settle bill' })).toBeDisabled(); // reference missing
+  await expect(page.getByRole('button', { name: /^Take payment/ })).toBeDisabled(); // reference missing
   await page.getByLabel(/Reference/).fill('RRN-481516');
-  await page.getByRole('button', { name: 'Settle bill' }).click();
+  await page.getByRole('button', { name: /^Take payment/ }).click();
 
-  await expect(page.getByText('✓ Paid')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Paid' })).toBeVisible();
   await expect(page.getByTestId('change-due')).toContainText('No change');
   await expect.poll(() => receipts.length, { timeout: 15_000 }).toBe(3);
   expect(receipts[2]).toContain('Rs 320');
@@ -187,15 +192,17 @@ test('a 20% discount needs a manager PIN; the bill is then split between cash an
 test('cancelling a bill reopens the order for changes (manager only)', async ({ page }) => {
   await login(page, 'manager');
   await page.getByRole('button', { name: /T3/ }).click();
-  await page.getByRole('button', { name: /Chicken Tikka \(Leg\)/ }).click();
+  await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
   await page.getByRole('button', { name: 'Send to kitchen' }).click();
-  await expect(page.locator('aside')).toContainText('Sent to the kitchen');
-  await page.getByRole('button', { name: 'Bill', exact: true }).click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
+  ).toContainText('Sent to the kitchen');
+  await page.getByRole('button', { name: /^Bill/ }).click();
   await expect(page).toHaveURL(/\/pay$/);
 
   await page.getByRole('button', { name: 'Cancel bill' }).click();
   await page.getByPlaceholder('Why is the bill cancelled?').fill('Guest wants more food');
   await page.getByRole('button', { name: 'Confirm' }).click();
   await expect(page).toHaveURL(/\/order\/[^/]+$/);
-  await expect(page.getByRole('button', { name: 'Bill', exact: true })).toBeVisible(); // editable again
+  await expect(page.getByRole('button', { name: /^Bill/ })).toBeVisible(); // editable again
 });

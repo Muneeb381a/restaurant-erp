@@ -42,6 +42,29 @@ export const useFloor = () =>
     refetchInterval: () => pollMs(LIVE_MS),
   });
 
+export interface OpenOrder {
+  id: string;
+  orderNo: number;
+  type: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
+  status: 'OPEN' | 'BILLED';
+  tableCode: string | null;
+  held: boolean;
+  itemCount: number;
+  subtotalPaisa: number;
+  openedAt: string;
+}
+
+/** Open takeaway and delivery orders (dine-in orders show on their table instead). */
+export const useCounterOrders = () =>
+  useQuery({
+    queryKey: ['floor', 'counter-orders'],
+    queryFn: async () => {
+      const r = await api<{ items: OpenOrder[] }>('/orders?status=active');
+      return r.items.filter((o) => o.type !== 'DINE_IN');
+    },
+    refetchInterval: () => pollMs(LIVE_MS),
+  });
+
 export const useOrder = (id: string) =>
   useQuery({
     queryKey: ['order', id],

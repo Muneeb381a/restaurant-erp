@@ -176,7 +176,8 @@ test('users: create a captain, reset the PIN, and the new PIN signs in; captains
   await page.getByRole('button', { name: 'Reset PIN e2e.captain' }).click();
   await page.getByRole('dialog').getByLabel('New PIN').fill('6666');
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
-  await page.getByRole('button', { name: 'Log out' }).click();
+  await page.getByRole('button', { name: 'Account', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Log out' }).click();
 
   await login(page, 'e2e.captain', '6666');
   await expect(page.getByRole('link', { name: 'Admin' })).toHaveCount(0);
@@ -187,7 +188,8 @@ test('users: create a captain, reset the PIN, and the new PIN signs in; captains
 test('the admin area works in Urdu (right-to-left)', async ({ page }) => {
   await login(page, 'owner');
   await page.goto('/admin/menu');
-  await page.getByRole('button', { name: 'اردو' }).click();
+  await page.getByRole('button', { name: 'Account', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'اردو' }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   await expect(page.getByRole('link', { name: 'مینو' })).toBeVisible();
   await expect(page.getByRole('button', { name: /نیا آئٹم/ })).toBeVisible();

@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
+import { Modal as SharedModal } from '../../components/Modal';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr, parseRs } from '../../lib/money';
 import {
@@ -87,12 +88,9 @@ export function KhataPage() {
 
 function Modal({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
-      <div className="card w-full max-w-sm space-y-3 p-5">
-        <h2 className="text-xl font-bold">{title}</h2>
-        {children}
-      </div>
-    </div>
+    <SharedModal title={title} size="sm" dismissible={false} onClose={() => undefined}>
+      <div className="space-y-3">{children}</div>
+    </SharedModal>
   );
 }
 

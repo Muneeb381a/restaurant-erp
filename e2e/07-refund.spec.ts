@@ -15,15 +15,17 @@ async function login(page: Page, username: string): Promise<void> {
 test('the cashier sells two tikka for cash', async ({ page }) => {
   await login(page, 'cashier');
   await page.getByRole('button', { name: /T4/ }).click();
-  await page.getByRole('button', { name: /Chicken Tikka \(Leg\)/ }).click();
+  await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
   await page.locator('aside').getByRole('button', { name: 'plus' }).first().click();
   await expect(page.locator('aside')).toContainText('Rs 800');
   await page.getByRole('button', { name: 'Send to kitchen' }).click();
-  await expect(page.locator('aside')).toContainText('Sent to the kitchen');
-  await page.getByRole('button', { name: 'Bill', exact: true }).click();
-  await page.getByRole('button', { name: '+ Cash', exact: true }).click();
-  await page.getByRole('button', { name: 'Settle bill' }).click();
-  await expect(page.getByText('✓ Paid')).toBeVisible();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
+  ).toContainText('Sent to the kitchen');
+  await page.getByRole('button', { name: /^Bill/ }).click();
+  await page.getByRole('button', { name: 'Cash', exact: true }).click();
+  await page.getByRole('button', { name: /^Take payment/ }).click();
+  await expect(page.getByRole('heading', { name: 'Paid' })).toBeVisible();
 
   // a cashier may look the bill up but cannot refund it
   await page.getByRole('link', { name: 'Bills', exact: true }).click();
@@ -31,7 +33,7 @@ test('the cashier sells two tikka for cash', async ({ page }) => {
     .getByRole('link', { name: /Rs 800/ })
     .first()
     .click();
-  await expect(page.getByText('✓ Paid')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Paid' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Refund', exact: true })).toHaveCount(0);
 });
 
@@ -39,10 +41,11 @@ test('a manager returns one tikka, then the rest; the server computes every amou
   page,
 }) => {
   await login(page, 'manager');
-  await page.getByRole('button', { name: 'Open shift' }).click();
+  await page.getByRole('button', { name: /^Day / }).click();
+  await page.getByRole('button', { name: 'Open shift' }).first().click();
   await page.getByRole('textbox').fill('5000');
-  await page.getByRole('button', { name: 'Confirm' }).click();
-  await expect(page.getByText('Shift ✓')).toBeVisible();
+  await page.getByRole('button', { name: 'Open shift' }).last().click();
+  await expect(page.getByText('Shift open')).toBeVisible();
 
   await page.getByRole('link', { name: 'Bills', exact: true }).click();
   await page
@@ -81,13 +84,15 @@ test('a manager returns one tikka, then the rest; the server computes every amou
 test('a refund cannot be paid out of a drawer without a shift', async ({ page }) => {
   await login(page, 'owner');
   await page.getByRole('button', { name: /T4/ }).click();
-  await page.getByRole('button', { name: /Chicken Tikka \(Leg\)/ }).click();
+  await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
   await page.getByRole('button', { name: 'Send to kitchen' }).click();
-  await expect(page.locator('aside')).toContainText('Sent to the kitchen');
-  await page.getByRole('button', { name: 'Bill', exact: true }).click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
+  ).toContainText('Sent to the kitchen');
+  await page.getByRole('button', { name: /^Bill/ }).click();
   // the owner has no shift, so even taking payment is refused by the server
-  await page.getByRole('button', { name: '+ Cash', exact: true }).click();
-  await page.getByRole('button', { name: 'Settle bill' }).click();
+  await page.getByRole('button', { name: 'Cash', exact: true }).click();
+  await page.getByRole('button', { name: /^Take payment/ }).click();
   await expect(
     page.getByRole('alert').filter({ hasText: 'Open your shift before taking payment' }),
   ).toBeVisible();

@@ -2,8 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fonts are bundled (public/fonts): the till must look right with no internet. */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/IBMPlexSans-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/IBMPlexSans-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/IBMPlexSans-SemiBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/IBMPlexSans-Bold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans Arabic';
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/IBMPlexSansArabic-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans Arabic';
+  font-weight: 500 600;
+  font-display: swap;
+  src: url('/fonts/IBMPlexSansArabic-SemiBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans Arabic';
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/IBMPlexSansArabic-Bold.woff2') format('woff2');
+}
+
 :root {
   color-scheme: light;
+  --rail: 4.5rem;
 }
 
 html,
@@ -14,33 +59,108 @@ body,
 
 body {
   @apply bg-slate-100 text-slate-900 antialiased;
+  font-feature-settings:
+    'tnum' 1,
+    'lnum' 1; /* money lines up: tabular, lining figures */
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation; /* no double-tap zoom on tablets */
 }
 
-/* Urdu text uses a Nastaliq face and a little more line height */
+/* Urdu: Plex Sans Arabic, a little larger and looser (the script needs the room) */
 html[lang='ur'] body {
   @apply font-urdu;
-  line-height: 1.9;
+  font-size: 1.0625rem;
+  line-height: 1.75;
+}
+
+:focus-visible {
+  outline: 3px solid theme('colors.amber.400');
+  outline-offset: 2px;
 }
 
 @layer components {
+  /* ── buttons: one primary per screen, labelled with the outcome */
   .btn {
-    @apply inline-flex min-h-touch min-w-touch select-none items-center justify-center rounded-lg px-4 text-base font-semibold shadow-sm transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex min-h-touch min-w-touch select-none items-center justify-center gap-2 rounded-lg px-4 text-base font-semibold transition-colors active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40;
   }
   .btn-primary {
     @apply btn bg-emerald-600 text-white hover:bg-emerald-700;
   }
   .btn-secondary {
-    @apply btn border border-slate-300 bg-white text-slate-800 hover:bg-slate-50;
+    @apply btn border border-slate-400 bg-white text-slate-900 hover:bg-slate-100;
+  }
+  .btn-quiet {
+    @apply btn px-3 font-medium text-slate-700 hover:bg-slate-200;
   }
   .btn-danger {
     @apply btn bg-rose-600 text-white hover:bg-rose-700;
   }
-  .card {
-    @apply rounded-xl bg-white shadow-sm ring-1 ring-slate-200;
+  .btn-danger-quiet {
+    @apply btn border border-rose-200 bg-white text-rose-700 hover:bg-rose-50;
   }
+  .btn-lg {
+    @apply min-h-primary px-6 text-lg;
+  }
+
+  /* ── surfaces: flat, hairline-bordered, like a printed form */
+  .card {
+    @apply rounded-xl border border-slate-300 bg-white;
+  }
+  .panel {
+    @apply rounded-xl border border-slate-300 bg-slate-50;
+  }
+
+  /* ── form controls */
   .input {
-    @apply min-h-touch w-full rounded-lg border border-slate-300 bg-white px-3 text-base outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200;
+    @apply min-h-touch w-full rounded-lg border border-slate-400 bg-white px-3 text-base text-slate-900 outline-none placeholder:text-slate-500 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200;
+  }
+  .label {
+    @apply text-sm font-medium text-slate-700;
+  }
+  .hint {
+    @apply text-sm text-slate-600;
+  }
+
+  /* ── small status label (text + colour, never colour alone) */
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold;
+  }
+  .chip-ok {
+    @apply chip bg-emerald-100 text-emerald-800;
+  }
+  .chip-warn {
+    @apply chip bg-amber-100 text-amber-800;
+  }
+  .chip-bad {
+    @apply chip bg-rose-100 text-rose-800;
+  }
+  .chip-info {
+    @apply chip bg-sky-100 text-sky-800;
+  }
+  .chip-mute {
+    @apply chip bg-slate-200 text-slate-700;
+  }
+
+  /* ── segmented control (filters, either/or choices) */
+  .seg {
+    @apply inline-flex rounded-lg border border-slate-400 bg-white p-0.5;
+  }
+  .seg-item {
+    @apply inline-flex min-h-[2.5rem] min-w-touch items-center justify-center rounded-md px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100;
+  }
+  .seg-item[aria-pressed='true'],
+  .seg-item[aria-selected='true'] {
+    @apply bg-slate-900 text-white hover:bg-slate-900;
+  }
+
+  /* ── page furniture */
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight text-slate-900;
+  }
+  .micro {
+    @apply text-xs font-semibold uppercase tracking-wide text-slate-600;
+  }
+  .money {
+    @apply tabular-nums;
   }
 }

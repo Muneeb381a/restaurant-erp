@@ -1,27 +1,38 @@
 import { parseRupees } from '@erp/domain';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Icon, type IconName } from '../../components/Icon';
+import { Modal } from '../../components/Modal';
+import { Toaster } from '../../components/Toast';
 import { ApiError, api } from '../../lib/api';
 import { useAuth } from '../../lib/auth-store';
 import { startLive } from '../../lib/live';
-import type { Shift } from '../../lib/types';
 import { ltr } from '../../lib/money';
 import { can, useDay, useMe, usePrinterHealth, useShift } from '../../lib/queries';
+import type { Shift } from '../../lib/types';
 import { ADMIN_SECTIONS } from '../admin/AdminLayout';
-import { LanguageToggle } from './LanguageToggle';
+import { setLanguage, type Lang } from '../../i18n';
 import { DayCloseDialog, ShiftDialog } from './ShiftDialogs';
 
-/** Auth guard + top bar (business day, shift, user, language) around every signed-in screen. */
+/** Auth guard + app frame: navigation by task, one Day/Shift control, account menu. */
 export function Shell() {
   const tokens = useAuth((s) => s.tokens);
   if (!tokens) return <Navigate to="/login" replace />;
   return <SignedIn />;
 }
 
+interface NavItem {
+  to?: string;
+  icon: IconName;
+  label: string;
+  onClick?: () => void;
+  end?: boolean;
+}
+
 function SignedIn() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const qc = useQueryClient();
   const nav = useNavigate();
   const logoutLocal = useAuth((s) => s.logout);
@@ -30,8 +41,8 @@ function SignedIn() {
   const shift = useShift();
   const printers = usePrinterHealth();
   const offline = (printers.data ?? []).filter((p) => p.state === 'OFFLINE');
-  // live updates: one event stream while signed in (polling stays as a slow safety net)
   useEffect(() => startLive(qc), [qc]);
+
   const [floatOpen, setFloatOpen] = useState(false);
   // the dialog keeps its own copy: closing the shift empties the 'current shift' query
   const [drawerShift, setDrawerShift] = useState<Shift | null>(null);
@@ -53,95 +64,291 @@ function SignedIn() {
     nav('/login', { replace: true });
   }
 
+  const items: NavItem[] = [{ to: '/', icon: 'tables', label: t('shell.navTables'), end: true }];
+  if (can(me.data, 'report.view'))
+    items.push({ to: '/bills', icon: 'receipt', label: t('shell.navBills') });
+  if (can(me.data, 'khata.collect'))
+    items.push({ to: '/khata', icon: 'book', label: t('shell.navKhata') });
+  if (shift.data)
+    items.push({
+      icon: 'cash',
+      label: t('shell.navDrawer'),
+      onClick: () => setDrawerShift(shift.data ?? null),
+    });
+  if (ADMIN_SECTIONS.some((s) => can(me.data, s.permission)))
+    items.push({ to: '/admin', icon: 'sliders', label: t('shell.navAdmin') });
+
+  const railItem = (it: NavItem, bar: boolean): ReactNode => {
+    const cls = ({ isActive }: { isActive?: boolean }): string =>
+      `flex min-h-touch flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-2 text-[0.8125rem] font-medium leading-tight ${
+        bar ? 'flex-1 md:flex-none' : 'w-full'
+      } md:w-full ${isActive ? 'bg-white/15 text-white' : 'text-slate-300 hover:bg-white/10'}`;
+    return it.to ? (
+      <NavLink key={it.label} to={it.to} end={it.end} className={cls}>
+        <Icon name={it.icon} />
+        {it.label}
+      </NavLink>
+    ) : (
+      <button key={it.label} type="button" className={cls({})} onClick={it.onClick}>
+        <Icon name={it.icon} />
+        {it.label}
+      </button>
+    );
+  };
+
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex flex-wrap items-center gap-2 bg-slate-900 px-3 py-2 text-white">
-        <Link to="/" className="me-auto text-lg font-bold">
-          {t('app.title')}
-        </Link>
+    <div className="flex h-full flex-col-reverse md:flex-row">
+      <nav
+        aria-label={t('shell.mainNav')}
+        className="flex shrink-0 gap-1 bg-slate-900 p-1.5 md:w-[var(--rail)] md:flex-col md:gap-2 md:p-2 md:pt-3"
+      >
+        {items.map((it) => railItem(it, true))}
+      </nav>
 
-        {day.data ? (
-          <span className="rounded-full bg-emerald-700 px-3 py-1 text-sm">
-            {t('shell.day')}: {ltr(day.data.businessDate)}
-          </span>
-        ) : (
-          <>
-            <span className="rounded-full bg-amber-600 px-3 py-1 text-sm">{t('shell.noDay')}</span>
-            {can(me.data, 'day.open') && (
-              <button
-                className="btn-primary"
-                disabled={openDay.isPending}
-                onClick={() => openDay.mutate()}
-              >
-                {t('shell.openDay')}
-              </button>
-            )}
-          </>
-        )}
-
-        {day.data &&
-          (shift.data ? (
-            <>
-              <span className="rounded-full bg-emerald-700 px-3 py-1 text-sm">
-                {t('shell.shift')} ✓
-              </span>
-              <button
-                className="btn-secondary text-slate-900"
-                onClick={() => setDrawerShift(shift.data ?? null)}
-              >
-                {t('cash.drawer')}
-              </button>
-            </>
-          ) : (
-            can(me.data, 'shift.open') && (
-              <button className="btn-secondary text-slate-900" onClick={() => setFloatOpen(true)}>
-                {t('shell.openShift')}
-              </button>
-            )
-          ))}
-
-        {day.data && can(me.data, 'day.close') && (
-          <button className="btn-secondary text-slate-900" onClick={() => setClosingDay(true)}>
-            {t('cash.closeDay')}
-          </button>
-        )}
-        {can(me.data, 'report.view') && (
-          <Link to="/bills" className="btn-secondary text-slate-900">
-            {t('refund.nav')}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="flex items-center gap-2 border-b border-slate-300 bg-white px-3 py-2">
+          <Link to="/" className="me-auto text-lg font-semibold tracking-tight">
+            {t('app.title')}
           </Link>
-        )}
-        {can(me.data, 'khata.collect') && (
-          <Link to="/khata" className="btn-secondary text-slate-900">
-            {t('khata.nav')}
-          </Link>
-        )}
-        {ADMIN_SECTIONS.some((s) => can(me.data, s.permission)) && (
-          <Link to="/admin" className="btn-secondary text-slate-900">
-            {t('admin.title')}
-          </Link>
-        )}
-        <span className="text-sm text-slate-300">{me.data?.fullName}</span>
-        <LanguageToggle />
-        <button className="btn-secondary text-slate-900" onClick={() => void logout()}>
-          {t('shell.logout')}
-        </button>
-      </header>
+          <DayShiftControl
+            dayDate={day.data?.businessDate}
+            shiftOpen={!!shift.data}
+            canOpenDay={can(me.data, 'day.open')}
+            canOpenShift={can(me.data, 'shift.open')}
+            canCloseDay={can(me.data, 'day.close')}
+            busy={openDay.isPending}
+            onOpenDay={() => openDay.mutate()}
+            onOpenShift={() => setFloatOpen(true)}
+            onDrawer={() => setDrawerShift(shift.data ?? null)}
+            onCloseDay={() => setClosingDay(true)}
+          />
+          <AccountMenu
+            name={me.data?.fullName ?? ''}
+            lang={i18n.language as Lang}
+            onLang={setLanguage}
+            onLogout={() => void logout()}
+          />
+        </header>
 
-      {offline.length > 0 && (
-        <div role="alert" className="bg-rose-600 px-3 py-2 text-center font-semibold text-white">
-          {t('shell.printerOffline', {
-            names: offline.map((p) => `${p.name} (${p.queued})`).join(', '),
-          })}
-        </div>
-      )}
+        {offline.length > 0 && (
+          <div
+            role="alert"
+            className="flex items-center justify-center gap-2 bg-rose-600 px-3 py-2 text-sm font-semibold text-white"
+          >
+            <Icon name="printer" size={18} />
+            {t('shell.printerOffline', {
+              names: offline.map((p) => `${p.name} (${p.queued})`).join(', '),
+            })}
+          </div>
+        )}
 
-      <main className="min-h-0 flex-1 overflow-auto">
-        <Outlet />
-      </main>
+        <main className="min-h-0 flex-1 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
 
       {floatOpen && <OpenShiftDialog onClose={() => setFloatOpen(false)} />}
       {drawerShift && <ShiftDialog shift={drawerShift} onClose={() => setDrawerShift(null)} />}
       {closingDay && <DayCloseDialog onClose={() => setClosingDay(false)} />}
+      <Toaster />
+    </div>
+  );
+}
+
+/** Closes a popover on outside click / Esc. */
+function usePopover(): {
+  open: boolean;
+  setOpen: (v: boolean) => void;
+  ref: React.RefObject<HTMLDivElement>;
+} {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const down = (e: MouseEvent): void => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const key = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', down);
+    document.addEventListener('keydown', key);
+    return () => {
+      document.removeEventListener('mousedown', down);
+      document.removeEventListener('keydown', key);
+    };
+  }, [open]);
+  return { open, setOpen, ref };
+}
+
+function MenuItem({
+  children,
+  onClick,
+  tone,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  tone?: 'bad';
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      className={`flex min-h-touch w-full items-center gap-2 rounded-md px-3 text-start text-base hover:bg-slate-100 ${tone === 'bad' ? 'text-rose-700' : ''}`}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * The only place the business day and shift are handled. The pill always says where you are; the
+ * menu offers exactly the next step (start day → start shift → cash drawer / close day).
+ */
+function DayShiftControl(p: {
+  dayDate: string | undefined;
+  shiftOpen: boolean;
+  canOpenDay: boolean;
+  canOpenShift: boolean;
+  canCloseDay: boolean;
+  busy: boolean;
+  onOpenDay: () => void;
+  onOpenShift: () => void;
+  onDrawer: () => void;
+  onCloseDay: () => void;
+}) {
+  const { t } = useTranslation();
+  const { open, setOpen, ref } = usePopover();
+  const dayOpen = !!p.dayDate;
+  const needsAction = !dayOpen || !p.shiftOpen;
+  const act = (fn: () => void) => () => {
+    setOpen(false);
+    fn();
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={`flex min-h-touch items-center gap-2 rounded-lg border px-3 text-sm font-semibold ${
+          needsAction
+            ? 'border-amber-400 bg-amber-50 text-amber-800'
+            : 'border-slate-300 bg-white text-slate-800'
+        }`}
+        onClick={() => setOpen(!open)}
+      >
+        <Icon name="clock" size={18} />
+        <span className="flex flex-col items-start leading-tight">
+          <span>
+            {dayOpen ? `${t('shell.dayOpen')} · ${ltr(p.dayDate ?? '')}` : t('shell.dayClosed')}
+          </span>
+          <span className="text-xs font-medium opacity-80">
+            {p.shiftOpen ? t('shell.shiftOpen') : t('shell.shiftClosed')}
+          </span>
+        </span>
+        <Icon name="chevronDown" size={16} />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute end-0 z-30 mt-1 w-72 rounded-xl border border-slate-300 bg-white p-1.5 shadow-sheet"
+        >
+          {!dayOpen && (
+            <>
+              <p className="hint px-3 py-2">{t('shell.startDayHint')}</p>
+              {p.canOpenDay && (
+                <button
+                  className="btn-primary mx-1 mb-1 w-[calc(100%-0.5rem)]"
+                  disabled={p.busy}
+                  onClick={act(p.onOpenDay)}
+                >
+                  {t('shell.openDay')}
+                </button>
+              )}
+            </>
+          )}
+          {dayOpen && !p.shiftOpen && (
+            <>
+              <p className="hint px-3 py-2">{t('shell.startShiftHint')}</p>
+              {p.canOpenShift && (
+                <button
+                  className="btn-primary mx-1 mb-1 w-[calc(100%-0.5rem)]"
+                  onClick={act(p.onOpenShift)}
+                >
+                  {t('shell.openShift')}
+                </button>
+              )}
+            </>
+          )}
+          {dayOpen && p.shiftOpen && (
+            <MenuItem onClick={act(p.onDrawer)}>
+              <Icon name="cash" size={20} />
+              {t('cash.drawer')}
+            </MenuItem>
+          )}
+          {dayOpen && p.canCloseDay && (
+            <MenuItem onClick={act(p.onCloseDay)}>
+              <Icon name="check" size={20} />
+              {t('cash.closeDay')}
+            </MenuItem>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AccountMenu({
+  name,
+  lang,
+  onLang,
+  onLogout,
+}: {
+  name: string;
+  lang: Lang;
+  onLang: (l: Lang) => void;
+  onLogout: () => void;
+}) {
+  const { t } = useTranslation();
+  const { open, setOpen, ref } = usePopover();
+  const next: Lang = lang === 'ur' ? 'en' : 'ur';
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t('shell.account')}
+        className="btn-secondary px-3"
+        onClick={() => setOpen(!open)}
+      >
+        <Icon name="user" size={20} />
+        <span className="hidden max-w-[10rem] truncate sm:inline">{name}</span>
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute end-0 z-30 mt-1 w-64 rounded-xl border border-slate-300 bg-white p-1.5 shadow-sheet"
+        >
+          <p className="hint px-3 py-2">{t('shell.signedInAs', { name })}</p>
+          <MenuItem
+            onClick={() => {
+              setOpen(false);
+              onLang(next);
+            }}
+          >
+            <Icon name="globe" size={20} />
+            {t('common.language')}
+          </MenuItem>
+          <MenuItem tone="bad" onClick={onLogout}>
+            <Icon name="logout" size={20} />
+            {t('shell.logout')}
+          </MenuItem>
+        </div>
+      )}
     </div>
   );
 }
@@ -171,33 +378,37 @@ function OpenShiftDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
-      <div className="card w-full max-w-sm space-y-3 p-5">
-        <h2 className="text-xl font-bold">{t('shell.openShift')}</h2>
-        <label className="block space-y-1">
-          <span className="text-sm text-slate-600">{t('shell.float')}</span>
-          <input
-            className="input"
-            inputMode="decimal"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            autoFocus
-          />
-        </label>
-        {error && (
-          <p role="alert" className="text-sm text-rose-700">
-            {error}
-          </p>
-        )}
-        <div className="flex gap-2">
-          <button className="btn-secondary flex-1" onClick={onClose}>
+    <Modal
+      title={t('shell.openShift')}
+      size="sm"
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn-secondary" onClick={onClose}>
             {t('common.cancel')}
           </button>
-          <button className="btn-primary flex-1" disabled={open.isPending} onClick={submit}>
-            {t('common.confirm')}
+          <button className="btn-primary" disabled={open.isPending} onClick={submit}>
+            {t('shell.openShift')}
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <label className="block space-y-1">
+        <span className="label">{t('shell.float')}</span>
+        <input
+          className="input"
+          inputMode="decimal"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && submit()}
+          autoFocus
+        />
+      </label>
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-rose-700">
+          {error}
+        </p>
+      )}
+    </Modal>
   );
 }

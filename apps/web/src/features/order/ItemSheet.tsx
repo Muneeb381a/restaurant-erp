@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Icon } from '../../components/Icon';
+import { Modal } from '../../components/Modal';
 import { localName } from '../../i18n';
 import { formatRs, ltr } from '../../lib/money';
 import type { MenuItem } from '../../lib/types';
@@ -96,42 +98,81 @@ export function ItemSheet({
     });
   }
 
-  return (
-    <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/50 sm:items-center">
-      <div className="card max-h-[92vh] w-full max-w-lg space-y-4 overflow-auto rounded-b-none p-5 sm:rounded-b-xl">
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="text-xl font-bold">{localName(lang, item.name, item.nameUr)}</h2>
-          <button className="btn-secondary" onClick={onClose} aria-label={t('common.close')}>
-            ✕
-          </button>
-        </div>
+  const choice = (on: boolean): string =>
+    `btn border ${on ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-400 bg-white text-slate-900 hover:bg-slate-100'}`;
+  const stepper = (
+    value: number,
+    onMinus: () => void,
+    onPlus: () => void,
+    plusDisabled = false,
+  ) => (
+    <div className="inline-flex items-center rounded-lg border border-slate-400">
+      <button className="btn-quiet min-w-touch px-0" onClick={onMinus} aria-label="minus">
+        <Icon name="minus" size={18} />
+      </button>
+      <span className="money w-8 text-center font-semibold">{value}</span>
+      <button
+        className="btn-quiet min-w-touch px-0"
+        disabled={plusDisabled}
+        onClick={onPlus}
+        aria-label="plus"
+      >
+        <Icon name="plus" size={18} />
+      </button>
+    </div>
+  );
 
+  return (
+    <Modal
+      title={localName(lang, item.name, item.nameUr)}
+      onClose={onClose}
+      footer={
+        <button
+          className="btn-primary btn-lg w-full"
+          disabled={busy || !groupsOk || !weightOk || !dealOk}
+          onClick={submit}
+        >
+          {t('order.add')} ·{' '}
+          {ltr(item.kind === 'WEIGHT' ? formatRs(price) + '/kg' : formatRs(price * qty))}
+        </button>
+      }
+    >
+      <div className="space-y-5">
         {item.variants.length > 1 && (
-          <div className="flex flex-wrap gap-2">
-            {item.variants.map((v) => (
-              <button
-                key={v.id}
-                onClick={() => setVariantId(v.id)}
-                className={v.id === variantId ? 'btn-primary' : 'btn-secondary'}
-              >
-                {localName(lang, v.name, v.nameUr)} · {ltr(formatRs(v.pricePaisa))}
-              </button>
-            ))}
-          </div>
+          <fieldset className="space-y-2">
+            <legend className="label">{t('order.size')}</legend>
+            <div className="flex flex-wrap gap-2">
+              {item.variants.map((v) => (
+                <button
+                  key={v.id}
+                  aria-pressed={v.id === variantId}
+                  onClick={() => setVariantId(v.id)}
+                  className={choice(v.id === variantId)}
+                >
+                  {localName(lang, v.name, v.nameUr)} · {ltr(formatRs(v.pricePaisa))}
+                </button>
+              ))}
+            </div>
+          </fieldset>
         )}
 
         {item.modifierGroups.map((g) => (
           <fieldset key={g.id} className="space-y-2">
-            <legend className="font-semibold">
+            <legend className="label">
               {localName(lang, g.name, g.nameUr)}{' '}
-              {g.minSelect > 0 && <span className="text-rose-600">*</span>}
+              {g.minSelect > 0 ? (
+                <span className="chip-warn">{t('order.required')}</span>
+              ) : (
+                <span className="text-slate-500">({t('order.optional')})</span>
+              )}
             </legend>
             <div className="flex flex-wrap gap-2">
               {g.modifiers.map((m) => (
                 <button
                   key={m.id}
+                  aria-pressed={!!mods[g.id]?.includes(m.id)}
                   onClick={() => toggle(g.id, m.id, g.maxSelect)}
-                  className={mods[g.id]?.includes(m.id) ? 'btn-primary' : 'btn-secondary'}
+                  className={choice(!!mods[g.id]?.includes(m.id))}
                 >
                   {localName(lang, m.name, m.nameUr)}
                   {m.priceDeltaPaisa !== 0 && ` ${ltr(`+${formatRs(m.priceDeltaPaisa)}`)}`}
@@ -143,8 +184,9 @@ export function ItemSheet({
 
         {item.deal?.slots.map((slot) => (
           <fieldset key={slot.id} className="space-y-2">
-            <legend className="font-semibold">
-              {slot.name} <span className="text-slate-500">× {slot.qty}</span>
+            <legend className="label">
+              {slot.name}{' '}
+              <span className="text-slate-600">· {t('order.pickN', { count: slot.qty })}</span>
             </legend>
             {slot.options.map((o) => (
               <div key={o.id} className="flex items-center gap-2">
@@ -152,74 +194,59 @@ export function ItemSheet({
                   {localName(lang, o.itemName, o.itemNameUr)}{' '}
                   {o.variantName !== 'Regular' && `(${o.variantName})`}
                   {o.priceDeltaPaisa !== 0 && ` ${ltr(`+${formatRs(o.priceDeltaPaisa)}`)}`}
-                  {!o.available && <span className="ms-2 text-rose-600">{t('order.soldOut')}</span>}
+                  {!o.available && <span className="chip-bad ms-2">{t('order.soldOut')}</span>}
                 </span>
-                <button
-                  className="btn-secondary"
-                  onClick={() => bump(slot.id, o.id, -1, slot.qty)}
-                  aria-label="minus"
-                >
-                  −
-                </button>
-                <span className="w-6 text-center">{counts[o.id] ?? 0}</span>
-                <button
-                  className="btn-secondary"
-                  disabled={!o.available}
-                  onClick={() => bump(slot.id, o.id, 1, slot.qty)}
-                  aria-label="plus"
-                >
-                  +
-                </button>
+                {stepper(
+                  counts[o.id] ?? 0,
+                  () => bump(slot.id, o.id, -1, slot.qty),
+                  () => bump(slot.id, o.id, 1, slot.qty),
+                  !o.available,
+                )}
               </div>
             ))}
           </fieldset>
         ))}
 
         {item.kind === 'WEIGHT' ? (
-          <label className="block space-y-2">
-            <span className="font-semibold">{t('order.weight')}</span>
+          <div className="space-y-2">
+            <label className="label" htmlFor="weight-g">
+              {t('order.weight')}
+            </label>
             <div className="flex flex-wrap gap-2">
               {[250, 500, 750, 1000, 1500].map((g) => (
                 <button
                   key={g}
-                  className={weight === String(g) ? 'btn-primary' : 'btn-secondary'}
+                  aria-pressed={weight === String(g)}
+                  className={choice(weight === String(g))}
                   onClick={() => setWeight(String(g))}
                 >
-                  {g}
+                  {ltr(String(g))}
                 </button>
               ))}
             </div>
             <input
+              id="weight-g"
               className="input"
               inputMode="numeric"
               value={weight}
               onChange={(e) => setWeight(e.target.value.replace(/\D/g, ''))}
             />
-          </label>
+          </div>
         ) : (
           <div className="flex items-center gap-3">
-            <span className="me-auto font-semibold">{t('order.quantity')}</span>
-            <button
-              className="btn-secondary"
-              onClick={() => setQty(Math.max(1, qty - 1))}
-              aria-label="minus"
-            >
-              −
-            </button>
-            <span className="w-8 text-center text-xl">{qty}</span>
-            <button
-              className="btn-secondary"
-              onClick={() => setQty(Math.min(99, qty + 1))}
-              aria-label="plus"
-            >
-              +
-            </button>
+            <span className="label me-auto">{t('order.quantity')}</span>
+            {stepper(
+              qty,
+              () => setQty(Math.max(1, qty - 1)),
+              () => setQty(Math.min(99, qty + 1)),
+            )}
           </div>
         )}
 
         <input
           className="input"
           placeholder={t('order.note')}
+          aria-label={t('order.note')}
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
@@ -228,16 +255,7 @@ export function ItemSheet({
             {error}
           </p>
         )}
-
-        <button
-          className="btn-primary h-14 w-full text-lg"
-          disabled={busy || !groupsOk || !weightOk || !dealOk}
-          onClick={submit}
-        >
-          {t('order.add')} ·{' '}
-          {ltr(item.kind === 'WEIGHT' ? formatRs(price) + '/kg' : formatRs(price * qty))}
-        </button>
       </div>
-    </div>
+    </Modal>
   );
 }
