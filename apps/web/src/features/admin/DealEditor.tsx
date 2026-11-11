@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Icon } from '../../components/Icon';
 import { api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
 import type { AdminItem, AdminMenu } from '../../lib/types';
@@ -130,12 +131,18 @@ export function DealEditor({
         <p>{t('common.loading')}</p>
       ) : (
         <div className="space-y-4">
-          <p className="text-sm text-slate-600">{t('admin.dealEditor.help')}</p>
+          <p className="hint">{t('admin.dealEditor.help')}</p>
           {slots.map((s, i) => (
-            <div key={i} className="space-y-2 rounded-lg border border-slate-200 p-3">
-              <div className="flex flex-wrap items-end gap-2">
-                <label className="flex-1 space-y-1">
-                  <span className="text-sm text-slate-600">{t('admin.dealEditor.slotName')}</span>
+            <div key={i} className="panel space-y-3 p-3">
+              <div className="flex flex-wrap items-end gap-3">
+                <span
+                  className="mb-1.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white"
+                  aria-hidden
+                >
+                  {i + 1}
+                </span>
+                <label className="min-w-[10rem] flex-1 space-y-1">
+                  <span className="label">{t('admin.dealEditor.slotName')}</span>
                   <input
                     className="input"
                     value={s.name}
@@ -143,79 +150,93 @@ export function DealEditor({
                   />
                 </label>
                 <label className="w-24 space-y-1">
-                  <span className="text-sm text-slate-600">{t('admin.dealEditor.qty')}</span>
+                  <span className="label">{t('admin.dealEditor.qty')}</span>
                   <input
-                    className="input"
+                    className="input text-center"
                     inputMode="numeric"
                     value={s.qty}
                     onChange={(e) => edit(i, { qty: e.target.value })}
                   />
                 </label>
                 <button
-                  className="btn-secondary text-rose-700"
+                  className="btn-quiet text-rose-700"
                   disabled={slots.length === 1}
                   onClick={() => setSlots(slots.filter((_, k) => k !== i))}
                 >
+                  <Icon name="trash" size={18} />
                   {t('admin.dealEditor.removeSlot')}
                 </button>
               </div>
-              {s.options.map((o, j) => (
-                <div key={j} className="flex flex-wrap items-center gap-2">
-                  <select
-                    className="input flex-1"
-                    aria-label={t('admin.dealEditor.option')}
-                    value={o.variantId}
-                    onChange={(e) => editOption(i, j, { variantId: e.target.value })}
-                  >
-                    <option value="">—</option>
-                    {choices.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    className="input w-28"
-                    inputMode="decimal"
-                    aria-label={t('admin.dealEditor.upcharge')}
-                    title={t('admin.dealEditor.upcharge')}
-                    value={o.delta}
-                    onChange={(e) => editOption(i, j, { delta: e.target.value })}
-                  />
-                  <label className="flex items-center gap-1 text-sm">
-                    <input
-                      type="checkbox"
-                      className="size-5"
-                      checked={o.isDefault}
-                      onChange={(e) => editOption(i, j, { isDefault: e.target.checked })}
-                    />
-                    {t('admin.dealEditor.default')}
-                  </label>
-                  <button
-                    className="btn-secondary"
-                    onClick={() => edit(i, { options: s.options.filter((_, m) => m !== j) })}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-              <button
-                className="btn-secondary"
-                onClick={() =>
-                  edit(i, {
-                    options: [
-                      ...s.options,
-                      { variantId: '', delta: '0', isDefault: s.options.length === 0 },
-                    ],
-                  })
-                }
-              >
-                + {t('admin.dealEditor.addOption')}
-              </button>
+              <div className="space-y-2 rounded-lg border border-slate-300 bg-white p-2">
+                {s.options.map((o, j) => (
+                  <div key={j} className="flex flex-wrap items-center gap-2">
+                    <select
+                      className="input min-w-[10rem] flex-1"
+                      aria-label={t('admin.dealEditor.option')}
+                      value={o.variantId}
+                      onChange={(e) => editOption(i, j, { variantId: e.target.value })}
+                    >
+                      <option value="">—</option>
+                      {choices.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="relative w-32">
+                      <span className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
+                        Rs
+                      </span>
+                      <input
+                        className="input ps-9 text-end"
+                        dir="ltr"
+                        inputMode="decimal"
+                        aria-label={t('admin.dealEditor.upcharge')}
+                        title={t('admin.dealEditor.upcharge')}
+                        value={o.delta}
+                        onChange={(e) => editOption(i, j, { delta: e.target.value })}
+                      />
+                    </div>
+                    <label className="flex min-h-touch cursor-pointer items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="size-5 accent-emerald-700"
+                        checked={o.isDefault}
+                        onChange={(e) => editOption(i, j, { isDefault: e.target.checked })}
+                      />
+                      {t('admin.dealEditor.default')}
+                    </label>
+                    <button
+                      className="btn-quiet px-2"
+                      aria-label={t('common.remove', { defaultValue: 'Remove' })}
+                      onClick={() => edit(i, { options: s.options.filter((_, m) => m !== j) })}
+                    >
+                      <Icon name="x" size={18} />
+                    </button>
+                  </div>
+                ))}
+                {s.options.length === 0 && (
+                  <p className="hint px-1">{t('admin.dealEditor.noOptions')}</p>
+                )}
+                <button
+                  className="btn-secondary"
+                  onClick={() =>
+                    edit(i, {
+                      options: [
+                        ...s.options,
+                        { variantId: '', delta: '0', isDefault: s.options.length === 0 },
+                      ],
+                    })
+                  }
+                >
+                  <Icon name="plus" size={18} />
+                  {t('admin.dealEditor.addOption')}
+                </button>
+              </div>
               {s.options.some(
                 (o) => parseSignedRs(o.delta) !== null && parseSignedRs(o.delta)! !== 0,
               ) && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-600">
                   {s.options
                     .filter((o) => (parseSignedRs(o.delta) ?? 0) !== 0)
                     .map(
@@ -231,7 +252,8 @@ export function DealEditor({
             className="btn-secondary"
             onClick={() => setSlots([...slots, { name: '', qty: '1', options: [] }])}
           >
-            + {t('admin.dealEditor.addSlot')}
+            <Icon name="plus" size={18} />
+            {t('admin.dealEditor.addSlot')}
           </button>
           <ErrorText error={save.error} />
           <div className="flex justify-end gap-2">

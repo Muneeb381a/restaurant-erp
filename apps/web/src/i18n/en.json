@@ -210,7 +210,8 @@
       "default": "Default",
       "addOption": "Add item",
       "addSlot": "Add slot",
-      "edit": "Edit contents"
+      "edit": "Edit contents",
+      "noOptions": "Add at least one item that can fill this slot."
     },
     "roles": "Roles",
     "tax": "Tax",
