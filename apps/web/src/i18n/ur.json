@@ -70,7 +70,14 @@
     "navKitchen": "کچن",
     "kitchenNew": "{{count}} نئے ٹکٹ",
     "kitchenReady": "{{count}} پیش کرنے کو تیار",
-    "tapToStart": "شروع کرنے کے لیے دبائیں"
+    "tapToStart": "شروع کرنے کے لیے دبائیں",
+    "groupService": "سروس",
+    "groupMoney": "رقم",
+    "groupManage": "انتظام",
+    "pos": "پوائنٹ آف سیل",
+    "foldMenu": "مینو سمیٹیں",
+    "expandMenu": "مینو کھولیں",
+    "more": "مزید"
   },
   "floor": {
     "title": "ٹیبلز",

@@ -70,7 +70,14 @@
     "navKitchen": "Kitchen",
     "kitchenNew": "{{count}} new tickets",
     "kitchenReady": "{{count}} ready to serve",
-    "tapToStart": "Tap to start"
+    "tapToStart": "Tap to start",
+    "groupService": "Service",
+    "groupMoney": "Money",
+    "groupManage": "Manage",
+    "pos": "Point of sale",
+    "foldMenu": "Fold menu",
+    "expandMenu": "Expand menu",
+    "more": "More"
   },
   "floor": {
     "title": "Tables",

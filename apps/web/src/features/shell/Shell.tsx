@@ -1,8 +1,8 @@
 import { parseRupees } from '@erp/domain';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Mark } from '../../components/Brand';
 import { Icon, type IconName } from '../../components/Icon';
 import { Modal } from '../../components/Modal';
@@ -15,7 +15,7 @@ import { can, useDay, useFloor, useMe, usePrinterHealth, useShift } from '../../
 import type { Shift } from '../../lib/types';
 import { ADMIN_SECTIONS } from '../admin/AdminLayout';
 import { useKitchenBoard } from '../kitchen/KitchenPage';
-import { setLanguage, type Lang } from '../../i18n';
+import { localName, setLanguage, type Lang } from '../../i18n';
 import { DayCloseDialog, ShiftDialog } from './ShiftDialogs';
 import { watchResponsiveTables } from '../../lib/responsive-tables';
 
@@ -51,13 +51,41 @@ function SignedIn() {
   const kitchenN = (kitchen.data?.tickets ?? []).filter(
     (x) => x.status === (cooks ? 'NEW' : 'READY'),
   ).length;
-  const loc = useLocation();
   const live = useLive((x) => x.connected);
   const tablesBusy = (floor.data?.tables ?? []).filter((x) => x.status !== 'FREE').length;
   const tablesBilled = (floor.data?.tables ?? []).filter((x) => x.status === 'BILLED').length;
   const offline = (printers.data ?? []).filter((p) => p.state === 'OFFLINE');
   useEffect(() => startLive(qc), [qc]);
   useEffect(() => watchResponsiveTables(), []); // wide tables become cards on phones
+
+  const branch = useQuery({
+    queryKey: ['branch'],
+    queryFn: () => api<{ name: string; name_ur: string | null }>('/branch'),
+    staleTime: 5 * 60_000,
+  });
+  const restaurant = branch.data
+    ? localName(i18n.language, branch.data.name, branch.data.name_ur)
+    : '';
+  // the side menu is labelled on wide screens and icon-only on tablets; the owner can fold it either way
+  const wide = useMediaQuery('(min-width: 1024px)');
+  const [folded, setFolded] = useState(() => {
+    try {
+      return localStorage.getItem('erp-rail') === 'folded';
+    } catch {
+      return false;
+    }
+  });
+  const expanded = wide && !folded;
+  const toggleRail = (): void => {
+    const next = !folded;
+    setFolded(next);
+    try {
+      localStorage.setItem('erp-rail', next ? 'folded' : 'open');
+    } catch {
+      /* private mode */
+    }
+  };
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const [floatOpen, setFloatOpen] = useState(false);
   // the dialog keeps its own copy: closing the shift empties the 'current shift' query
@@ -123,38 +151,83 @@ function SignedIn() {
     ? { to: '/admin', icon: 'sliders', label: t('shell.navAdmin') }
     : null;
 
-  const path = loc.pathname;
-  const pageTitle = path.startsWith('/dashboard')
-    ? t('shell.navDashboard')
-    : path.startsWith('/bills')
-      ? t('shell.navBills')
-      : path.startsWith('/kitchen')
-        ? t('shell.navKitchen')
-        : path.startsWith('/khata')
-          ? t('shell.navKhata')
-          : path.startsWith('/admin')
-            ? t('shell.navAdmin')
-            : path.startsWith('/order')
-              ? t('order.title')
-              : t('shell.navTables');
+  // groups of the side menu: what you do during service, the money, and the owner's views
+  const groups: { label: string; items: NavItem[] }[] = [
+    {
+      label: t('shell.groupService'),
+      items: items.filter((x) => ['/', '/kitchen', '/bills'].includes(x.to ?? '')),
+    },
+    {
+      label: t('shell.groupMoney'),
+      items: items.filter((x) => x.to === '/khata' || (!x.to && x.icon === 'cash')),
+    },
+    {
+      label: t('shell.groupManage'),
+      items: [...items.filter((x) => x.to === '/dashboard'), ...(adminItem ? [adminItem] : [])],
+    },
+  ].filter((g) => g.items.length > 0);
+  // phone bar: the four things used most; the rest sit behind "More"
+  const all = groups.flatMap((g) => g.items);
+  const primary =
+    all.length > 5
+      ? all.filter((x) => ['/', '/kitchen', '/bills'].includes(x.to ?? '')).slice(0, 4)
+      : all;
+  const more = all.filter((x) => !primary.includes(x));
 
-  const railItem = (it: NavItem): ReactNode => {
+  const sideItem = (it: NavItem): ReactNode => {
     const cls = ({ isActive }: { isActive?: boolean }): string =>
-      `group relative flex min-h-touch flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-2 text-[0.75rem] font-medium leading-tight md:w-full md:flex-none ${
-        isActive ? 'bg-white/15 text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white'
-      }`;
+      `group relative flex min-h-11 w-full items-center gap-3 rounded-lg text-[0.95rem] font-medium transition-colors ${
+        expanded ? 'px-3' : 'justify-center px-0'
+      } ${isActive ? 'bg-white/[.12] text-white' : 'text-slate-300 hover:bg-white/[.07] hover:text-white'}`;
     const body = (active: boolean): ReactNode => (
       <>
         {active && (
-          <span className="absolute inset-y-2 start-0 hidden w-[3px] rounded-full bg-amber-400 md:block" />
+          <span className="absolute inset-y-2 start-0 w-[3px] rounded-full bg-amber-400" />
         )}
+        <span className="relative shrink-0">
+          <Icon name={it.icon} size={22} className={active ? 'text-amber-300' : ''} />
+          {it.badge && !expanded && (
+            <span className="absolute -end-1.5 -top-1.5 flex min-w-[1.05rem] items-center justify-center rounded-full bg-amber-400 px-1 text-[0.65rem] font-bold leading-[1.05rem] text-slate-900">
+              {it.badge.n}
+            </span>
+          )}
+        </span>
+        <span className={expanded ? 'min-w-0 flex-1 truncate text-start' : 'sr-only'}>
+          {it.label}
+        </span>
+        {it.badge && expanded && (
+          <span
+            title={it.badge.title}
+            className="ms-auto flex min-w-[1.4rem] items-center justify-center rounded-full bg-amber-400 px-1.5 text-xs font-bold leading-[1.4rem] text-slate-900"
+          >
+            {it.badge.n}
+          </span>
+        )}
+      </>
+    );
+    const title = expanded ? undefined : it.badge ? `${it.label}: ${it.badge.title}` : it.label;
+    return it.to ? (
+      <NavLink key={it.label} to={it.to} end={it.end} className={cls} title={title}>
+        {({ isActive }) => body(isActive)}
+      </NavLink>
+    ) : (
+      <button key={it.label} type="button" className={cls({})} onClick={it.onClick} title={title}>
+        {body(false)}
+      </button>
+    );
+  };
+
+  const tabItem = (it: NavItem): ReactNode => {
+    const cls = ({ isActive }: { isActive?: boolean }): string =>
+      `relative flex min-h-[3.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[0.72rem] font-medium ${
+        isActive ? 'bg-white/[.12] text-white' : 'text-slate-300'
+      }`;
+    const body = (active: boolean): ReactNode => (
+      <>
         <span className="relative">
-          <Icon name={it.icon} />
+          <Icon name={it.icon} size={22} className={active ? 'text-amber-300' : ''} />
           {it.badge && (
-            <span
-              title={it.badge.title}
-              className="absolute -end-2.5 -top-2 flex min-w-[1.15rem] items-center justify-center rounded-full bg-amber-400 px-1 text-[0.68rem] font-bold leading-[1.15rem] text-slate-900"
-            >
+            <span className="absolute -end-2.5 -top-1.5 flex min-w-[1.1rem] items-center justify-center rounded-full bg-amber-400 px-1 text-[0.65rem] font-bold leading-[1.1rem] text-slate-900">
               {it.badge.n}
             </span>
           )}
@@ -175,30 +248,162 @@ function SignedIn() {
 
   return (
     <div className="flex h-full flex-col-reverse md:flex-row">
-      <nav
-        aria-label={t('shell.mainNav')}
-        className="flex shrink-0 gap-1 bg-slate-900 p-1.5 md:w-[var(--rail)] md:flex-col md:gap-1.5 md:p-2 md:pt-3"
+      {/* tablets and desktops: the side menu */}
+      <div
+        className={`hidden shrink-0 flex-col bg-slate-900 text-slate-200 transition-[width] duration-200 md:flex ${expanded ? 'w-60' : 'w-[4.75rem]'}`}
       >
         <Link
           to="/"
           aria-label={t('app.title')}
-          className="mx-auto mb-2 hidden size-11 items-center justify-center rounded-xl bg-emerald-600 text-white md:flex"
+          className={`flex h-16 shrink-0 items-center gap-3 border-b border-white/10 ${expanded ? 'px-4' : 'justify-center'}`}
         >
-          <Mark size={26} />
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+            <Mark size={26} />
+          </span>
+          {expanded && (
+            <span className="min-w-0 leading-tight">
+              <span className="block truncate text-[0.95rem] font-semibold text-white">
+                {restaurant || t('app.title')}
+              </span>
+              <span className="block text-xs text-slate-400">{t('shell.pos')}</span>
+            </span>
+          )}
         </Link>
-        {items.map((it) => railItem(it))}
-        {adminItem && <div className="md:mt-auto" />}
-        {adminItem && railItem(adminItem)}
+        <nav
+          aria-label={t('shell.mainNav')}
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4"
+        >
+          {groups.map((g, i) => (
+            <div key={g.label} className="space-y-1">
+              {expanded ? (
+                <div className="px-3 pb-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  {g.label}
+                </div>
+              ) : (
+                i > 0 && <div className="mx-3 mb-3 border-t border-white/10" />
+              )}
+              {g.items.map((it) => sideItem(it))}
+            </div>
+          ))}
+        </nav>
+        <div className="shrink-0 space-y-1 border-t border-white/10 p-3">
+          <div
+            className={`flex items-center gap-2 px-3 py-1 text-xs ${live ? 'text-slate-400' : 'text-amber-300'}`}
+            title={live ? t('shell.liveHint') : t('shell.offlineHint')}
+          >
+            <span
+              className={`size-2 shrink-0 rounded-full ${live ? 'bg-emerald-500' : 'bg-amber-400'}`}
+            />
+            {expanded && (live ? t('shell.live') : t('shell.reconnecting'))}
+          </div>
+          {wide && (
+            <button
+              type="button"
+              onClick={toggleRail}
+              aria-label={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
+              aria-expanded={!folded}
+              title={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
+              className={`flex min-h-10 w-full items-center gap-3 rounded-lg text-sm text-slate-400 hover:bg-white/[.07] hover:text-white ${expanded ? 'px-3' : 'justify-center'}`}
+            >
+              <Icon name="chevronLeft" size={20} data-flip className={folded ? 'rotate-180' : ''} />
+              {expanded && t('shell.foldMenu')}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* phones: a bar at the bottom with the four main places and "More" */}
+      <nav
+        aria-label={t('shell.mainNav')}
+        className="flex shrink-0 gap-1 bg-slate-900 p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden"
+      >
+        {primary.map((it) => tabItem(it))}
+        {more.length > 0 && (
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpen(true)}
+            className="relative flex min-h-[3.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[0.72rem] font-medium text-slate-300"
+          >
+            <Icon name="more" size={22} />
+            {t('shell.more')}
+          </button>
+        )}
       </nav>
+      {moreOpen && (
+        <div
+          className="fixed inset-0 z-40 md:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('shell.more')}
+        >
+          <button
+            type="button"
+            aria-label={t('common.close')}
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setMoreOpen(false)}
+          />
+          <div className="absolute inset-x-0 bottom-0 space-y-1 rounded-t-2xl bg-slate-900 p-3 pb-[max(1rem,env(safe-area-inset-bottom))] text-slate-100 shadow-sheet">
+            <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-white/25" />
+            {more.map((it) => {
+              const inner = (
+                <>
+                  <Icon name={it.icon} size={22} />
+                  <span className="me-auto">{it.label}</span>
+                  {it.badge && (
+                    <span className="rounded-full bg-amber-400 px-2 text-xs font-bold text-slate-900">
+                      {it.badge.n}
+                    </span>
+                  )}
+                </>
+              );
+              const cls =
+                'flex min-h-touch w-full items-center gap-3 rounded-xl px-4 text-lg font-medium hover:bg-white/10';
+              return it.to ? (
+                <Link key={it.label} to={it.to} className={cls} onClick={() => setMoreOpen(false)}>
+                  {inner}
+                </Link>
+              ) : (
+                <button
+                  key={it.label}
+                  type="button"
+                  className={cls}
+                  onClick={() => {
+                    setMoreOpen(false);
+                    it.onClick?.();
+                  }}
+                >
+                  {inner}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-300 bg-white px-3 sm:px-4">
-          <div className="me-auto flex min-w-0 items-center gap-2 truncate text-lg font-semibold tracking-tight">
-            <Mark size={22} className="text-emerald-700 md:hidden" />
-            <span className="hidden sm:inline md:hidden">{pageTitle}</span>
-            <span className="hidden font-medium text-slate-600 md:inline">{t('app.title')}</span>
+        <header className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-300 bg-white px-3 sm:px-5">
+          <div className="flex min-w-0 items-center gap-3 me-auto">
+            <span className="text-emerald-700 md:hidden">
+              <Mark size={26} />
+            </span>
+            <div className="min-w-0 leading-tight">
+              <div className="truncate text-base font-semibold tracking-tight text-slate-900">
+                <span className="md:hidden">{restaurant || t('app.title')}</span>
+                <span className="hidden md:inline">
+                  {day.data?.businessDate
+                    ? ltr(longDate(day.data.businessDate, i18n.language))
+                    : t('shell.dayClosed')}
+                </span>
+              </div>
+              <div className="hidden truncate text-xs font-medium text-slate-600 md:block">
+                {restaurant}
+              </div>
+            </div>
           </div>
           <ClockLive live={live} lang={i18n.language} />
+          <span className="hidden h-8 w-px bg-slate-300 md:block" aria-hidden="true" />
           <DayShiftControl
             dayDate={day.data?.businessDate}
             shiftOpen={!!shift.data}
@@ -246,6 +451,25 @@ function SignedIn() {
     </div>
   );
 }
+
+function useMediaQuery(query: string): boolean {
+  const [match, setMatch] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const on = (): void => setMatch(mq.matches);
+    mq.addEventListener('change', on);
+    on();
+    return () => mq.removeEventListener('change', on);
+  }, [query]);
+  return match;
+}
+
+const longDate = (iso: string, lang: string): string =>
+  new Date(`${iso}T00:00:00`).toLocaleDateString(lang === 'ur' ? 'ur-PK' : 'en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
 
 /** Closes a popover on outside click / Esc. */
 function usePopover(): {
@@ -311,11 +535,8 @@ function ClockLive({ live, lang }: { live: boolean; lang: string }) {
       className="hidden flex-col items-end leading-tight md:flex"
       title={live ? t('shell.liveHint') : t('shell.offlineHint')}
     >
-      <span className="money text-base font-semibold text-slate-800">{ltr(time)}</span>
-      <span
-        className={`flex items-center gap-1.5 text-xs font-medium ${live ? 'text-slate-600' : 'text-amber-800'}`}
-      >
-        <span className={`size-2 rounded-full ${live ? 'bg-emerald-600' : 'bg-amber-500'}`} />
+      <span className="money text-lg font-semibold tracking-tight text-slate-900">{ltr(time)}</span>
+      <span className={`text-xs font-medium ${live ? 'text-slate-600' : 'text-amber-800'}`}>
         {live ? t('shell.live') : t('shell.reconnecting')}
       </span>
     </div>
@@ -329,18 +550,27 @@ const dateLabel = (iso: string, lang: string): string =>
     month: 'short',
   });
 
-function StatusCell({ on, title, sub }: { on: boolean; title: string; sub: string }) {
+function StatusCell({
+  on,
+  icon,
+  title,
+  sub,
+}: {
+  on: boolean;
+  icon: IconName;
+  title: string;
+  sub: string;
+}) {
   return (
-    <span className="flex items-center gap-2.5 px-3 py-1.5">
-      <span className="relative flex size-3 shrink-0">
-        {on && <span className="absolute inset-0 rounded-full bg-emerald-500/40" />}
-        <span
-          className={`relative m-auto size-2.5 rounded-full ${on ? 'bg-emerald-600' : 'bg-amber-500'}`}
-        />
+    <span className="flex items-center gap-2.5 px-1.5 py-1.5 sm:px-3">
+      <span
+        className={`flex size-8 shrink-0 items-center justify-center rounded-full ${on ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}`}
+      >
+        <Icon name={icon} size={17} />
       </span>
-      <span className="flex flex-col items-start leading-tight">
+      <span className="sr-only flex-col items-start leading-tight sm:not-sr-only sm:flex">
         <span className="whitespace-nowrap text-sm font-semibold">{title}</span>
-        <span className="hidden whitespace-nowrap text-xs font-medium text-slate-600 sm:block">
+        <span className="max-w-[9rem] truncate whitespace-nowrap text-xs font-medium opacity-80">
           {sub}
         </span>
       </span>
@@ -383,18 +613,20 @@ function DayShiftControl(p: {
         aria-expanded={open}
         className={`flex min-h-touch items-stretch divide-x rounded-xl border text-start transition-colors rtl:divide-x-reverse ${
           needsAction
-            ? 'divide-amber-300 border-amber-400 bg-amber-50 text-amber-900 hover:bg-amber-100'
-            : 'divide-slate-200 border-slate-300 bg-white text-slate-900 hover:bg-slate-50'
+            ? 'divide-amber-300 border-amber-400 bg-amber-50 text-amber-950 hover:bg-amber-100'
+            : 'divide-emerald-200 border-emerald-300 bg-emerald-50 text-emerald-950 hover:bg-emerald-100'
         }`}
         onClick={() => setOpen(!open)}
       >
         <StatusCell
           on={dayOpen}
+          icon="clock"
           title={dayOpen ? t('shell.dayOpen') : t('shell.dayClosed')}
           sub={dayOpen ? ltr(dateLabel(p.dayDate ?? '', p.lang)) : t('shell.tapToStart')}
         />
         <StatusCell
           on={p.shiftOpen}
+          icon="cash"
           title={p.shiftOpen ? t('shell.shiftOpen') : t('shell.shiftClosed')}
           sub={p.shiftOpen ? p.cashier : dayOpen ? t('shell.tapToStart') : '–'}
         />
