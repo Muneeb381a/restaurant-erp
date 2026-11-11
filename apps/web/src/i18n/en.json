@@ -21,7 +21,21 @@
     "submit": "Sign in",
     "wrong": "Wrong username or PIN",
     "locked": "Account locked. Try again in {{minutes}} min",
-    "network": "Cannot reach the server"
+    "network": "Cannot reach the server",
+    "sub": "Use your username and PIN.",
+    "morning": "Good morning",
+    "afternoon": "Good afternoon",
+    "evening": "Good evening",
+    "tagline": "From the first order to the last rupee, in one calm place.",
+    "f1": "Tables, kitchen tickets and bills stay in step on every device.",
+    "f2": "Every payment, discount and refund is on record and cannot be edited.",
+    "f3": "Urdu and English screens, and receipts your guests can read.",
+    "footer": "Runs on your own network. Taking orders and printing bills never needs the internet.",
+    "clear": "Clear",
+    "pinEntered": "{{count}} digits entered",
+    "backspace": "Delete last digit",
+    "checking": "Checking the server…",
+    "serverUp": "Server connected"
   },
   "shell": {
     "day": "Business day",
@@ -551,7 +565,7 @@
     "dropped": "Dropped",
     "expired": "Expired",
     "other": "Other",
-    "none": "Nothing yet.",
+    "none": "No ingredients yet. Add the first one with “+ New ingredient”, with its unit and price. Stock, recipes and food cost all start here.",
     "base": {
       "g": "grams",
       "ml": "millilitres",

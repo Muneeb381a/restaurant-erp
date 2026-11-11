@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Mark } from '../../components/Brand';
 import { Icon, type IconName } from '../../components/Icon';
 import { Modal } from '../../components/Modal';
 import { Toaster } from '../../components/Toast';
@@ -110,7 +111,11 @@ function SignedIn() {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-end gap-2 border-b border-slate-300 bg-white px-3 py-2">
-          <Link to="/" className="me-auto hidden text-lg font-semibold tracking-tight sm:block">
+          <Link
+            to="/"
+            className="me-auto hidden items-center gap-2 text-lg font-semibold tracking-tight text-emerald-800 sm:flex"
+          >
+            <Mark size={26} />
             {t('app.title')}
           </Link>
           <DayShiftControl

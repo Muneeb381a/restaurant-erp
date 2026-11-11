@@ -99,6 +99,13 @@ export default {
       borderRadius: { DEFAULT: '6px', md: '6px', lg: '8px', xl: '10px', '2xl': '12px' },
       minHeight: { touch: '3rem', primary: '3.5rem' }, // 48 px targets, 56 px for the main action
       minWidth: { touch: '3rem' },
+      keyframes: {
+        shake: {
+          '0%,100%': { transform: 'translateX(0)' },
+          '25%': { transform: 'translateX(-6px)' },
+          '75%': { transform: 'translateX(6px)' },
+        },
+      },
       boxShadow: {
         // flat by default: hairlines carry the structure; shadow only lifts overlays
         sm: 'none',

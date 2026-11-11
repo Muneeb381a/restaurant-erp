@@ -118,10 +118,10 @@ export function MenuAdmin() {
       <ErrorText error={error} />
 
       <div className="card overflow-x-auto">
-        <table className="w-full min-w-[56rem] text-sm">
+        <table className="w-full min-w-[64rem] text-sm">
           <thead className="border-b border-slate-200 bg-slate-50">
             <tr>
-              <th className={th}>{t('admin.name')}</th>
+              <th className={`${th} min-w-[15rem]`}>{t('admin.name')}</th>
               <th className={th}>{t('admin.category')}</th>
               <th className={th}>{t('admin.station')}</th>
               <th className={th}>{t('admin.menuPage.variant')}</th>

@@ -121,6 +121,11 @@ html[lang='ur'] body {
     @apply text-sm text-slate-600;
   }
 
+  /* ── PIN pad key */
+  .key {
+    @apply inline-flex h-14 select-none items-center justify-center rounded-xl border border-slate-300 bg-white text-2xl font-medium text-slate-900 transition-colors hover:bg-slate-100 active:translate-y-px active:bg-slate-200;
+  }
+
   /* ── small status label (text + colour, never colour alone) */
   .chip {
     @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold;
