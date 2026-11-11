@@ -99,7 +99,12 @@ export default {
       borderRadius: { DEFAULT: '6px', md: '6px', lg: '8px', xl: '10px', '2xl': '12px' },
       minHeight: { touch: '3rem', primary: '3.5rem' }, // 48 px targets, 56 px for the main action
       minWidth: { touch: '3rem' },
+      animation: { flash: 'flash 1.2s ease-out 2' },
       keyframes: {
+        flash: {
+          '0%': { boxShadow: '0 0 0 0 rgba(224,160,36,.9)' },
+          '100%': { boxShadow: '0 0 0 14px rgba(224,160,36,0)' },
+        },
         shake: {
           '0%,100%': { transform: 'translateX(0)' },
           '25%': { transform: 'translateX(-6px)' },

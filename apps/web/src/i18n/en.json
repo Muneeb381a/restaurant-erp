@@ -61,7 +61,12 @@
     "startShiftHint": "Start your shift with the opening cash in the drawer.",
     "account": "Account",
     "signedInAs": "Signed in as {{name}}",
-    "navDashboard": "Dashboard"
+    "navDashboard": "Dashboard",
+    "tablesBusy": "{{busy}} tables in use, {{billed}} waiting for payment",
+    "live": "Live",
+    "reconnecting": "Reconnecting…",
+    "liveHint": "Changes from other devices appear within a second",
+    "offlineHint": "Lost the live connection; the screen refreshes every few seconds until it returns"
   },
   "floor": {
     "title": "Tables",

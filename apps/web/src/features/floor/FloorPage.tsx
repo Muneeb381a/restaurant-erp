@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
@@ -13,12 +13,26 @@ type Filter = 'ALL' | FloorTable['status'];
 const minutesSince = (iso: string): number =>
   Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
 
-/** Tiles differ by shape and text as well as colour: free = plain, busy = amber bar, bill ready = filled. */
-const TILE: Record<FloorTable['status'], string> = {
-  FREE: 'border-slate-300 bg-white text-slate-900 hover:border-slate-500',
-  OCCUPIED:
-    'border-slate-300 border-s-[6px] border-s-amber-400 bg-amber-50 text-slate-900 hover:border-amber-500',
-  BILLED: 'border-sky-700 bg-sky-600 text-white hover:bg-sky-700',
+/**
+ * A table says its state three ways: a coloured band with the word, the tile's border and fill, and
+ * what it shows inside (a free table is empty and dashed; a busy one carries amount, time, captain).
+ */
+const TILE: Record<FloorTable['status'], { box: string; band: string; dot: string }> = {
+  FREE: {
+    box: 'border-2 border-dashed border-slate-400 bg-transparent hover:border-emerald-600 hover:bg-white',
+    band: 'bg-slate-200 text-slate-800',
+    dot: 'bg-emerald-600',
+  },
+  OCCUPIED: {
+    box: 'border-2 border-amber-500 bg-amber-50 hover:bg-amber-100',
+    band: 'bg-amber-500 text-slate-900',
+    dot: 'bg-amber-500',
+  },
+  BILLED: {
+    box: 'border-2 border-sky-700 bg-sky-50 hover:bg-sky-100',
+    band: 'bg-sky-700 text-white',
+    dot: 'bg-sky-700',
+  },
 };
 
 export function FloorPage() {
@@ -78,6 +92,24 @@ export function FloorPage() {
     const key = areaName(table.areaId);
     groups.set(key, [...(groups.get(key) ?? []), table]);
   }
+  // a tile that just changed state pulses for a moment, so staff notice a table freeing up or asking for the bill
+  const seen = useRef<Map<string, FloorTable['status']> | null>(null);
+  const [flash, setFlash] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!floor.data) return;
+    const now = new Map(floor.data.tables.map((x) => [x.id, x.status] as const));
+    const prev = seen.current;
+    seen.current = now;
+    if (!prev) return;
+    const changed = floor.data.tables
+      .filter((x) => prev.get(x.id) !== undefined && prev.get(x.id) !== x.status)
+      .map((x) => x.id);
+    if (changed.length === 0) return;
+    setFlash(new Set(changed));
+    const id = setTimeout(() => setFlash(new Set()), 2400);
+    return () => clearTimeout(id);
+  }, [floor.data]);
+
   const filters: { key: Filter; label: string; n: number }[] = [
     { key: 'ALL', label: t('common.all'), n: all.length },
     { key: 'FREE', label: t('floor.free'), n: count('FREE') },
@@ -146,6 +178,9 @@ export function FloorPage() {
               aria-pressed={filter === f.key}
               onClick={() => setFilter(f.key)}
             >
+              {f.key !== 'ALL' && (
+                <span className={`size-2.5 rounded-full ring-2 ring-white ${TILE[f.key].dot}`} />
+              )}
               {f.label}
               <span className="money opacity-70">{f.n}</span>
             </button>
@@ -164,31 +199,54 @@ export function FloorPage() {
                 // only fresh data can be tapped
                 disabled={dayClosed || create.isPending || !floor.isFetchedAfterMount}
                 onClick={() => open(table)}
-                className={`flex min-h-28 flex-col items-start justify-between rounded-xl border p-3 text-start transition-colors disabled:opacity-50 ${TILE[table.status]}`}
+                aria-label={`${table.code} ${statusLabel(table.status)}`}
+                className={`flex min-h-32 flex-col overflow-hidden rounded-xl p-0 text-start transition-colors disabled:opacity-50 ${TILE[table.status].box} ${flash.has(table.id) ? 'animate-flash' : ''}`}
               >
-                <span className="flex w-full items-start justify-between gap-1">
-                  <span className="text-2xl font-semibold">{ltr(table.code)}</span>
+                <span
+                  className={`flex w-full items-center gap-1.5 px-3 py-1 text-xs font-bold uppercase tracking-wide ${TILE[table.status].band}`}
+                >
+                  <Icon
+                    name={
+                      table.status === 'BILLED'
+                        ? 'receipt'
+                        : table.status === 'OCCUPIED'
+                          ? 'user'
+                          : 'check'
+                    }
+                    size={14}
+                  />
+                  {table.status === 'BILLED' ? t('floor.billReady') : statusLabel(table.status)}
                   {table.order?.held && (
-                    <span className="chip-warn">
+                    <span className="ms-auto inline-flex items-center gap-1">
                       <Icon name="pause" size={12} /> {t('order.held')}
                     </span>
                   )}
                 </span>
-                {table.order ? (
-                  <span className="text-sm">
-                    <span className="block font-semibold">
-                      {table.status === 'BILLED' ? t('floor.billReady') : statusLabel(table.status)}{' '}
-                      · {t('floor.minAgo', { count: minutesSince(table.order.openedAt) })}
+                <span className="flex flex-1 flex-col justify-between gap-1 p-3 text-slate-900">
+                  <span className="text-2xl font-semibold">{ltr(table.code)}</span>
+                  {table.order ? (
+                    <span className="text-sm">
+                      <span className="money block text-lg font-semibold">
+                        {ltr(formatRs(table.order.subtotalPaisa))}
+                      </span>
+                      <span
+                        className={`flex items-center gap-1 whitespace-nowrap ${minutesSince(table.order.openedAt) > 90 ? 'font-semibold text-rose-700' : 'text-slate-700'}`}
+                      >
+                        <Icon name="clock" size={14} />
+                        {t('floor.minAgo', { count: minutesSince(table.order.openedAt) })}
+                      </span>
+                      {table.order.waiterName && (
+                        <span className="block truncate text-xs text-slate-600">
+                          {table.order.waiterName}
+                        </span>
+                      )}
                     </span>
-                    <span className="money block text-lg font-semibold">
-                      {ltr(formatRs(table.order.subtotalPaisa))}
+                  ) : (
+                    <span className="text-sm text-slate-600">
+                      {t('floor.seats', { count: table.seats })}
                     </span>
-                  </span>
-                ) : (
-                  <span className="text-sm text-slate-600">
-                    {statusLabel(table.status)} · {t('floor.seats', { count: table.seats })}
-                  </span>
-                )}
+                  )}
+                </span>
               </button>
             ))}
           </div>

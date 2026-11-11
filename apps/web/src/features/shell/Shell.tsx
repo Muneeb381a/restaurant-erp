@@ -2,16 +2,16 @@ import { parseRupees } from '@erp/domain';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Mark } from '../../components/Brand';
 import { Icon, type IconName } from '../../components/Icon';
 import { Modal } from '../../components/Modal';
 import { Toaster } from '../../components/Toast';
 import { ApiError, api } from '../../lib/api';
 import { useAuth } from '../../lib/auth-store';
-import { startLive } from '../../lib/live';
+import { startLive, useLive } from '../../lib/live';
 import { ltr } from '../../lib/money';
-import { can, useDay, useMe, usePrinterHealth, useShift } from '../../lib/queries';
+import { can, useDay, useFloor, useMe, usePrinterHealth, useShift } from '../../lib/queries';
 import type { Shift } from '../../lib/types';
 import { ADMIN_SECTIONS } from '../admin/AdminLayout';
 import { setLanguage, type Lang } from '../../i18n';
@@ -30,6 +30,8 @@ interface NavItem {
   label: string;
   onClick?: () => void;
   end?: boolean;
+  /** Small count on the icon, e.g. busy tables. */
+  badge?: { n: number; title: string };
 }
 
 function SignedIn() {
@@ -41,6 +43,11 @@ function SignedIn() {
   const day = useDay();
   const shift = useShift();
   const printers = usePrinterHealth();
+  const floor = useFloor();
+  const loc = useLocation();
+  const live = useLive((x) => x.connected);
+  const tablesBusy = (floor.data?.tables ?? []).filter((x) => x.status !== 'FREE').length;
+  const tablesBilled = (floor.data?.tables ?? []).filter((x) => x.status === 'BILLED').length;
   const offline = (printers.data ?? []).filter((p) => p.state === 'OFFLINE');
   useEffect(() => startLive(qc), [qc]);
 
@@ -68,7 +75,19 @@ function SignedIn() {
   const items: NavItem[] = [];
   if (can(me.data, 'report.financial'))
     items.push({ to: '/dashboard', icon: 'chart', label: t('shell.navDashboard') });
-  items.push({ to: '/', icon: 'tables', label: t('shell.navTables'), end: true });
+  items.push({
+    to: '/',
+    icon: 'tables',
+    label: t('shell.navTables'),
+    end: true,
+    badge:
+      tablesBusy > 0
+        ? {
+            n: tablesBusy,
+            title: t('shell.tablesBusy', { busy: tablesBusy, billed: tablesBilled }),
+          }
+        : undefined,
+  });
   if (can(me.data, 'report.view'))
     items.push({ to: '/bills', icon: 'receipt', label: t('shell.navBills') });
   if (can(me.data, 'khata.collect'))
@@ -79,23 +98,54 @@ function SignedIn() {
       label: t('shell.navDrawer'),
       onClick: () => setDrawerShift(shift.data ?? null),
     });
-  if (ADMIN_SECTIONS.some((s) => can(me.data, s.permission)))
-    items.push({ to: '/admin', icon: 'sliders', label: t('shell.navAdmin') });
+  const adminItem: NavItem | null = ADMIN_SECTIONS.some((x) => can(me.data, x.permission))
+    ? { to: '/admin', icon: 'sliders', label: t('shell.navAdmin') }
+    : null;
 
-  const railItem = (it: NavItem, bar: boolean): ReactNode => {
+  const path = loc.pathname;
+  const pageTitle = path.startsWith('/dashboard')
+    ? t('shell.navDashboard')
+    : path.startsWith('/bills')
+      ? t('shell.navBills')
+      : path.startsWith('/khata')
+        ? t('shell.navKhata')
+        : path.startsWith('/admin')
+          ? t('shell.navAdmin')
+          : path.startsWith('/order')
+            ? t('order.title')
+            : t('shell.navTables');
+
+  const railItem = (it: NavItem): ReactNode => {
     const cls = ({ isActive }: { isActive?: boolean }): string =>
-      `flex min-h-touch flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-2 text-[0.8125rem] font-medium leading-tight ${
-        bar ? 'flex-1 md:flex-none' : 'w-full'
-      } md:w-full ${isActive ? 'bg-white/15 text-white' : 'text-slate-300 hover:bg-white/10'}`;
+      `group relative flex min-h-touch flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-2 text-[0.75rem] font-medium leading-tight md:w-full md:flex-none ${
+        isActive ? 'bg-white/15 text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white'
+      }`;
+    const body = (active: boolean): ReactNode => (
+      <>
+        {active && (
+          <span className="absolute inset-y-2 start-0 hidden w-[3px] rounded-full bg-amber-400 md:block" />
+        )}
+        <span className="relative">
+          <Icon name={it.icon} />
+          {it.badge && (
+            <span
+              title={it.badge.title}
+              className="absolute -end-2.5 -top-2 flex min-w-[1.15rem] items-center justify-center rounded-full bg-amber-400 px-1 text-[0.68rem] font-bold leading-[1.15rem] text-slate-900"
+            >
+              {it.badge.n}
+            </span>
+          )}
+        </span>
+        {it.label}
+      </>
+    );
     return it.to ? (
       <NavLink key={it.label} to={it.to} end={it.end} className={cls}>
-        <Icon name={it.icon} />
-        {it.label}
+        {({ isActive }) => body(isActive)}
       </NavLink>
     ) : (
       <button key={it.label} type="button" className={cls({})} onClick={it.onClick}>
-        <Icon name={it.icon} />
-        {it.label}
+        {body(false)}
       </button>
     );
   };
@@ -104,20 +154,34 @@ function SignedIn() {
     <div className="flex h-full flex-col-reverse md:flex-row">
       <nav
         aria-label={t('shell.mainNav')}
-        className="flex shrink-0 gap-1 bg-slate-900 p-1.5 md:w-[var(--rail)] md:flex-col md:gap-2 md:p-2 md:pt-3"
+        className="flex shrink-0 gap-1 bg-slate-900 p-1.5 md:w-[var(--rail)] md:flex-col md:gap-1.5 md:p-2 md:pt-3"
       >
-        {items.map((it) => railItem(it, true))}
+        <Link
+          to="/"
+          aria-label={t('app.title')}
+          className="mx-auto mb-2 hidden size-11 items-center justify-center rounded-xl bg-emerald-600 text-white md:flex"
+        >
+          <Mark size={26} />
+        </Link>
+        {items.map((it) => railItem(it))}
+        {adminItem && <div className="md:mt-auto" />}
+        {adminItem && railItem(adminItem)}
       </nav>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-end gap-2 border-b border-slate-300 bg-white px-3 py-2">
-          <Link
-            to="/"
-            className="me-auto hidden items-center gap-2 text-lg font-semibold tracking-tight text-emerald-800 sm:flex"
+          <div className="me-auto flex min-w-0 items-center gap-2 truncate text-lg font-semibold tracking-tight">
+            <Mark size={22} className="text-emerald-700 md:hidden" />
+            <span className="md:hidden">{pageTitle}</span>
+            <span className="hidden font-medium text-slate-600 md:inline">{t('app.title')}</span>
+          </div>
+          <span
+            className={`hidden items-center gap-1.5 text-xs font-medium sm:flex ${live ? 'text-slate-600' : 'text-amber-800'}`}
+            title={live ? t('shell.liveHint') : t('shell.offlineHint')}
           >
-            <Mark size={26} />
-            {t('app.title')}
-          </Link>
+            <span className={`size-2 rounded-full ${live ? 'bg-emerald-600' : 'bg-amber-500'}`} />
+            {live ? t('shell.live') : t('shell.reconnecting')}
+          </span>
           <DayShiftControl
             dayDate={day.data?.businessDate}
             shiftOpen={!!shift.data}
@@ -250,8 +314,9 @@ function DayShiftControl(p: {
       >
         <Icon name="clock" size={18} />
         <span className="flex flex-col items-start leading-tight">
-          <span>
-            {dayOpen ? `${t('shell.dayOpen')} · ${ltr(p.dayDate ?? '')}` : t('shell.dayClosed')}
+          <span className="whitespace-nowrap">
+            {dayOpen ? t('shell.dayOpen') : t('shell.dayClosed')}
+            {dayOpen && <span className="hidden sm:inline"> · {ltr(p.dayDate ?? '')}</span>}
           </span>
           <span className="text-xs font-medium opacity-80">
             {p.shiftOpen ? t('shell.shiftOpen') : t('shell.shiftClosed')}
