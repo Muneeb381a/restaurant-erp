@@ -933,7 +933,9 @@
     "service": "A service charge of {{pct}} is added to the bill.",
     "askStaff": "Please ask our staff about allergies or anything not listed.",
     "contains": "Contains:",
-    "vegOnly": "Vegetarian only"
+    "vegOnly": "Vegetarian only",
+    "menuWord": "Menu",
+    "noteLabel": "From the kitchen today"
   },
   "guest": {
     "title": "Guest menu",

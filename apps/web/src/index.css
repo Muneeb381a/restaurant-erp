@@ -46,6 +46,39 @@
   src: url('/fonts/IBMPlexSansArabic-Bold.woff2') format('woff2');
 }
 
+/* Menu-card faces (guest QR menu): a classic display serif for English, Nastaliq for Urdu. */
+@font-face {
+  font-family: 'Playfair Display';
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/PlayfairDisplay-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Playfair Display';
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/PlayfairDisplay-Bold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/PlayfairDisplay-Italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Nastaliq Urdu';
+  font-weight: 400 500;
+  font-display: swap;
+  src: url('/fonts/NotoNastaliqUrdu-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Nastaliq Urdu';
+  font-weight: 600 700;
+  font-display: swap;
+  src: url('/fonts/NotoNastaliqUrdu-Bold.woff2') format('woff2');
+}
+
 :root {
   color-scheme: light;
   --rail: 4.5rem;
@@ -235,4 +268,114 @@ html[lang='ur'] body {
     width: 90mm;
     height: 90mm;
   }
+}
+
+/* ── the guest menu card: cream paper, ink, burgundy and gold, set like a printed menu */
+.mc {
+  --paper: #f7f0e0;
+  --paper-2: #efe5cd;
+  --ink: #2b1d14;
+  --ink-2: #5b4a3a;
+  --wine: #7b1e2b;
+  --gold: #a8782a;
+  --rule: #cdb98e;
+  font-family: 'Playfair Display', 'Noto Nastaliq Urdu', Georgia, 'Times New Roman', serif;
+  color: var(--ink);
+}
+.mc-table {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(168, 120, 42, 0.18), transparent 60%), #1d1510;
+}
+.mc-sheet {
+  background: var(--paper);
+  position: relative;
+  box-shadow:
+    0 0 0 1px var(--gold),
+    inset 0 0 0 7px var(--paper),
+    inset 0 0 0 8px var(--gold),
+    inset 0 0 0 11px var(--paper),
+    inset 0 0 0 12px var(--rule),
+    0 18px 50px rgba(0, 0, 0, 0.45);
+}
+.mc-caps {
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+[dir='rtl'] .mc-caps {
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 1.1rem;
+  line-height: 2.2;
+  padding-inline: 0.2rem;
+}
+/* a rule with a small diamond in the middle */
+.mc-orn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--gold);
+}
+.mc-orn::before,
+.mc-orn::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(to right, transparent, currentColor);
+}
+.mc-orn::after {
+  background: linear-gradient(to left, transparent, currentColor);
+}
+/* dotted leader between a dish and its price */
+.mc-leader {
+  flex: 1;
+  min-width: 1rem;
+  border-bottom: 2px dotted var(--rule);
+  transform: translateY(-0.28em);
+}
+.mc-name {
+  font-weight: 500;
+  font-size: 1.12rem;
+  line-height: 1.35;
+}
+.mc-price {
+  font-weight: 700;
+  font-size: 1.05rem;
+  font-variant-numeric: lining-nums tabular-nums;
+  white-space: nowrap;
+}
+.mc-desc {
+  font-style: italic;
+  color: var(--ink-2);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+[lang='ur'] .mc-desc,
+.mc [lang='ur'].mc-desc {
+  font-style: normal;
+}
+.mc-photo {
+  padding: 3px;
+  background: #fff;
+  border: 1px solid var(--rule);
+  box-shadow: 0 2px 6px rgba(43, 29, 20, 0.18);
+}
+[dir='rtl'] .mc .mc-name,
+[dir='rtl'] .mc .mc-price,
+[dir='rtl'] .mc .mc-desc {
+  line-height: 2;
+}
+@media print {
+  .mc-table {
+    background: #fff;
+  }
+  .mc-sheet {
+    box-shadow: none;
+  }
+}
+.mc-tag:not(:last-child)::after {
+  content: '·';
+  margin-inline: 0.6rem;
+  color: var(--gold);
 }

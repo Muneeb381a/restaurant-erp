@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
@@ -40,14 +40,6 @@ interface PublicMenu {
     }[];
   }[];
 }
-
-const TAG_STYLE: Record<string, string> = {
-  HALAL: 'chip-ok',
-  VEGETARIAN: 'chip-ok',
-  SPICY: 'chip-bad',
-  CHEF: 'chip-warn',
-  NEW: 'chip-info',
-};
 
 class MenuUnavailable extends Error {
   constructor(readonly off: boolean) {
@@ -99,7 +91,6 @@ export function PublicMenuPage() {
   const [search, setSearch] = useState('');
   const [vegOnly, setVegOnly] = useState(false);
   const [active, setActive] = useState<string | null>(null);
-  const chips = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.title = menu.data
@@ -157,103 +148,110 @@ export function PublicMenuPage() {
     (lang === 'ur' && i.descriptionUr ? i.descriptionUr : i.description) ?? null;
   const hasVeg = menu.data?.items.some((i) => i.tags.includes('VEGETARIAN')) ?? false;
 
+  const dealNames = (sl: PublicMenu['items'][number]['dealSlots'][number]): string =>
+    sl.options.map((o) => localName(lang, o.name, o.nameUr)).join(' / ');
+
   return (
-    <div className="min-h-full bg-slate-50 text-slate-900">
-      <header className="bg-slate-900 text-slate-50">
-        <div className="mx-auto flex max-w-2xl items-start gap-3 px-4 pb-5 pt-5">
-          <span className="mt-1 text-amber-400">
-            <Mark size={36} />
+    <div className="mc mc-table min-h-full px-3 py-5 sm:py-10" lang={lang}>
+      <div className="mc-sheet mx-auto max-w-[40rem] px-6 pb-10 pt-6 sm:px-12">
+        <div className="flex justify-end gap-1 text-sm" role="group" aria-label={t('pm.language')}>
+          {(['en', 'ur'] as const).map((l) => (
+            <button
+              key={l}
+              className={`min-h-9 px-2 underline-offset-4 ${lang === l ? 'font-bold text-[var(--wine)] underline' : 'text-[var(--ink-2)]'}`}
+              aria-pressed={lang === l}
+              onClick={() => setLanguage(l)}
+            >
+              {l === 'en' ? 'English' : 'اردو'}
+            </button>
+          ))}
+        </div>
+
+        <header className="pb-2 text-center">
+          <span className="inline-block text-[var(--gold)]">
+            <Mark size={38} />
           </span>
-          <div className="me-auto min-w-0">
-            <p className="text-xs font-medium uppercase tracking-widest text-amber-300">
-              {t('pm.todaysMenu')}
+          <h1 className="mt-2 text-balance text-[2rem] font-bold leading-tight sm:text-[2.6rem]">
+            {name || t('pm.title')}
+          </h1>
+          {lang === 'en' && r?.nameUr && (
+            <p lang="ur" dir="rtl" className="mt-1 text-xl text-[var(--wine)]">
+              {r.nameUr}
             </p>
-            <h1 className="text-balance text-2xl font-semibold leading-tight">
-              {name || t('pm.title')}
-            </h1>
-            {menu.data && (
-              <p className="mt-1 text-sm text-slate-300">
-                {ltr(
-                  new Date(`${menu.data.date}T00:00:00`).toLocaleDateString(
-                    lang === 'ur' ? 'ur-PK' : 'en-GB',
-                    { weekday: 'long', day: 'numeric', month: 'long' },
-                  ),
-                )}
-              </p>
-            )}
+          )}
+          <div className="mc-orn my-4">
+            <span className="mc-caps text-[var(--wine)]">{t('pm.menuWord')}</span>
           </div>
-          <div
-            className="seg shrink-0 border-slate-600 bg-slate-800"
-            role="group"
-            aria-label={t('pm.language')}
-          >
-            {(['en', 'ur'] as const).map((l) => (
-              <button
-                key={l}
-                className="seg-item !min-h-9 !min-w-0 !px-3 !text-slate-200"
-                aria-pressed={lang === l}
-                onClick={() => setLanguage(l)}
-              >
-                {l === 'en' ? 'EN' : 'اردو'}
-              </button>
-            ))}
-          </div>
-        </div>
-      </header>
-
-      {menu.isPending && (
-        <p className="mx-auto max-w-2xl px-4 py-10 text-center text-slate-600">
-          {t('common.loading')}
-        </p>
-      )}
-
-      {menu.isError && (
-        <div className="mx-auto flex max-w-md flex-col items-center gap-3 px-4 py-16 text-center">
-          <span className="flex size-14 items-center justify-center rounded-full bg-slate-200 text-slate-600">
-            <Icon name="book" size={28} />
-          </span>
-          <h2 className="text-lg font-semibold">{t('pm.unavailable')}</h2>
-          <p className="text-slate-600">
-            {menu.error instanceof MenuUnavailable && menu.error.off
-              ? t('pm.off')
-              : t('pm.tryAgain')}
-          </p>
-          <button className="btn-secondary" onClick={() => void menu.refetch()}>
-            {t('pm.retry')}
-          </button>
-        </div>
-      )}
-
-      {menu.data && (
-        <>
-          <div className="sticky top-0 z-10 border-b border-slate-300 bg-slate-50/95 backdrop-blur">
-            <div className="mx-auto max-w-2xl space-y-2 px-4 py-2">
-              <div className="relative">
-                <Icon
-                  name="search"
-                  size={18}
-                  className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-slate-500"
-                />
-                <input
-                  className="input ps-10"
-                  placeholder={t('pm.search')}
-                  aria-label={t('pm.search')}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-              {hasVeg && (
-                <button
-                  className="seg-item !min-h-9 border border-slate-400 bg-white"
-                  aria-pressed={vegOnly}
-                  onClick={() => setVegOnly(!vegOnly)}
-                >
-                  {t('pm.vegOnly')}
-                </button>
+          {menu.data && (
+            <p className="mc-desc">
+              {ltr(
+                new Date(`${menu.data.date}T00:00:00`).toLocaleDateString(
+                  lang === 'ur' ? 'ur-PK' : 'en-GB',
+                  { weekday: 'long', day: 'numeric', month: 'long' },
+                ),
               )}
+            </p>
+          )}
+        </header>
+
+        {menu.isPending && (
+          <p className="py-12 text-center text-[var(--ink-2)]">{t('common.loading')}</p>
+        )}
+
+        {menu.isError && (
+          <div className="mx-auto flex max-w-sm flex-col items-center gap-3 py-12 text-center">
+            <h2 className="text-xl font-bold">{t('pm.unavailable')}</h2>
+            <p className="mc-desc">
+              {menu.error instanceof MenuUnavailable && menu.error.off
+                ? t('pm.off')
+                : t('pm.tryAgain')}
+            </p>
+            <button
+              className="mc-caps border-b-2 border-[var(--gold)] pb-1 text-[var(--wine)]"
+              onClick={() => void menu.refetch()}
+            >
+              {t('pm.retry')}
+            </button>
+          </div>
+        )}
+
+        {menu.data && (
+          <>
+            {menu.data.note && (
+              <div className="my-5 border-y-[3px] border-double border-[var(--gold)] px-2 py-3 text-center">
+                <p className="mc-caps text-[var(--gold)]">{t('pm.noteLabel')}</p>
+                <p className="mc-desc mt-1 text-base">{menu.data.note}</p>
+              </div>
+            )}
+
+            <div className="sticky top-0 z-10 border-y border-[var(--rule)] bg-[var(--paper)] py-2">
+              <div className="flex items-center gap-3">
+                <label className="relative min-w-0 flex-1">
+                  <Icon
+                    name="search"
+                    size={16}
+                    className="pointer-events-none absolute start-0 top-1/2 -translate-y-1/2 text-[var(--gold)]"
+                  />
+                  <input
+                    className="min-h-10 w-full border-0 border-b border-[var(--rule)] bg-transparent ps-6 text-base outline-none placeholder:italic placeholder:text-[var(--ink-2)]/70 focus:border-[var(--wine)]"
+                    placeholder={t('pm.search')}
+                    aria-label={t('pm.search')}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </label>
+                {hasVeg && (
+                  <button
+                    className={`mc-caps shrink-0 border-b-2 pb-0.5 ${vegOnly ? 'border-[var(--wine)] text-[var(--wine)]' : 'border-transparent text-[var(--ink-2)]'}`}
+                    aria-pressed={vegOnly}
+                    onClick={() => setVegOnly(!vegOnly)}
+                  >
+                    {t('pm.vegOnly')}
+                  </button>
+                )}
+              </div>
               <div
-                ref={chips}
-                className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1"
+                className="-mx-1 mt-1 flex gap-5 overflow-x-auto whitespace-nowrap px-1"
                 role="tablist"
                 aria-label={t('pm.categories')}
               >
@@ -262,7 +260,7 @@ export function PublicMenuPage() {
                     key={s.id}
                     role="tab"
                     aria-selected={active === s.id}
-                    className="seg-item shrink-0 border border-slate-400 bg-white"
+                    className={`mc-caps min-h-10 shrink-0 border-b-2 ${active === s.id ? 'border-[var(--gold)] text-[var(--wine)]' : 'border-transparent text-[var(--ink-2)]'}`}
                     onClick={() => goTo(s.id)}
                   >
                     {s.name}
@@ -270,143 +268,142 @@ export function PublicMenuPage() {
                 ))}
               </div>
             </div>
-          </div>
 
-          <main className="mx-auto max-w-2xl px-4 pb-24 pt-4">
-            {menu.data.note && (
-              <p className="mb-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                <Icon name="info" size={18} className="mt-0.5 shrink-0" />
-                {menu.data.note}
-              </p>
-            )}
-            {sections.length === 0 && (
-              <p className="py-10 text-center text-slate-600">
-                {search ? t('pm.noMatch') : t('pm.empty')}
-              </p>
-            )}
-            {sections.map((s) => (
-              <section key={s.id} id={`pm-${s.id}`} className="scroll-mt-32 pb-6">
-                <h2 className="mb-1 border-b-2 border-slate-900 pb-1 text-lg font-semibold">
-                  {s.name}
-                </h2>
-                <ul className="divide-y divide-slate-200">
-                  {s.items.map((i) => (
-                    <li key={i.id} className={`py-3 ${i.available ? '' : 'opacity-60'}`}>
-                      <div className="flex items-start gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-baseline gap-3">
-                            <span className="me-auto min-w-0 font-medium">
-                              {localName(lang, i.name, i.nameUr)}
-                              {i.isDeal && (
-                                <span className="chip-info ms-2 align-middle">{t('pm.deal')}</span>
-                              )}
-                              {!i.available && (
-                                <span className="chip-mute ms-2 align-middle">
-                                  {t('pm.soldOut')}
+            <main>
+              {sections.length === 0 && (
+                <p className="mc-desc py-12 text-center">
+                  {search ? t('pm.noMatch') : t('pm.empty')}
+                </p>
+              )}
+              {sections.map((s) => (
+                <section key={s.id} id={`pm-${s.id}`} className="scroll-mt-28 pt-9">
+                  <div className="mc-orn mb-5">
+                    <h2 className="mc-caps !text-[0.95rem] font-bold text-[var(--wine)]">
+                      {s.name}
+                    </h2>
+                  </div>
+                  <ul className="space-y-6">
+                    {s.items.map((i) => {
+                      const d = desc(i);
+                      return (
+                        <li key={i.id}>
+                          <div className="flex items-start gap-4">
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <div className="flex items-baseline gap-2">
+                                <span
+                                  className={`mc-name ${i.available ? '' : 'line-through decoration-1'}`}
+                                >
+                                  {localName(lang, i.name, i.nameUr)}
                                 </span>
-                              )}
-                            </span>
-                            {i.variants.length === 1 && (
-                              <span
-                                className={`money shrink-0 font-semibold ${i.available ? '' : 'line-through'}`}
-                              >
-                                {price(i.variants[0]!.pricePaisa)}
-                              </span>
-                            )}
-                          </div>
-                          {i.variants.length > 1 && (
-                            <ul className="mt-1 space-y-0.5 text-sm text-slate-700">
-                              {i.variants.map((v) => (
-                                <li key={v.name} className="flex justify-between gap-3">
-                                  <span>{localName(lang, v.name, v.nameUr)}</span>
-                                  <span
-                                    className={`money ${i.available ? 'font-semibold' : 'line-through'}`}
+                                {i.isDeal && (
+                                  <span className="mc-caps text-[var(--gold)]">{t('pm.deal')}</span>
+                                )}
+                                {i.available && i.variants.length === 1 && (
+                                  <>
+                                    <span className="mc-leader" aria-hidden />
+                                    <span className="mc-price">
+                                      {price(i.variants[0]!.pricePaisa)}
+                                    </span>
+                                  </>
+                                )}
+                                {!i.available && (
+                                  <>
+                                    <span className="mc-leader" aria-hidden />
+                                    <span className="mc-caps whitespace-nowrap text-[var(--wine)]">
+                                      {t('pm.soldOut')}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                              {i.available &&
+                                i.variants.length > 1 &&
+                                i.variants.map((v) => (
+                                  <div
+                                    key={v.name}
+                                    className="flex items-baseline gap-2 ps-3 text-[0.95rem]"
                                   >
-                                    {price(v.pricePaisa)}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                          {i.isDeal && i.dealSlots.length > 0 && (
-                            <ul className="mt-1 space-y-0.5 text-sm text-slate-600">
-                              {i.dealSlots.map((sl) => (
-                                <li key={sl.name}>
-                                  <span className="font-medium text-slate-700">
-                                    {ltr(`${sl.qty} ×`)} {sl.name}
-                                  </span>
-                                  {sl.options.length > 0 && (
-                                    <>
-                                      :{' '}
-                                      {sl.options
-                                        .map((o) => localName(lang, o.name, o.nameUr))
-                                        .join(' / ')}
-                                    </>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                          {(i.tags.length > 0 || i.allergens.length > 0 || desc(i)) && (
-                            <div className="mt-1.5 space-y-1.5">
-                              {desc(i) && <p className="text-sm text-slate-600">{desc(i)}</p>}
+                                    <span className="italic text-[var(--ink-2)]">
+                                      {localName(lang, v.name, v.nameUr)}
+                                    </span>
+                                    <span className="mc-leader" aria-hidden />
+                                    <span className="mc-price !text-[0.98rem]">
+                                      {price(v.pricePaisa)}
+                                    </span>
+                                  </div>
+                                ))}
+                              {d && <p className="mc-desc">{d}</p>}
+                              {i.isDeal && i.dealSlots.length > 0 && (
+                                <ul className="mc-desc space-y-0.5 border-s-2 border-[var(--rule)] ps-3">
+                                  {i.dealSlots.map((sl) => (
+                                    <li key={sl.name}>
+                                      <span className="font-medium not-italic text-[var(--ink)]">
+                                        {ltr(`${sl.qty} ×`)} {sl.name}
+                                      </span>
+                                      {sl.options.length > 0 && <>: {dealNames(sl)}</>}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
                               {i.tags.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5">
+                                <div className="flex flex-wrap pt-0.5">
                                   {i.tags.map((tg) => (
-                                    <span key={tg} className={TAG_STYLE[tg] ?? 'chip-mute'}>
+                                    <span
+                                      key={tg}
+                                      className={`mc-caps mc-tag ${tg === 'CHEF' || tg === 'NEW' ? 'text-[var(--wine)]' : 'text-[var(--ink-2)]'}`}
+                                    >
                                       {t(`guest.tag.${tg}`)}
                                     </span>
                                   ))}
                                 </div>
                               )}
                               {i.allergens.length > 0 && (
-                                <p className="flex items-start gap-1.5 text-xs text-amber-900">
-                                  <Icon name="alert" size={14} className="mt-0.5 shrink-0" />
-                                  <span>
-                                    {t('pm.contains')}{' '}
-                                    {i.allergens.map((a) => t(`guest.allergen.${a}`)).join(', ')}
-                                  </span>
+                                <p className="text-[0.8rem] italic text-[var(--ink-2)]">
+                                  * {t('pm.contains')}{' '}
+                                  {i.allergens.map((a) => t(`guest.allergen.${a}`)).join(', ')}
                                 </p>
                               )}
                             </div>
-                          )}
-                        </div>
-                        {i.imageUrl && (
-                          <img
-                            src={i.imageUrl}
-                            alt={localName(lang, i.name, i.nameUr)}
-                            loading="lazy"
-                            className="size-24 shrink-0 rounded-lg border border-slate-300 bg-slate-200 object-cover"
-                          />
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))}
+                            {i.imageUrl && (
+                              <img
+                                src={i.imageUrl}
+                                alt={localName(lang, i.name, i.nameUr)}
+                                loading="lazy"
+                                className="mc-photo size-[5.5rem] shrink-0 object-cover"
+                              />
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              ))}
+            </main>
 
-            <footer className="space-y-1 border-t border-slate-300 pt-4 text-sm text-slate-600">
-              <p>{t('pm.pricesNote')}</p>
+            <footer className="mt-12 space-y-2 text-center">
+              <div className="mc-orn">
+                <Mark size={20} />
+              </div>
+              <p className="mc-desc pt-2">{t('pm.pricesNote')}</p>
               {menu.data.serviceChargeBps > 0 && (
-                <p>
+                <p className="mc-desc">
                   {t('pm.service', {
                     pct: ltr(`${(menu.data.serviceChargeBps / 100).toString()}%`),
                   })}
                 </p>
               )}
+              <p className="mc-desc">{t('pm.askStaff')}</p>
               {(r?.address || r?.phone) && (
-                <p className="pt-2 text-slate-700">
+                <p className="mc-caps pt-3 text-[var(--wine)]">
                   {r.address}
                   {r.address && r.phone ? ' · ' : ''}
                   {r.phone && <span dir="ltr">{r.phone}</span>}
                 </p>
               )}
-              <p className="pt-2">{t('pm.askStaff')}</p>
             </footer>
-          </main>
-        </>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

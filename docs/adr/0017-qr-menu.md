@@ -50,3 +50,17 @@ depend on the internet (CLAUDE.md rule 9), so the menu must work over the restau
   authenticated `GET /items/:id/image`.
 - The guest page can filter "Vegetarian only" when at least one dish carries that label. CSV import/export does
   not carry these fields (they are edited per dish in the dialog).
+
+## Addendum: the guest page is a menu card
+The page is set like a printed menu, not an app list: cream paper in a double gold rule on a dark "table",
+the restaurant name in a display serif with the Urdu name beneath, a "Menu" rule with the date, the day's note
+as a double-ruled "From the kitchen today" panel, an index of categories (sticky, with search and
+"Vegetarian only"), category headings between ornament rules, and each dish as name, dotted leader and price
+(sizes such as Half/Full on their own leader lines), an italic description, small-caps labels separated by
+dots, "* Contains: …", and the photo as a framed print. Sold-out dishes are struck through. Urdu uses Nastaliq
+and the layout mirrors (prices on the left of the leader).
+Fonts are bundled files in `public/fonts` (no CDN, works offline on the LAN): Playfair Display (Medium, Bold,
+Italic; latin subset) and Noto Nastaliq Urdu (Regular, Bold; arabic subset, ~160 kB each, fetched only when
+Urdu text is shown). Both are SIL OFL 1.1; licences sit beside the files. They were copied from the
+`@fontsource` packages, so nothing was added to `package.json`.
+
