@@ -69,7 +69,8 @@
     "offlineHint": "Lost the live connection; the screen refreshes every few seconds until it returns",
     "navKitchen": "Kitchen",
     "kitchenNew": "{{count}} new tickets",
-    "kitchenReady": "{{count}} ready to serve"
+    "kitchenReady": "{{count}} ready to serve",
+    "tapToStart": "Tap to start"
   },
   "floor": {
     "title": "Tables",
@@ -801,5 +802,14 @@
     "waitNEW": "Waiting for the kitchen",
     "waitPREPARING": "Being cooked",
     "waitREADY": "Ready for the waiter"
+  },
+  "role": {
+    "OWNER": "Owner",
+    "MANAGER": "Manager",
+    "CASHIER": "Cashier",
+    "CAPTAIN": "Captain",
+    "KITCHEN": "Kitchen",
+    "STORE": "Store keeper",
+    "ACCOUNTANT": "Accountant"
   }
 }

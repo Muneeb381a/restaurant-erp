@@ -69,7 +69,8 @@
     "offlineHint": "براہِ راست رابطہ ٹوٹ گیا؛ واپس آنے تک اسکرین ہر چند سیکنڈ میں تازہ ہوتی ہے",
     "navKitchen": "کچن",
     "kitchenNew": "{{count}} نئے ٹکٹ",
-    "kitchenReady": "{{count}} پیش کرنے کو تیار"
+    "kitchenReady": "{{count}} پیش کرنے کو تیار",
+    "tapToStart": "شروع کرنے کے لیے دبائیں"
   },
   "floor": {
     "title": "ٹیبلز",
@@ -801,5 +802,14 @@
     "waitNEW": "کچن کا انتظار",
     "waitPREPARING": "پک رہا ہے",
     "waitREADY": "ویٹر کے لیے تیار"
+  },
+  "role": {
+    "OWNER": "مالک",
+    "MANAGER": "مینیجر",
+    "CASHIER": "کیشیئر",
+    "CAPTAIN": "کیپٹن",
+    "KITCHEN": "کچن",
+    "STORE": "سٹور کیپر",
+    "ACCOUNTANT": "اکاؤنٹنٹ"
   }
 }

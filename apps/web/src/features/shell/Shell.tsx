@@ -190,22 +190,18 @@ function SignedIn() {
       </nav>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-end gap-2 border-b border-slate-300 bg-white px-3 py-2">
+        <header className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-300 bg-white px-3 sm:px-4">
           <div className="me-auto flex min-w-0 items-center gap-2 truncate text-lg font-semibold tracking-tight">
             <Mark size={22} className="text-emerald-700 md:hidden" />
-            <span className="md:hidden">{pageTitle}</span>
+            <span className="hidden sm:inline md:hidden">{pageTitle}</span>
             <span className="hidden font-medium text-slate-600 md:inline">{t('app.title')}</span>
           </div>
-          <span
-            className={`hidden items-center gap-1.5 text-xs font-medium sm:flex ${live ? 'text-slate-600' : 'text-amber-800'}`}
-            title={live ? t('shell.liveHint') : t('shell.offlineHint')}
-          >
-            <span className={`size-2 rounded-full ${live ? 'bg-emerald-600' : 'bg-amber-500'}`} />
-            {live ? t('shell.live') : t('shell.reconnecting')}
-          </span>
+          <ClockLive live={live} lang={i18n.language} />
           <DayShiftControl
             dayDate={day.data?.businessDate}
             shiftOpen={!!shift.data}
+            cashier={me.data?.fullName ?? ''}
+            lang={i18n.language}
             canOpenDay={can(me.data, 'day.open')}
             canOpenShift={can(me.data, 'shift.open')}
             canCloseDay={can(me.data, 'day.close')}
@@ -217,6 +213,7 @@ function SignedIn() {
           />
           <AccountMenu
             name={me.data?.fullName ?? ''}
+            role={me.data?.role ?? ''}
             lang={i18n.language as Lang}
             onLang={setLanguage}
             onLogout={() => void logout()}
@@ -295,13 +292,69 @@ function MenuItem({
   );
 }
 
+/** "21:42" style clock with the live-connection dot: the till shows the time staff actually read. */
+function ClockLive({ live, lang }: { live: boolean; lang: string }) {
+  const { t } = useTranslation();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 20_000);
+    return () => clearInterval(id);
+  }, []);
+  const time = now.toLocaleTimeString(lang === 'ur' ? 'ur-PK' : 'en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return (
+    <div
+      className="hidden flex-col items-end leading-tight md:flex"
+      title={live ? t('shell.liveHint') : t('shell.offlineHint')}
+    >
+      <span className="money text-base font-semibold text-slate-800">{ltr(time)}</span>
+      <span
+        className={`flex items-center gap-1.5 text-xs font-medium ${live ? 'text-slate-600' : 'text-amber-800'}`}
+      >
+        <span className={`size-2 rounded-full ${live ? 'bg-emerald-600' : 'bg-amber-500'}`} />
+        {live ? t('shell.live') : t('shell.reconnecting')}
+      </span>
+    </div>
+  );
+}
+
+const dateLabel = (iso: string, lang: string): string =>
+  new Date(`${iso}T00:00:00`).toLocaleDateString(lang === 'ur' ? 'ur-PK' : 'en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+
+function StatusCell({ on, title, sub }: { on: boolean; title: string; sub: string }) {
+  return (
+    <span className="flex items-center gap-2.5 px-3 py-1.5">
+      <span className="relative flex size-3 shrink-0">
+        {on && <span className="absolute inset-0 rounded-full bg-emerald-500/40" />}
+        <span
+          className={`relative m-auto size-2.5 rounded-full ${on ? 'bg-emerald-600' : 'bg-amber-500'}`}
+        />
+      </span>
+      <span className="flex flex-col items-start leading-tight">
+        <span className="whitespace-nowrap text-sm font-semibold">{title}</span>
+        <span className="hidden whitespace-nowrap text-xs font-medium text-slate-600 sm:block">
+          {sub}
+        </span>
+      </span>
+    </span>
+  );
+}
+
 /**
- * The only place the business day and shift are handled. The pill always says where you are; the
- * menu offers exactly the next step (start day → start shift → cash drawer / close day).
+ * The only place the business day and shift are handled. Two cells show where you are (day, shift);
+ * the menu offers exactly the next step (start day → start shift → cash drawer / close day).
  */
 function DayShiftControl(p: {
   dayDate: string | undefined;
   shiftOpen: boolean;
+  cashier: string;
+  lang: string;
   canOpenDay: boolean;
   canOpenShift: boolean;
   canCloseDay: boolean;
@@ -326,36 +379,38 @@ function DayShiftControl(p: {
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`flex min-h-touch items-center gap-2 rounded-lg border px-3 text-sm font-semibold ${
+        className={`flex min-h-touch items-stretch divide-x rounded-xl border text-start transition-colors rtl:divide-x-reverse ${
           needsAction
-            ? 'border-amber-400 bg-amber-50 text-amber-800'
-            : 'border-slate-300 bg-white text-slate-800'
+            ? 'divide-amber-300 border-amber-400 bg-amber-50 text-amber-900 hover:bg-amber-100'
+            : 'divide-slate-200 border-slate-300 bg-white text-slate-900 hover:bg-slate-50'
         }`}
         onClick={() => setOpen(!open)}
       >
-        <Icon name="clock" size={18} />
-        <span className="flex flex-col items-start leading-tight">
-          <span className="whitespace-nowrap">
-            {dayOpen ? t('shell.dayOpen') : t('shell.dayClosed')}
-            {dayOpen && <span className="hidden sm:inline"> · {ltr(p.dayDate ?? '')}</span>}
-          </span>
-          <span className="text-xs font-medium opacity-80">
-            {p.shiftOpen ? t('shell.shiftOpen') : t('shell.shiftClosed')}
-          </span>
+        <StatusCell
+          on={dayOpen}
+          title={dayOpen ? t('shell.dayOpen') : t('shell.dayClosed')}
+          sub={dayOpen ? ltr(dateLabel(p.dayDate ?? '', p.lang)) : t('shell.tapToStart')}
+        />
+        <StatusCell
+          on={p.shiftOpen}
+          title={p.shiftOpen ? t('shell.shiftOpen') : t('shell.shiftClosed')}
+          sub={p.shiftOpen ? p.cashier : dayOpen ? t('shell.tapToStart') : '–'}
+        />
+        <span className="flex items-center px-2 text-slate-500">
+          <Icon name="chevronDown" size={16} />
         </span>
-        <Icon name="chevronDown" size={16} />
       </button>
       {open && (
         <div
           role="menu"
-          className="absolute end-0 z-30 mt-1 w-72 rounded-xl border border-slate-300 bg-white p-1.5 shadow-sheet"
+          className="absolute end-0 z-30 mt-1.5 w-80 rounded-xl border border-slate-300 bg-white p-2 shadow-sheet"
         >
           {!dayOpen && (
             <>
               <p className="hint px-3 py-2">{t('shell.startDayHint')}</p>
               {p.canOpenDay && (
                 <button
-                  className="btn-primary mx-1 mb-1 w-[calc(100%-0.5rem)]"
+                  className="btn-primary mb-1 w-full"
                   disabled={p.busy}
                   onClick={act(p.onOpenDay)}
                 >
@@ -368,10 +423,7 @@ function DayShiftControl(p: {
             <>
               <p className="hint px-3 py-2">{t('shell.startShiftHint')}</p>
               {p.canOpenShift && (
-                <button
-                  className="btn-primary mx-1 mb-1 w-[calc(100%-0.5rem)]"
-                  onClick={act(p.onOpenShift)}
-                >
+                <button className="btn-primary mb-1 w-full" onClick={act(p.onOpenShift)}>
                   {t('shell.openShift')}
                 </button>
               )}
@@ -395,13 +447,35 @@ function DayShiftControl(p: {
   );
 }
 
+const initials = (name: string): string =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w.charAt(0).toUpperCase())
+    .join('') || '?';
+
+function Avatar({ name, size = 36 }: { name: string; size?: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{ width: size, height: size, fontSize: size * 0.38 }}
+      className="inline-flex shrink-0 items-center justify-center rounded-full bg-emerald-700 font-semibold text-white"
+    >
+      {initials(name)}
+    </span>
+  );
+}
+
 function AccountMenu({
   name,
+  role,
   lang,
   onLang,
   onLogout,
 }: {
   name: string;
+  role: string;
   lang: Lang;
   onLang: (l: Lang) => void;
   onLogout: () => void;
@@ -409,6 +483,7 @@ function AccountMenu({
   const { t } = useTranslation();
   const { open, setOpen, ref } = usePopover();
   const next: Lang = lang === 'ur' ? 'en' : 'ur';
+  const roleName = role ? t(`role.${role.toUpperCase()}`, { defaultValue: role }) : '';
   return (
     <div className="relative" ref={ref}>
       <button
@@ -416,18 +491,29 @@ function AccountMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t('shell.account')}
-        className="btn-secondary px-3"
+        className="flex min-h-touch items-center gap-2.5 rounded-xl border border-transparent py-1 ps-1 pe-2 hover:border-slate-300 hover:bg-slate-50"
         onClick={() => setOpen(!open)}
       >
-        <Icon name="user" size={20} />
-        <span className="hidden max-w-[10rem] truncate sm:inline">{name}</span>
+        <Avatar name={name} />
+        <span className="hidden flex-col items-start leading-tight lg:flex">
+          <span className="max-w-[10rem] truncate text-sm font-semibold">{name}</span>
+          <span className="text-xs font-medium text-slate-600">{roleName}</span>
+        </span>
+        <Icon name="chevronDown" size={16} className="hidden text-slate-500 sm:block" />
       </button>
       {open && (
         <div
           role="menu"
-          className="absolute end-0 z-30 mt-1 w-64 rounded-xl border border-slate-300 bg-white p-1.5 shadow-sheet"
+          className="absolute end-0 z-30 mt-1.5 w-72 rounded-xl border border-slate-300 bg-white p-2 shadow-sheet"
         >
-          <p className="hint px-3 py-2">{t('shell.signedInAs', { name })}</p>
+          <div className="flex items-center gap-3 px-3 py-3">
+            <Avatar name={name} size={44} />
+            <div className="min-w-0">
+              <div className="truncate font-semibold">{name}</div>
+              <div className="text-sm text-slate-600">{roleName}</div>
+            </div>
+          </div>
+          <div className="my-1 border-t border-slate-200" />
           <MenuItem
             onClick={() => {
               setOpen(false);
