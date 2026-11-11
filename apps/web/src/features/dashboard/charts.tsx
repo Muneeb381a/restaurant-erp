@@ -196,3 +196,48 @@ export function Bar({
     </div>
   );
 }
+
+/** Average time from "sent" to "ready" for each local hour; slow hours are amber (over 20 min) or rose (over 25). */
+export function KitchenHourChart({
+  data,
+}: {
+  data: { hour: number; tickets: number; avgTotalSec: number }[];
+}) {
+  const { t } = useTranslation();
+  if (data.length === 0) return null;
+  const max = Math.max(...data.map((h) => h.avgTotalSec), 1);
+  const label = (h: number): string => `${h % 12 === 0 ? 12 : h % 12}${h < 12 ? 'a' : 'p'}`;
+  const worst = data.reduce((w, h) => (h.avgTotalSec > w.avgTotalSec ? h : w), data[0]!);
+  return (
+    <div
+      role="img"
+      aria-label={t('dash.kHourAria', {
+        hour: label(worst.hour),
+        min: Math.round(worst.avgTotalSec / 60),
+      })}
+      className="flex h-32 items-end justify-start gap-1"
+    >
+      {data.map((h) => {
+        const tone =
+          h.avgTotalSec > 1500
+            ? 'bg-rose-500'
+            : h.avgTotalSec > 1200
+              ? 'bg-amber-500'
+              : 'bg-emerald-400';
+        return (
+          <div
+            key={h.hour}
+            className="flex h-full min-w-0 max-w-14 flex-1 flex-col items-center justify-end gap-1"
+            title={`${label(h.hour)}: ${Math.round(h.avgTotalSec / 60)} min · ${h.tickets}`}
+          >
+            <div
+              className={`w-full rounded-t ${tone}`}
+              style={{ height: `${Math.max(3, (h.avgTotalSec / max) * 100)}%` }}
+            />
+            <span className="text-[0.7rem] text-slate-600">{label(h.hour)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

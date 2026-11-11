@@ -28,3 +28,10 @@ and loss-control counters.
 - Labour cost is only visible if the owner enters salaries as an expense category; prime cost is not
   computed separately yet.
 - `pnpm demo:history` replays 21 days through the real API for demos (dev only).
+
+## Addendum: kitchen speed
+`dashboard.kitchen` times tickets from the kitchen-screen timestamps: wait = sent -> started, cook = started
+-> ready, total = sent -> ready. Only tickets that reached READY are timed; durations over 3 hours are
+treated as forgotten taps and excluded (counted separately, along with tickets never marked ready). It reports
+the median (robust to outliers), the average, the slowest-10% (p90), the share ready within 15 minutes and over
+25 minutes, per station, per local hour sent, and the median of the previous period for comparison.

@@ -191,6 +191,6 @@ test('the admin area works in Urdu (right-to-left)', async ({ page }) => {
   await page.getByRole('button', { name: 'Account', exact: true }).click();
   await page.getByRole('menuitem', { name: 'اردو' }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-  await expect(page.getByRole('link', { name: 'مینو' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'مینو', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /نیا آئٹم/ })).toBeVisible();
 });

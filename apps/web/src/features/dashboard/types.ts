@@ -74,6 +74,28 @@ export interface Dashboard {
     wastagePaisa: number;
     staffMealPaisa: number;
   };
+  kitchen: {
+    ticketsSent: number;
+    timedTickets: number;
+    untimedTickets: number;
+    ignoredTickets: number;
+    avgWaitSec: number;
+    avgCookSec: number;
+    avgTotalSec: number;
+    medianTotalSec: number;
+    p90TotalSec: number;
+    within15MinBps: number | null;
+    over25MinBps: number | null;
+    previousMedianTotalSec: number | null;
+    stations: {
+      station: string;
+      tickets: number;
+      avgWaitSec: number;
+      avgCookSec: number;
+      avgTotalSec: number;
+    }[];
+    hours: { hour: number; tickets: number; avgTotalSec: number }[];
+  };
   waiters: { name: string; bills: number; discountPaisa: number }[];
   position: {
     khataOwedToUsPaisa: number;

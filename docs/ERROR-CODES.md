@@ -6,6 +6,8 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | --------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `VALIDATION_FAILED`   | 400  | Request body/query/params invalid (Zod `issues` included), unknown setting key, malformed JSON                                              |
 | `BRANCH_REQUIRED`     | 400  | Owner-level user did not send a valid `x-branch-id` and there is not exactly one active branch                                              |
+| `MENU_NOT_PUBLIC`     | 404  | The QR/customer menu is switched off (Admin → QR menu); only the public menu endpoint returns this                                          |
+| `RATE_LIMITED`        | 429  | Too many requests from one address to the public menu in a minute                                                                           |
 | `UNAUTHENTICATED`     | 401  | Missing/invalid/expired access token, revoked or expired session, invalid refresh token                                                     |
 | `INVALID_CREDENTIALS` | 401  | Wrong username / password / PIN (deliberately identical for unknown users, inactive users and a device of another branch)                   |
 | `REFRESH_REUSED`      | 401  | A superseded refresh token was replayed; the session has been revoked                                                                       |

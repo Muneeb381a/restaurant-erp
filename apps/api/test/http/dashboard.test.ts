@@ -155,6 +155,45 @@ describe('GET /reports/dashboard', () => {
     expect(r.body.current.bills).toBe(3);
   });
 
+  it('times the kitchen: wait, cook and total, ignoring forgotten tickets', async () => {
+    const kots = await t.kdb.selectFrom('kots').select('id').orderBy('kot_no').execute();
+    expect(kots.length).toBeGreaterThanOrEqual(3);
+    const base = Date.now() - 3 * 3_600_000;
+    const at = (min: number): Date => new Date(base + min * 60_000);
+    // two normal tickets: waited 4 min, cooked 10 min
+    for (const k of kots.slice(0, 2))
+      await t.kdb
+        .updateTable('kots')
+        .set({ created_at: at(0), started_at: at(4), ready_at: at(14), status: 'READY' })
+        .where('id', '=', k.id)
+        .execute();
+    // one ticket marked ready five hours later: a forgotten tap, left out of the times
+    await t.kdb
+      .updateTable('kots')
+      .set({ created_at: at(0), started_at: at(1), ready_at: at(300), status: 'READY' })
+      .where('id', '=', kots[2]!.id)
+      .execute();
+    const r = await get(owner);
+    expect(r.status).toBe(200);
+    const k = r.body.kitchen;
+    expect(k).toMatchObject({
+      ticketsSent: kots.length,
+      timedTickets: 2,
+      ignoredTickets: 1,
+      avgWaitSec: 240,
+      avgCookSec: 600,
+      avgTotalSec: 840,
+      medianTotalSec: 840,
+      within15MinBps: 10000,
+      over25MinBps: 0,
+    });
+    expect(k.untimedTickets).toBe(kots.length - 3);
+    expect(k.stations).toEqual([
+      expect.objectContaining({ station: 'BBQ', tickets: 2, avgTotalSec: 840 }),
+    ]);
+    expect(k.hours.reduce((n: number, h: Json) => n + h.tickets, 0)).toBe(2);
+  });
+
   it('rejects bad ranges and is for people who may see financial reports', async () => {
     expect((await get(owner, today, day(-1))).status).toBe(400);
     expect((await get(owner, day(-400), today)).status).toBe(400);

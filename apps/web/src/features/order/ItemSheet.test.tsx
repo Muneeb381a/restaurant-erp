@@ -96,7 +96,7 @@ describe('ItemSheet', () => {
     const onAdd = render_(item);
     expect(addButton()).toBeDisabled();
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: '750' }));
+    await user.click(screen.getByRole('button', { name: /750/ }));
     await user.click(addButton());
     const body = onAdd.mock.calls[0]![0] as Record<string, unknown>;
     expect(body).toMatchObject({ itemId: 'item1', variantId: 'kg', weightG: 750 });

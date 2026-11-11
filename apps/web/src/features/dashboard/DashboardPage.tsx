@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Icon } from '../../components/Icon';
 import { api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
-import { Bar, HourChart, TrendChart } from './charts';
+import { Bar, HourChart, KitchenHourChart, TrendChart } from './charts';
 import type { Dashboard } from './types';
 
 type Preset = 'today' | 'yesterday' | '7d' | '30d' | 'month' | 'lastMonth' | 'custom';
@@ -251,6 +251,10 @@ function Body({ d, lang }: { d: Dashboard; lang: string }) {
     .reduce((n, m) => n + m.amountPaisa, 0);
   const collected = cashSales + creditSales + digital;
   const ctl = d.controls;
+  const k = d.kitchen;
+  const maxStation = Math.max(...k.stations.map((x) => x.avgTotalSec), 1);
+  const dur = (sec: number): string =>
+    ltr(sec < 60 ? t('dash.underMin') : t('dash.minutes', { count: Math.round(sec / 60) }));
   const discountBps =
     c.grossSalesPaisa > 0 ? Math.round((ctl.discountPaisa * 10_000) / c.grossSalesPaisa) : 0;
   // "where each Rs 100 went": share of net sales as costs and profit (display only)
@@ -575,6 +579,74 @@ function Body({ d, lang }: { d: Dashboard; lang: string }) {
           )}
         </Card>
       </div>
+
+      {/* how fast the kitchen is */}
+      <Card title={t('dash.kitchen')} hint={t('dash.kitchenHint')}>
+        {k.timedTickets === 0 ? (
+          <p className="hint">{t('dash.kitchenNone', { sent: k.ticketsSent })}</p>
+        ) : (
+          <div className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Mini
+                label={t('dash.kMedian')}
+                value={dur(k.medianTotalSec)}
+                sub={t('dash.kMedianSub', { n: k.timedTickets })}
+              />
+              <Mini label={t('dash.kWait')} value={dur(k.avgWaitSec)} sub={t('dash.kWaitSub')} />
+              <Mini label={t('dash.kCook')} value={dur(k.avgCookSec)} sub={t('dash.kCookSub')} />
+              <Mini
+                label={t('dash.kSlowest')}
+                value={dur(k.p90TotalSec)}
+                sub={t('dash.kSlowestSub', { pct: pct(k.over25MinBps) })}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              {k.previousMedianTotalSec !== null && (
+                <span className="flex items-center gap-2">
+                  <Delta cur={k.medianTotalSec} prev={k.previousMedianTotalSec} good="down" />
+                  <span className="text-slate-600">{t('dash.vsPrev')}</span>
+                </span>
+              )}
+              <span className="chip-ok">{t('dash.kFast', { pct: pct(k.within15MinBps) })}</span>
+            </div>
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div className="space-y-3">
+                <h3 className="micro">{t('dash.kStations')}</h3>
+                {k.stations.map((x) => (
+                  <Bar
+                    key={x.station}
+                    label={x.station}
+                    value={x.avgTotalSec}
+                    max={maxStation}
+                    tone={
+                      x.avgTotalSec > 1500
+                        ? 'bg-rose-500'
+                        : x.avgTotalSec > 1200
+                          ? 'bg-amber-500'
+                          : 'bg-emerald-500'
+                    }
+                    right={dur(x.avgTotalSec)}
+                    sub={t('dash.kStationSub', {
+                      count: x.tickets,
+                      wait: Math.round(x.avgWaitSec / 60),
+                      cook: Math.round(x.avgCookSec / 60),
+                    })}
+                  />
+                ))}
+              </div>
+              <div className="space-y-3">
+                <h3 className="micro">{t('dash.kHours')}</h3>
+                <KitchenHourChart data={k.hours} />
+              </div>
+            </div>
+            {(k.untimedTickets > 0 || k.ignoredTickets > 0) && (
+              <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                {t('dash.kCaveat', { untimed: k.untimedTickets, ignored: k.ignoredTickets })}
+              </p>
+            )}
+          </div>
+        )}
+      </Card>
 
       {/* leaks and controls */}
       <Card title={t('dash.controls')} hint={t('dash.controlsHint')}>

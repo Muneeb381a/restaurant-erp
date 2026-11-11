@@ -119,6 +119,96 @@ const addDays = (iso: string, n: number): string =>
 const daysBetween = (from: string, to: string): number =>
   Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
 
+/**
+ * Kitchen speed, from the ticket timestamps the kitchen screen records:
+ *   wait = sent -> started cooking, cook = started -> ready, total = sent -> ready.
+ * Only tickets that reached READY are timed. Anything over 3 hours is a forgotten tap, not a real
+ * time, so it is left out of the averages (and counted separately so the owner can see it).
+ */
+const KITCHEN_LIMIT_SEC = 3 * 3600;
+const TOTAL = sql`EXTRACT(EPOCH FROM (k.ready_at - k.created_at))`;
+const WAIT = sql`EXTRACT(EPOCH FROM (k.started_at - k.created_at))`;
+const COOK = sql`EXTRACT(EPOCH FROM (k.ready_at - k.started_at))`;
+const TIMED = sql`k.ready_at IS NOT NULL AND ${TOTAL} >= 0 AND ${TOTAL} <= ${KITCHEN_LIMIT_SEC}`;
+const sec = (e: ReturnType<typeof sql>) => sql<number>`COALESCE(round(${e})::int, 0)`;
+
+async function kitchenStats(ctx: AppContext, branchId: string, from: string, to: string) {
+  const r = await sql<{
+    sent: number;
+    timed: number;
+    ignored: number;
+    avgwait: number;
+    avgcook: number;
+    avgtotal: number;
+    medtotal: number;
+    p90total: number;
+    fast: number;
+    slow: number;
+  }>`SELECT count(*)::int AS sent,
+       count(*) FILTER (WHERE ${TIMED})::int AS timed,
+       count(*) FILTER (WHERE k.ready_at IS NOT NULL AND NOT (${TIMED}))::int AS ignored,
+       ${sec(sql`avg(${WAIT}) FILTER (WHERE ${TIMED} AND k.started_at IS NOT NULL)`)} AS avgwait,
+       ${sec(sql`avg(${COOK}) FILTER (WHERE ${TIMED} AND k.started_at IS NOT NULL)`)} AS avgcook,
+       ${sec(sql`avg(${TOTAL}) FILTER (WHERE ${TIMED})`)} AS avgtotal,
+       ${sec(sql`percentile_cont(0.5) WITHIN GROUP (ORDER BY ${TOTAL}) FILTER (WHERE ${TIMED})`)} AS medtotal,
+       ${sec(sql`percentile_cont(0.9) WITHIN GROUP (ORDER BY ${TOTAL}) FILTER (WHERE ${TIMED})`)} AS p90total,
+       count(*) FILTER (WHERE ${TIMED} AND ${TOTAL} <= 900)::int AS fast,
+       count(*) FILTER (WHERE ${TIMED} AND ${TOTAL} > 1500)::int AS slow
+     FROM kots k JOIN business_days d ON d.id = k.business_day_id
+     WHERE k.branch_id = ${branchId} AND k.status <> 'CANCELLED'
+       AND d.business_date BETWEEN ${from} AND ${to}`.execute(ctx.db);
+  const x = r.rows[0]!;
+  return {
+    ticketsSent: x.sent,
+    timedTickets: x.timed,
+    untimedTickets: x.sent - x.timed - x.ignored,
+    ignoredTickets: x.ignored,
+    avgWaitSec: x.avgwait,
+    avgCookSec: x.avgcook,
+    avgTotalSec: x.avgtotal,
+    medianTotalSec: x.medtotal,
+    p90TotalSec: x.p90total,
+    within15MinBps: bps(x.fast, x.timed),
+    over25MinBps: bps(x.slow, x.timed),
+  };
+}
+
+async function kitchenByStation(ctx: AppContext, branchId: string, from: string, to: string) {
+  const r = await sql<{
+    name: string;
+    n: number;
+    avgwait: number;
+    avgcook: number;
+    avgtotal: number;
+  }>`SELECT st.name AS name, count(*)::int AS n,
+       ${sec(sql`avg(${WAIT}) FILTER (WHERE k.started_at IS NOT NULL)`)} AS avgwait,
+       ${sec(sql`avg(${COOK}) FILTER (WHERE k.started_at IS NOT NULL)`)} AS avgcook,
+       ${sec(sql`avg(${TOTAL})`)} AS avgtotal
+     FROM kots k JOIN business_days d ON d.id = k.business_day_id JOIN stations st ON st.id = k.station_id
+     WHERE k.branch_id = ${branchId} AND k.status <> 'CANCELLED' AND ${TIMED}
+       AND d.business_date BETWEEN ${from} AND ${to}
+     GROUP BY st.name ORDER BY 5 DESC`.execute(ctx.db);
+  return r.rows.map((x) => ({
+    station: x.name,
+    tickets: x.n,
+    avgWaitSec: x.avgwait,
+    avgCookSec: x.avgcook,
+    avgTotalSec: x.avgtotal,
+  }));
+}
+
+/** Average sent -> ready time by the local hour the ticket was sent: shows when the kitchen struggles. */
+async function kitchenByHour(ctx: AppContext, branchId: string, from: string, to: string) {
+  const r = await sql<{ hour: number; n: number; avgtotal: number }>`SELECT
+       extract(hour FROM (k.created_at AT TIME ZONE ${TZ}))::int AS hour, count(*)::int AS n,
+       ${sec(sql`avg(${TOTAL})`)} AS avgtotal
+     FROM kots k JOIN business_days d ON d.id = k.business_day_id
+     WHERE k.branch_id = ${branchId} AND k.status <> 'CANCELLED' AND ${TIMED}
+       AND d.business_date BETWEEN ${from} AND ${to}
+     GROUP BY 1 ORDER BY 1`.execute(ctx.db);
+  return r.rows.map((x) => ({ hour: x.hour, tickets: x.n, avgTotalSec: x.avgtotal }));
+}
+
 export async function dashboard(ctx: AppContext, branchId: string, from: string, to: string) {
   const n = daysBetween(from, to);
   if (n < 1 || n > 366)
@@ -151,6 +241,10 @@ export async function dashboard(ctx: AppContext, branchId: string, from: string,
     suppliers,
     open,
     users,
+    kitchenAll,
+    kitchenStations,
+    kitchenHours,
+    kitchenPrev,
   ] = await Promise.all([
     summary(ctx, branchId, from, to),
     summary(ctx, branchId, prevFrom, prevTo),
@@ -313,6 +407,10 @@ export async function dashboard(ctx: AppContext, branchId: string, from: string,
        FROM bills b JOIN users u ON u.id = b.settled_by JOIN business_days d ON d.id = b.business_day_id
        WHERE b.branch_id = ${branchId} AND b.status = 'SETTLED' AND d.business_date BETWEEN ${from} AND ${to}
        GROUP BY u.full_name ORDER BY 3 DESC`.execute(db),
+    kitchenStats(ctx, branchId, from, to),
+    kitchenByStation(ctx, branchId, from, to),
+    kitchenByHour(ctx, branchId, from, to),
+    kitchenStats(ctx, branchId, prevFrom, prevTo),
   ]);
 
   // one row per day in the range, zero-filled, so the trend chart has no gaps
@@ -389,6 +487,12 @@ export async function dashboard(ctx: AppContext, branchId: string, from: string,
       cashShortPaisa: variance.rows[0]!.short,
       wastagePaisa: Math.round(waste.rows.find((w) => w.kind === 'WASTAGE')?.value ?? 0),
       staffMealPaisa: Math.round(waste.rows.find((w) => w.kind === 'STAFF_MEAL')?.value ?? 0),
+    },
+    kitchen: {
+      ...kitchenAll,
+      previousMedianTotalSec: kitchenPrev.timedTickets > 0 ? kitchenPrev.medianTotalSec : null,
+      stations: kitchenStations,
+      hours: kitchenHours,
     },
     waiters: users.rows.map((u) => ({ name: u.name, bills: u.bills, discountPaisa: u.discount })),
     position: {

@@ -22,6 +22,7 @@ test('the owner sees the business overview with profit and loss; the cashier has
   await expect(page.getByRole('heading', { name: 'Profit and loss' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'How guests paid' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Watch for leaks' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Kitchen speed' })).toBeVisible();
 
   // switching the period reloads the figures
   await page.getByRole('button', { name: 'Last 30 days' }).click();

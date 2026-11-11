@@ -339,6 +339,8 @@ footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line);
     <tr><td>Wastage and staff meals</td><td>Ingredients thrown away or used for staff, valued at cost.</td></tr>
     <tr><td>By cashier</td><td>Bills and discounts per person.</td></tr>
   </table></div>
+  <h3>Kitchen speed</h3>
+  <p>How long food takes, measured from the kitchen screen: <em>waiting</em> (sent until the cook taps Start), <em>cooking</em> (Start until Ready) and the <em>typical time</em> from sent to ready. You also see the slowest 1 in 10, the share ready within 15 minutes, the average per station (BBQ, Tandoor…), and a chart by hour so you can see which rush hour is too slow. Tickets nobody marked ready are not counted; the page tells you how many were left out. For real numbers, ask the kitchen to tap <span class="ui">Start</span> and <span class="ui">Ready</span> on the Kitchen screen.</p>
   <h3>Right now</h3>
   <p>These do not depend on the period: what customers owe you in khata, what you owe suppliers, the value of stock on the shelf, ingredients running low (with a reorder list), and how many orders and tables are open at this moment.</p>
   <div class="pair">
@@ -362,6 +364,16 @@ footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line);
     <li><strong>Tables</strong>: add areas (Main Hall, Terrace) and tables. A new table appears on the floor straight away.</li>
   </ul>
   <figure><img src="img/admin-tables.png" alt="Tables admin" loading="lazy"></figure>
+
+  <h3 id="qrmenu">QR menu for guests</h3>
+  <p>Put a QR code on every table. A guest scans it with the phone camera and sees <strong>today's menu and prices</strong>, in English or Urdu, with the dishes that are finished marked "Sold out". No app, no sign-in, and guests can only read the menu: they cannot order or see anything else.</p>
+  <ul>
+    <li>Open <span class="ui">Admin → QR menu</span> and switch <strong>Customers can see the menu</strong> on. It is off until you do.</li>
+    <li><strong>Address</strong>: the QR must point to an address the guest's phone can reach. On the restaurant Wi-Fi that is the till computer's network address (for example <code>http://192.168.1.10</code>). "localhost" will not work on a phone; the page warns you.</li>
+    <li><strong>Note for today</strong>: one or two lines at the top of the menu (today's special, "fresh naan after 7 pm").</li>
+    <li><span class="ui">Print poster</span> gives one sheet for the table (A5 or A4); <span class="ui">Download image</span> gives the QR as a picture, for WhatsApp or a sign-maker.</li>
+    <li>The menu follows the till: change a price or mark a dish unavailable and guests see it within a minute. Switch the menu off and the QR shows "menu not available".</li>
+  </ul>
 
   <h3>People and access</h3>
   <div class="pair">

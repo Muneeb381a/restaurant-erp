@@ -36,6 +36,15 @@ export const SETTING_SCHEMAS: Record<string, z.ZodType> = {
   'billing.round_to_rupee': z.boolean(),
   'billing.service_charge_bps': z.number().int().min(0).max(10_000),
   'kot.print_on_send': z.boolean(),
+  /** The customer menu behind the QR code: off until switched on; a short note for today; the address the QR points to. */
+  'menu.public_enabled': z.boolean(),
+  'menu.public_note': z.string().trim().max(300),
+  'menu.public_url': z
+    .string()
+    .trim()
+    .url()
+    .max(300)
+    .regex(/^https?:\/\//),
   /** Customer receipt language: English text mode, or Urdu as a bitmap. */
   'receipt.language': z.enum(['en', 'ur']),
 };

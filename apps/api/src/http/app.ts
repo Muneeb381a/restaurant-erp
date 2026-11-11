@@ -17,6 +17,7 @@ import { fiscalRouter } from '../modules/fiscal/fiscal.routes';
 import { taxRouter } from '../modules/tax/tax.routes';
 import { kitchenRouter } from '../modules/kitchen/kitchen.routes';
 import { menuRouter } from '../modules/menu/menu.routes';
+import { publicRouter } from '../modules/menu/public.routes';
 import { ordersRouter } from '../modules/orders/orders.routes';
 import type { AppContext } from './context';
 import { errorHandler, notFound } from './errors';
@@ -55,6 +56,7 @@ export function createApp(ctx: AppContext): Express {
   const v1 = Router();
   v1.use(notifyOnWrite);
   v1.use('/', eventsRouter(ctx)); // GET /events (live change notifications)
+  v1.use('/public', publicRouter(ctx)); // unauthenticated, read-only customer menu (QR code)
   v1.use('/auth', authRouter(ctx));
   v1.use('/audit-log', auditRouter(ctx));
   v1.use('/users', usersRouter(ctx));

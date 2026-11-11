@@ -210,3 +210,29 @@ html[lang='ur'] body {
     @apply tabular-nums;
   }
 }
+
+/* ── printing the QR poster: only the poster, centred, in ink */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .qr-poster,
+  .qr-poster * {
+    visibility: visible;
+  }
+  .qr-poster {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: 100%;
+    max-width: 120mm;
+    height: fit-content;
+    border: 2px solid #000;
+    border-radius: 0;
+    padding: 12mm;
+  }
+  .qr-poster svg {
+    width: 90mm;
+    height: 90mm;
+  }
+}

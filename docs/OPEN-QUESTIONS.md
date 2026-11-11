@@ -40,3 +40,5 @@
 
 
 36. **Dashboard: spreading monthly costs.** Rent and salaries count on the day they are entered, so a single day can show a loss. Do we want an accrual option (spread a monthly expense across its days), a "recurring expense" feature, or is "This month" view enough? Also: should prime cost (food + labour) get its own card once salaries have a fixed category?
+
+37. **QR menu.** (a) Which address should the QR carry: the till's LAN address (works only on the restaurant Wi-Fi) or a website/domain (needs the menu online)? (b) Do you want a separate QR per table (so a later "call waiter" or ordering feature knows the table)? (c) Photos, allergen/spice labels and halal/vegetarian marks on dishes? (d) Should some items or categories be hidden from guests (e.g. staff meals)? Today everything active and priced on the dine-in list is shown.

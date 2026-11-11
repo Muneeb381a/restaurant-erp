@@ -3,6 +3,7 @@ import { AdminIndex, AdminLayout } from '../features/admin/AdminLayout';
 import { FiscalAdmin } from '../features/admin/FiscalAdmin';
 import { MenuAdmin } from '../features/admin/MenuAdmin';
 import { PrintersAdmin } from '../features/admin/PrintersAdmin';
+import { QrMenuAdmin } from '../features/admin/QrMenuAdmin';
 import { RolesAdmin } from '../features/admin/RolesAdmin';
 import { SettingsAdmin } from '../features/admin/SettingsAdmin';
 import { CostsAdmin } from '../features/admin/CostsAdmin';
@@ -20,12 +21,14 @@ import { KhataDetail, KhataPage } from '../features/khata/KhataPage';
 import { KitchenPage } from '../features/kitchen/KitchenPage';
 import { LoginPage } from '../features/login/LoginPage';
 import { OrderPage } from '../features/order/OrderPage';
+import { PublicMenuPage } from '../features/publicmenu/PublicMenuPage';
 import { Shell } from '../features/shell/Shell';
 
 export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/m" element={<PublicMenuPage />} />
       <Route element={<Shell />}>
         <Route index element={<FloorPage />} />
         <Route path="order/:id" element={<OrderPage />} />
@@ -40,6 +43,7 @@ export function App() {
           <Route path="menu" element={<MenuAdmin />} />
           <Route path="printers" element={<PrintersAdmin />} />
           <Route path="tables" element={<TablesAdmin />} />
+          <Route path="qr-menu" element={<QrMenuAdmin />} />
           <Route path="users" element={<UsersAdmin />} />
           <Route path="stock" element={<StockAdmin />} />
           <Route path="purchases" element={<PurchasesAdmin />} />

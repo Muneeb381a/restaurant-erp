@@ -5,12 +5,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAuth } from '../../lib/auth-store';
 import { LoginPage } from './LoginPage';
 
+// the page also pings /health to show whether the server is up; only the sign-in calls are asserted
 const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>();
 const respond = (status: number, body: unknown): Response =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', fetchMock);
+  vi.stubGlobal('fetch', (url: string, init?: RequestInit) =>
+    String(url).includes('/health')
+      ? Promise.resolve(respond(200, { status: 'ok' }))
+      : fetchMock(url, init),
+  );
   fetchMock.mockReset();
   useAuth.setState({ tokens: null, lastUsername: '' });
 });

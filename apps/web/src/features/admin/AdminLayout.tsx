@@ -11,6 +11,12 @@ export const ADMIN_SECTIONS = [
     permission: 'settings.manage',
     group: 'admin.groupMenu',
   },
+  {
+    path: 'qr-menu',
+    label: 'admin.qrMenu',
+    permission: 'settings.manage',
+    group: 'admin.groupMenu',
+  },
   { path: 'stock', label: 'admin.stock', permission: 'report.view', group: 'admin.groupStock' },
   {
     path: 'purchases',

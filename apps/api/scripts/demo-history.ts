@@ -243,6 +243,22 @@ async function main(): Promise<void> {
         if (r.status >= 300) continue;
       }
       await ok(call('captain', 'post', `/orders/${o.id}/send`, {}), 'send');
+      // the kitchen works the tickets: wait, cook, ready, served (slower at the lunch and dinner rush)
+      const rush = (s.h >= 13 && s.h <= 15) || (s.h >= 20 && s.h <= 22);
+      const tickets = await db
+        .selectFrom('kots')
+        .select('id')
+        .where('order_id', '=', o.id)
+        .execute();
+      for (const k of tickets) {
+        const step = async (to: string, lo: number, hi: number): Promise<void> => {
+          clock.t = new Date(clock.t.getTime() + between(lo, hi) * 60_000);
+          await ok(call('manager', 'post', `/kots/${k.id}/status`, { status: to }), 'kot');
+        };
+        await step('PREPARING', 1, rush ? 9 : 4);
+        await step('READY', rush ? 9 : 6, rush ? 24 : 16);
+        await step('DONE', 1, 3);
+      }
       let bill = await ok(call('cashier', 'post', `/orders/${o.id}/bill`), 'bill');
       if (rnd() < 0.12) {
         const d = await call('manager', 'post', `/bills/${bill.id}/discount`, {
