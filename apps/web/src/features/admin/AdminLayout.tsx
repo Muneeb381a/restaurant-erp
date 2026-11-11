@@ -35,6 +35,12 @@ export const ADMIN_SECTIONS = [
   { path: 'users', label: 'admin.users', permission: 'user.manage', group: 'admin.groupPeople' },
   { path: 'roles', label: 'admin.roles', permission: 'user.manage', group: 'admin.groupPeople' },
   {
+    path: 'setup',
+    label: 'admin.setup',
+    permission: 'settings.manage',
+    group: 'admin.groupBusiness',
+  },
+  {
     path: 'printers',
     label: 'admin.printers',
     permission: 'settings.manage',

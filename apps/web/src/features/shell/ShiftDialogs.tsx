@@ -5,6 +5,7 @@ import { Modal as SharedModal } from '../../components/Modal';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr, parseRs } from '../../lib/money';
 import type { Shift } from '../../lib/types';
+import { SummaryShare } from '../reports/SummaryShare';
 
 interface ShiftReport {
   expectedCashPaisa: number | null;
@@ -260,7 +261,13 @@ export function ShiftDialog({ shift, onClose }: { shift: Shift; onClose: () => v
 }
 
 /** Manager: ends the trading day. The server lists anything still blocking (shifts, unsettled orders). */
-export function DayCloseDialog({ onClose }: { onClose: () => void }) {
+export function DayCloseDialog({
+  date,
+  onClose,
+}: {
+  date?: string | undefined;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
@@ -301,6 +308,12 @@ export function DayCloseDialog({ onClose }: { onClose: () => void }) {
           </div>
         </dl>
         <p className="text-sm text-slate-600">{t('cash.slipPrinted')}</p>
+        {date && (
+          <div className="space-y-1 border-t border-slate-200 pt-3">
+            <h3 className="font-semibold">{t('summary.title')}</h3>
+            <SummaryShare date={date} />
+          </div>
+        )}
         <button className="btn-primary w-full" onClick={onClose}>
           {t('common.close')}
         </button>

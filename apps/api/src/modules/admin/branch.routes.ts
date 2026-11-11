@@ -37,6 +37,11 @@ export const SETTING_SCHEMAS: Record<string, z.ZodType> = {
   'billing.service_charge_bps': z.number().int().min(0).max(10_000),
   'kot.print_on_send': z.boolean(),
   /** The customer menu behind the QR code: off until switched on; a short note for today; the address the QR points to. */
+  /** Where the end-of-day summary is sent: a mobile number with country code, digits only; empty = ask each time. */
+  'report.owner_phone': z
+    .string()
+    .trim()
+    .regex(/^(\+?[0-9]{8,15})?$/),
   'menu.public_enabled': z.boolean(),
   'menu.public_note': z.string().trim().max(300),
   'menu.public_url': z

@@ -5,6 +5,8 @@ import { Icon } from '../../components/Icon';
 import { api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
 import { Bar, HourChart, KitchenHourChart, TrendChart } from './charts';
+import { Modal } from '../../components/Modal';
+import { SummaryShare } from '../reports/SummaryShare';
 import type { Dashboard } from './types';
 
 type Preset = 'today' | 'yesterday' | '7d' | '30d' | 'month' | 'lastMonth' | 'custom';
@@ -155,6 +157,7 @@ export function DashboardPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const [preset, setPreset] = useState<Preset>('today');
+  const [sharing, setSharing] = useState<string | null>(null);
   const [custom, setCustom] = useState(() => rangeFor('7d'));
   const range = preset === 'custom' ? custom : rangeFor(preset);
   const q = useQuery({
@@ -185,6 +188,12 @@ export function DashboardPage() {
               : t('common.loading')}
           </p>
         </div>
+        {d && d.range.from === d.range.to && (
+          <button className="btn-secondary" onClick={() => setSharing(d.range.to)}>
+            <Icon name="receipt" size={18} />
+            {t('summary.share')}
+          </button>
+        )}
         <div className="seg max-w-full overflow-x-auto" role="group" aria-label={t('dash.period')}>
           {presets.map((p) => (
             <button
@@ -231,6 +240,11 @@ export function DashboardPage() {
       {!d && !q.isError && <p className="p-6 text-center text-slate-600">{t('common.loading')}</p>}
 
       {d && <Body d={d} lang={lang} />}
+      {sharing && (
+        <Modal title={t('summary.title')} onClose={() => setSharing(null)}>
+          <SummaryShare date={sharing} />
+        </Modal>
+      )}
     </div>
   );
 }

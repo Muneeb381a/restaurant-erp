@@ -231,7 +231,8 @@
     "groupStock": "Stock & costs",
     "groupPeople": "People & access",
     "groupBusiness": "Business",
-    "qrMenu": "QR menu"
+    "qrMenu": "QR menu",
+    "setup": "Setup"
   },
   "order": {
     "title": "Order",
@@ -280,7 +281,8 @@
     "required": "Required",
     "optional": "optional",
     "pickN": "choose {{count}}",
-    "viewOrder": "View order · {{count}} items"
+    "viewOrder": "View order · {{count}} items",
+    "popular": "Popular"
   },
   "bill": {
     "bill": "Bill",
@@ -484,7 +486,12 @@
     "roundHint": "Totals end in whole rupees; the difference is shown on the bill.",
     "receiptHint": "How the printed bill looks.",
     "kitchenHint": "What happens when an order goes to the kitchen.",
-    "printOnSendHint": "Turn off if the kitchen works from the screen only."
+    "printOnSendHint": "Turn off if the kitchen works from the screen only.",
+    "reports": "Reports",
+    "reportsHint": "Where the end-of-day summary goes.",
+    "ownerPhone": "Owner's WhatsApp number",
+    "ownerPhoneHint": "Digits only, with or without +92. The summary opens ready to send; you tap Send.",
+    "saveNumber": "Save number"
   },
   "orderActions": {
     "move": "Move to another table",
@@ -977,6 +984,50 @@
       "FISH": "Fish",
       "SESAME": "Sesame",
       "SHELLFISH": "Shellfish"
+    }
+  },
+  "summary": {
+    "title": "Day summary",
+    "share": "Share summary",
+    "send": "Send on WhatsApp",
+    "sendOwner": "Send to the owner's WhatsApp",
+    "copy": "Copy",
+    "copied": "Copied",
+    "noPhone": "Add the owner's number in Admin → Settings → Reports so this opens their chat directly."
+  },
+  "setup": {
+    "hint": "Everything a restaurant needs before the first sale. Tick them off in any order.",
+    "ready": "Ready to sell",
+    "notReady": "Almost there",
+    "progress": "Setup progress",
+    "optional": "Optional",
+    "done": "Done",
+    "fix": "Set up",
+    "review": "Review",
+    "count": "{{count}} so far",
+    "continue": "Continue setup",
+    "banner": "Finish setting up: {{done}} of {{total}} steps done.",
+    "step": {
+      "restaurant": "Restaurant details",
+      "tables": "Tables",
+      "menu": "Menu with prices",
+      "printers": "Printers",
+      "staff": "Staff",
+      "payments": "Payment methods",
+      "day": "Start the business day",
+      "qrMenu": "QR menu for guests",
+      "tax": "Tax rates"
+    },
+    "why": {
+      "restaurant": "Name, address and phone are printed on every receipt.",
+      "tables": "Add your areas and tables so orders can be taken per table.",
+      "menu": "At least one dish with a price. Import a CSV to add many at once.",
+      "printers": "A receipt printer and a printer for each kitchen station.",
+      "staff": "Create sign-ins for cashiers, captains and the kitchen.",
+      "payments": "Cash, card and wallet options at the till.",
+      "day": "Open the day from the top bar to begin taking orders.",
+      "qrMenu": "Let guests read today's menu on their phone.",
+      "tax": "Leave tax off until your accountant has confirmed the rates."
     }
   }
 }

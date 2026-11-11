@@ -42,3 +42,6 @@
 36. **Dashboard: spreading monthly costs.** Rent and salaries count on the day they are entered, so a single day can show a loss. Do we want an accrual option (spread a monthly expense across its days), a "recurring expense" feature, or is "This month" view enough? Also: should prime cost (food + labour) get its own card once salaries have a fixed category?
 
 37. **QR menu.** *Answered by the owner:* one QR for the whole restaurant (no per-table codes); dish photos, descriptions, halal/vegetarian/spicy labels and allergens are wanted; items can be hidden from guests. *Still open:* (a) which address the QR carries: the till's LAN address (works only on the restaurant Wi-Fi) or a website/domain (needs the menu online)? (b) the allergen wording is the owner's responsibility: who fills it in and checks it? (c) should CSV import/export carry the guest fields?
+
+38. **Automatic daily report.** Today the owner taps a WhatsApp link to send the day's summary. For a message that goes out by itself at closing time we need a provider (WhatsApp Business API, SMS gateway or email), its credentials and the owner's consent. Which one, and should it also send alerts (cash short, large discount, printer offline)?
+

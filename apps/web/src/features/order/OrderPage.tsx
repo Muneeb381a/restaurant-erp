@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -19,6 +19,8 @@ const PRICE_LIST: Record<Order['type'], string> = {
   DELIVERY: 'DELIVERY',
 };
 
+const POPULAR = '__popular';
+
 const needsSheet = (i: MenuItem): boolean =>
   i.kind !== 'STANDARD' || i.variants.length > 1 || i.modifierGroups.length > 0;
 
@@ -31,6 +33,13 @@ export function OrderPage() {
   const menu = useMenu(order.data ? PRICE_LIST[order.data.type] : undefined);
 
   const [category, setCategory] = useState<string | null>(null);
+  // what sold most lately, best first: a one-tap shortcut for the usual orders
+  const popular = useQuery({
+    queryKey: ['popular'],
+    queryFn: () =>
+      api<{ items: { itemId: string; qty: number }[] }>('/menu/popular?days=14&limit=12'),
+    staleTime: 5 * 60_000,
+  });
   const [search, setSearch] = useState('');
   const [sheet, setSheet] = useState<MenuItem | null>(null);
   const [voiding, setVoiding] = useState<OrderLine | null>(null);
@@ -130,6 +139,11 @@ export function OrderPage() {
   });
 
   const topCategories = (menu.data?.categories ?? []).filter((c) => c.parentId === null);
+  // only dishes that are on today's menu count; a short or empty list is not worth a tab
+  const onMenu = new Set((menu.data?.items ?? []).map((i) => i.id));
+  const popularIds = (popular.data?.items ?? [])
+    .map((p) => p.itemId)
+    .filter((id) => onMenu.has(id));
   const visibleItems = useMemo(() => {
     const items = menu.data?.items ?? [];
     const cats = menu.data?.categories ?? [];
@@ -143,12 +157,16 @@ export function OrderPage() {
       return false;
     };
     const q = search.trim().toLowerCase();
+    if (category === POPULAR) {
+      const rank = new Map(popularIds.map((id, k) => [id, k]));
+      return items.filter((i) => rank.has(i.id)).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
+    }
     return items.filter(
       (i) =>
         inCategory(i.categoryId) &&
         (!q || [i.name, i.nameUr, i.searchTerms, i.code].some((s) => s?.toLowerCase().includes(q))),
     );
-  }, [menu.data, category, search]);
+  }, [menu.data, category, search, popularIds]);
 
   if (order.isPending) return <p className="p-4">{t('common.loading')}</p>;
   if (order.isError || !order.data) return <p className="p-4 text-rose-700">{t('common.error')}</p>;
@@ -234,6 +252,16 @@ export function OrderPage() {
           >
             {t('common.all')}
           </button>
+          {popularIds.length >= 3 && (
+            <button
+              role="tab"
+              aria-selected={category === POPULAR}
+              className="seg-item shrink-0 whitespace-nowrap border border-amber-400 bg-amber-50 text-amber-900"
+              onClick={() => setCategory(POPULAR)}
+            >
+              {t('order.popular')}
+            </button>
+          )}
           {topCategories.map((c) => (
             <button
               key={c.id}

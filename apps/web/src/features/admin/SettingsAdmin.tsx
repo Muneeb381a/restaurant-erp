@@ -65,6 +65,7 @@ export function SettingsAdmin() {
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => api<Settings>('/settings') });
   const [form, setForm] = useState({ name: '', name_ur: '', address: '', phone: '' });
   const [service, setService] = useState('0');
+  const [ownerPhone, setOwnerPhone] = useState('');
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -79,6 +80,11 @@ export function SettingsAdmin() {
   useEffect(() => {
     const bps = settings.data?.['billing.service_charge_bps'];
     if (typeof bps === 'number') setService(String(bps / 100));
+  }, [settings.data]);
+
+  useEffect(() => {
+    const p = settings.data?.['report.owner_phone'];
+    setOwnerPhone(typeof p === 'string' ? p : '');
   }, [settings.data]);
 
   const saveBranch = useMutation({
@@ -217,6 +223,36 @@ export function SettingsAdmin() {
               </button>
             ))}
           </div>
+        </Row>
+      </Section>
+
+      <Section icon="chart" title={t('settingsPage.reports')} hint={t('settingsPage.reportsHint')}>
+        <Row>
+          <Field label={t('settingsPage.ownerPhone')}>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                className="input w-56"
+                dir="ltr"
+                inputMode="tel"
+                placeholder="0300 1234567"
+                value={ownerPhone}
+                onChange={(e) => setOwnerPhone(e.target.value)}
+              />
+              <button
+                className="btn-secondary"
+                disabled={setSetting.isPending || !/^(\+?[0-9 -]{8,20})?$/.test(ownerPhone)}
+                onClick={() =>
+                  setSetting.mutate({
+                    key: 'report.owner_phone',
+                    value: ownerPhone.replace(/[ -]/g, ''),
+                  })
+                }
+              >
+                {t('settingsPage.saveNumber')}
+              </button>
+            </div>
+          </Field>
+          <p className="hint mt-1">{t('settingsPage.ownerPhoneHint')}</p>
         </Row>
       </Section>
 

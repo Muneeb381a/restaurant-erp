@@ -194,6 +194,61 @@ describe('GET /reports/dashboard', () => {
     expect(k.hours.reduce((n: number, h: Json) => n + h.tickets, 0)).toBe(2);
   });
 
+  it('writes the day as a short message the owner can forward', async () => {
+    const r = await api(owner).get(`/reports/day-summary?date=${today}`);
+    expect(r.status).toBe(200);
+    expect(r.body.date).toBe(today);
+    expect(r.body.text).toContain('*Sales* Rs ');
+    expect(r.body.text).toContain('Paid by: Cash Rs ');
+    expect(r.body.text).toContain('Best sellers: Tikka');
+    expect(r.body.text).toContain('Kitchen: typical');
+    // the figures in the message are the dashboard's, not recomputed
+    const d = (await get(owner)).body.current;
+    expect(r.body.text).toContain(
+      `*Net profit: Rs ${(d.netProfitPaisa / 100).toLocaleString('en-US')}`,
+    );
+    const ur = await api(owner).get(`/reports/day-summary?date=${today}&lang=ur`);
+    expect(ur.body.text).toContain('خالص منافع');
+    // an empty day says so
+    const empty = await api(owner).get(`/reports/day-summary?date=${day(-3)}`);
+    expect(empty.body.text).toContain('No sales today.');
+    expect((await api(owner).get('/reports/day-summary')).status).toBe(400);
+    expect((await api(captain).get(`/reports/day-summary?date=${today}`)).status).toBe(403);
+  });
+
+  it('lists the most ordered dishes for the "Popular" row', async () => {
+    const r = await api(captain).get('/menu/popular');
+    expect(r.status).toBe(200);
+    expect(r.body.items[0]).toMatchObject({ itemId: tikka.id });
+    expect(r.body.items[0].qty).toBeGreaterThanOrEqual(3);
+    expect((await api(captain).get('/menu/popular?days=0')).status).toBe(400);
+    expect((await api(captain).get('/menu/popular?limit=3')).body.items.length).toBeLessThanOrEqual(
+      3,
+    );
+  });
+
+  it('says what is still missing before selling, for the owner only', async () => {
+    const r = await api(owner).get('/setup/status');
+    expect(r.status).toBe(200);
+    const step = (k: string): Json => r.body.steps.find((s: Json) => s.key === k);
+    expect(step('menu')).toMatchObject({ done: true });
+    expect(step('printers')).toMatchObject({ done: true, count: 1 });
+    expect(step('payments')).toMatchObject({ done: true });
+    expect(step('day')).toMatchObject({ done: true });
+    expect(step('tables')).toMatchObject({ done: false, count: 0 }); // none were added here
+    expect(step('restaurant').done).toBe(false); // no address or phone yet
+    expect(step('qrMenu')).toMatchObject({ done: false, optional: true });
+    expect(r.body.ready).toBe(false);
+    expect(r.body.requiredDone).toBeLessThan(r.body.requiredTotal);
+    // filling in the missing parts makes it ready
+    await api(owner).patch('/branch', { address: 'Main Boulevard', phone: '0300 0000000' });
+    const area = (await api(owner).post('/areas', { name: 'Hall' })).body;
+    await api(owner).post('/tables', { area_id: area.id, code: 'T1', seats: 4 });
+    const after = await api(owner).get('/setup/status');
+    expect(after.body.ready).toBe(true);
+    expect((await api(cashier).get('/setup/status')).status).toBe(403);
+  });
+
   it('rejects bad ranges and is for people who may see financial reports', async () => {
     expect((await get(owner, today, day(-1))).status).toBe(400);
     expect((await get(owner, day(-400), today)).status).toBe(400);

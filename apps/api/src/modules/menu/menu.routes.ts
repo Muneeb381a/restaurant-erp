@@ -8,7 +8,7 @@ import { idParam } from '../admin/crud';
 import { authenticate, requirePermission, resolveBranch } from '../auth/middleware';
 import { importMenu, exportMenuCsv } from './menu.import';
 import { getItemFull } from './menu.repo';
-import { getAdminMenu, getMenu, getMenuWarnings } from './menu.readmodel';
+import { getAdminMenu, getMenu, getMenuWarnings, popularItems } from './menu.readmodel';
 import * as svc from './menu.service';
 
 const text = (max = 200) => z.string().trim().min(1).max(max);
@@ -260,6 +260,20 @@ export function menuRouter(ctx: AppContext): Router {
             })),
         })),
       });
+    }),
+  );
+  /** The dishes sold most in the last N days (default 14): for a "Popular" row when taking an order. */
+  r.get(
+    '/menu/popular',
+    ...read,
+    asyncHandler(async (req, res) => {
+      const q = z
+        .object({
+          days: z.coerce.number().int().min(1).max(90).default(14),
+          limit: z.coerce.number().int().min(1).max(30).default(10),
+        })
+        .parse(req.query);
+      res.json(await popularItems(ctx, req.branchId!, q.days, q.limit));
     }),
   );
   r.get(

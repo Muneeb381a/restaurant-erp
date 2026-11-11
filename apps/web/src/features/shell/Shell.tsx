@@ -91,6 +91,8 @@ function SignedIn() {
   // the dialog keeps its own copy: closing the shift empties the 'current shift' query
   const [drawerShift, setDrawerShift] = useState<Shift | null>(null);
   const [closingDay, setClosingDay] = useState(false);
+  // the closing dialog keeps the date: once the day is closed the 'current day' query is empty
+  const [closingDate, setClosingDate] = useState<string | undefined>(undefined);
 
   const openDay = useMutation({
     mutationFn: () => api('/business-days/open', { method: 'POST', body: {} }),
@@ -416,7 +418,10 @@ function SignedIn() {
             onOpenDay={() => openDay.mutate()}
             onOpenShift={() => setFloatOpen(true)}
             onDrawer={() => setDrawerShift(shift.data ?? null)}
-            onCloseDay={() => setClosingDay(true)}
+            onCloseDay={() => {
+              setClosingDate(day.data?.businessDate);
+              setClosingDay(true);
+            }}
           />
           <AccountMenu
             name={me.data?.fullName ?? ''}
@@ -446,7 +451,7 @@ function SignedIn() {
 
       {floatOpen && <OpenShiftDialog onClose={() => setFloatOpen(false)} />}
       {drawerShift && <ShiftDialog shift={drawerShift} onClose={() => setDrawerShift(null)} />}
-      {closingDay && <DayCloseDialog onClose={() => setClosingDay(false)} />}
+      {closingDay && <DayCloseDialog date={closingDate} onClose={() => setClosingDay(false)} />}
       <Toaster />
     </div>
   );

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSetupStatus } from '../admin/SetupAdmin';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { ApiError, api } from '../../lib/api';
@@ -48,6 +49,7 @@ export function FloorPage() {
     mutationFn: () => api('/business-days/open', { method: 'POST', body: {} }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['day'] }),
   });
+  const setup = useSetupStatus(can(me.data, 'settings.manage'));
   const [error, setError] = useState<string | null>(null);
   const kitchenOnly = can(me.data, 'kitchen.update') && !can(me.data, 'order.create');
   const [filter, setFilter] = useState<Filter>('ALL');
@@ -124,6 +126,17 @@ export function FloorPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 p-4">
+      {setup.data && !setup.data.ready && (
+        <section className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
+          <Icon name="info" size={20} className="text-amber-800" />
+          <p className="me-auto min-w-0 text-sm font-medium text-amber-950">
+            {t('setup.banner', { done: setup.data.requiredDone, total: setup.data.requiredTotal })}
+          </p>
+          <Link to="/admin/setup" className="btn-secondary">
+            {t('setup.continue')}
+          </Link>
+        </section>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="page-title me-auto">{t('floor.title')}</h1>
         <button

@@ -4,6 +4,7 @@ import { FiscalAdmin } from '../features/admin/FiscalAdmin';
 import { MenuAdmin } from '../features/admin/MenuAdmin';
 import { PrintersAdmin } from '../features/admin/PrintersAdmin';
 import { QrMenuAdmin } from '../features/admin/QrMenuAdmin';
+import { SetupAdmin } from '../features/admin/SetupAdmin';
 import { RolesAdmin } from '../features/admin/RolesAdmin';
 import { SettingsAdmin } from '../features/admin/SettingsAdmin';
 import { CostsAdmin } from '../features/admin/CostsAdmin';
@@ -53,6 +54,7 @@ export function App() {
           <Route path="fiscal" element={<FiscalAdmin />} />
           <Route path="roles" element={<RolesAdmin />} />
           <Route path="settings" element={<SettingsAdmin />} />
+          <Route path="setup" element={<SetupAdmin />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

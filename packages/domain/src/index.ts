@@ -15,3 +15,4 @@ export * from './billing/refund';
 export * from './billing/tax';
 export * from './inventory/stock';
 export * from './menu/guest-labels';
+export * from './reports/day-summary';

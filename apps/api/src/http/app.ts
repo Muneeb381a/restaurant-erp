@@ -17,6 +17,7 @@ import { fiscalRouter } from '../modules/fiscal/fiscal.routes';
 import { taxRouter } from '../modules/tax/tax.routes';
 import { kitchenRouter } from '../modules/kitchen/kitchen.routes';
 import { menuRouter } from '../modules/menu/menu.routes';
+import { setupRouter } from '../modules/admin/setup.routes';
 import { publicRouter } from '../modules/menu/public.routes';
 import { ordersRouter } from '../modules/orders/orders.routes';
 import type { AppContext } from './context';
@@ -67,6 +68,7 @@ export function createApp(ctx: AppContext): Express {
   v1.use('/', ordersRouter(ctx)); // /business-days /shifts /floor /orders
   v1.use('/', khataRouter(ctx)); // /khata/accounts…
   v1.use('/', inventoryRouter(ctx)); // /inventory/* /purchases /suppliers /stocktakes /expenses /variants/:id/recipe
+  v1.use('/', setupRouter(ctx)); // /setup/status: what is still missing before selling
   v1.use('/', reportsRouter(ctx)); // /reports/dashboard
   v1.use('/', fiscalRouter(ctx)); // /fiscal/summary /fiscal/jobs /fiscal/reconciliation
   v1.use('/', taxRouter(ctx)); // /tax/categories /tax/rules /tax/readiness

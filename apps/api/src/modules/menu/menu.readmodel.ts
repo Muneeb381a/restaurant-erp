@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import { createHash } from 'node:crypto';
 import type { AppContext } from '../../http/context';
 import { AppError } from '../../http/errors';
@@ -435,4 +436,29 @@ export async function getMenuWarnings(ctx: AppContext, branchId: string, date?: 
       .filter((i) => lists.every((l) => !have.has(`${i.id}|${l.id}`)))
       .map((i) => ({ id: i.id, code: i.code, name: i.name })),
   };
+}
+
+/**
+ * Items ordered most often over the last `days` business days (units on lines that were not voided,
+ * orders not cancelled), best first. Only the ids and counts: the till already has the menu.
+ */
+export async function popularItems(
+  ctx: AppContext,
+  branchId: string,
+  days: number,
+  limit: number,
+): Promise<{ days: number; items: { itemId: string; qty: number }[] }> {
+  const r = await sql<{ item_id: string; qty: number }>`
+    SELECT oi.item_id, COALESCE(SUM(oi.qty), 0)::float8 AS qty
+      FROM order_items oi
+      JOIN orders o ON o.id = oi.order_id
+      JOIN business_days d ON d.id = o.business_day_id
+     WHERE o.branch_id = ${branchId} AND o.status <> 'CANCELLED'
+       AND oi.status <> 'VOID' AND oi.parent_order_item_id IS NULL AND oi.item_id IS NOT NULL
+       AND d.business_date >= (SELECT max(business_date) FROM business_days WHERE branch_id = ${branchId}) - ${days}::int
+     GROUP BY oi.item_id
+    HAVING COALESCE(SUM(oi.qty), 0) > 0
+     ORDER BY 2 DESC, 1
+     LIMIT ${limit}`.execute(ctx.db);
+  return { days, items: r.rows.map((x) => ({ itemId: x.item_id, qty: x.qty })) };
 }
