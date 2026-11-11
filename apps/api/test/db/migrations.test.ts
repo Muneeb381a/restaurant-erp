@@ -37,7 +37,7 @@ describe('0002_auth_rbac on a database that already has data (upgrade path)', ()
     const billId = await createPreBilledBill(db.pool, b, orderId, 1);
     await pay(db.pool, b, billId, 1160, 'before-0002');
 
-    expect(await migrateUp(db.url, 'core')).toEqual(['0002_auth_rbac', '0003_menu', '0004_orders', '0005_kitchen_printing', '0006_billing', '0007_shifts_cash', '0008_khata', '0009_credit_notes', '0010_urdu_receipt', '0011_tax', '0012_fiscal']);
+    expect(await migrateUp(db.url, 'core')).toEqual(['0002_auth_rbac', '0003_menu', '0004_orders', '0005_kitchen_printing', '0006_billing', '0007_shifts_cash', '0008_khata', '0009_credit_notes', '0010_urdu_receipt', '0011_tax', '0012_fiscal', '0013_kitchen_display']);
     expect(await migrateUp(db.url, 'core')).toEqual([]);
 
     const user = await db.pool.query(`SELECT failed_attempts, locked_until, last_failed_at FROM users WHERE id = $1`, [b.userId]);
@@ -45,11 +45,11 @@ describe('0002_auth_rbac on a database that already has data (upgrade path)', ()
     expect((await db.pool.query(`SELECT count(*)::int AS n FROM payments`)).rows[0].n).toBe(1);
 
     const perms = await db.pool.query(`SELECT count(*)::int AS n FROM permissions`);
-    expect(perms.rows[0].n).toBe(32);
+    expect(perms.rows[0].n).toBe(35);
     const owner = await db.pool.query(
       `SELECT count(*)::int AS n FROM role_permissions rp JOIN roles r ON r.id = rp.role_id WHERE r.code = 'OWNER'`,
     );
-    expect(owner.rows[0].n).toBe(32);
+    expect(owner.rows[0].n).toBe(35);
     // the existing role created by seedBase is untouched
     expect((await db.pool.query(`SELECT count(*)::int AS n FROM roles WHERE id IN (SELECT role_id FROM users WHERE id = $1)`, [b.userId])).rows[0].n).toBe(1);
   });
@@ -128,7 +128,7 @@ describe('0003_menu on a database that already has menu data', () => {
       [variant, b.priceListId],
     );
 
-    expect(await migrateUp(db.url, 'core')).toEqual(['0003_menu', '0004_orders', '0005_kitchen_printing', '0006_billing', '0007_shifts_cash', '0008_khata', '0009_credit_notes', '0010_urdu_receipt', '0011_tax', '0012_fiscal']);
+    expect(await migrateUp(db.url, 'core')).toEqual(['0003_menu', '0004_orders', '0005_kitchen_printing', '0006_billing', '0007_shifts_cash', '0008_khata', '0009_credit_notes', '0010_urdu_receipt', '0011_tax', '0012_fiscal', '0013_kitchen_display']);
 
     const row = (await db.pool.query(`SELECT name_ur, search_terms FROM items WHERE id=$1`, [item])).rows[0];
     expect(row).toEqual({ name_ur: 'پرانی کڑاہی', search_terms: null });

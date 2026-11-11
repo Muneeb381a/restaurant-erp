@@ -66,7 +66,10 @@
     "live": "Live",
     "reconnecting": "Reconnecting…",
     "liveHint": "Changes from other devices appear within a second",
-    "offlineHint": "Lost the live connection; the screen refreshes every few seconds until it returns"
+    "offlineHint": "Lost the live connection; the screen refreshes every few seconds until it returns",
+    "navKitchen": "Kitchen",
+    "kitchenNew": "{{count}} new tickets",
+    "kitchenReady": "{{count}} ready to serve"
   },
   "floor": {
     "title": "Tables",
@@ -87,7 +90,8 @@
     "counterTitle": "Takeaway & delivery",
     "noCounter": "No open takeaway or delivery orders.",
     "noTables": "No tables to show.",
-    "inProgress": "In progress"
+    "inProgress": "In progress",
+    "foodReady": "Food ready"
   },
   "admin": {
     "title": "Admin",
@@ -774,5 +778,28 @@
     "tip": "Rent and salaries are counted on the day they are entered, so a single day can show a loss. Choose This month for the true picture.",
     "gross": "Gross profit",
     "byHour": "Sales by hour today"
+  },
+  "kitchen": {
+    "title": "Kitchen",
+    "station": "Station",
+    "colNEW": "New",
+    "colPREPARING": "Cooking",
+    "colREADY": "Ready",
+    "emptyNEW": "No new tickets",
+    "emptyPREPARING": "Nothing is being cooked",
+    "emptyREADY": "Nothing waiting to be served",
+    "soundOn": "Sound on",
+    "soundOff": "Sound off",
+    "recent": "Served in the last 30 minutes ({{count}})",
+    "undo": "Undo",
+    "start": "Start cooking",
+    "ready": "Ready",
+    "served": "Served",
+    "min": "{{count}} min",
+    "cancelled": "Cancelled",
+    "fromDeal": "from {{deal}}",
+    "waitNEW": "Waiting for the kitchen",
+    "waitPREPARING": "Being cooked",
+    "waitREADY": "Ready for the waiter"
   }
 }

@@ -17,6 +17,7 @@ import { PayPage } from '../features/billing/PayPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { FloorPage } from '../features/floor/FloorPage';
 import { KhataDetail, KhataPage } from '../features/khata/KhataPage';
+import { KitchenPage } from '../features/kitchen/KitchenPage';
 import { LoginPage } from '../features/login/LoginPage';
 import { OrderPage } from '../features/order/OrderPage';
 import { Shell } from '../features/shell/Shell';
@@ -30,6 +31,7 @@ export function App() {
         <Route path="order/:id" element={<OrderPage />} />
         <Route path="order/:id/pay" element={<PayPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="kitchen" element={<KitchenPage />} />
         <Route path="bills" element={<BillsPage />} />
         <Route path="khata" element={<KhataPage />} />
         <Route path="khata/:id" element={<KhataDetail />} />

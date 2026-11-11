@@ -138,7 +138,8 @@ footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line);
     <tr><td>Manager</td><td>Starts and closes the day, approves large discounts, cancels bills, handles refunds, creates khata accounts, checks the dashboard and reports.</td></tr>
     <tr><td>Cashier</td><td>Opens a shift, takes orders and payments, uses the cash drawer, receives khata payments, closes the shift.</td></tr>
     <tr><td>Captain / waiter</td><td>Takes and sends orders, moves a party to another table. Cannot cancel an order.</td></tr>
-    <tr><td>Kitchen, store, accountant</td><td>Accounts for kitchen tickets, stock and purchasing, and figures. Their exact rights are set by the owner.</td></tr>
+    <tr><td>Kitchen</td><td>Sees the kitchen screen and moves tickets to Cooking and Ready.</td></tr>
+    <tr><td>Store, accountant</td><td>Stock and purchasing, and the figures. Their exact rights are set by the owner.</td></tr>
   </table></div>
   <div class="callout"><strong>Roles can be changed</strong>The owner can edit what each role may do in <span class="ui">Admin → Roles</span>, and create new roles, without any programmer.</div>
 
@@ -203,6 +204,25 @@ footer { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line);
       </ul>
     </div>
   </div>
+
+  <h3 id="kitchen">Where the order goes: the kitchen</h3>
+  <p>When the waiter presses <span class="ui">Send to kitchen</span>, three things happen at once: the order is saved, the table turns yellow on every screen, and the kitchen is told.</p>
+  <ol class="steps">
+    <li><div><strong>A ticket prints at each station.</strong> The tandoor gets only the roti and naan, the BBQ section only the tikka, the karahi section only the karahi. A rush order is marked on the ticket.</div></li>
+    <li><div><strong>The same ticket appears on the kitchen screen.</strong> Open <span class="ui">Kitchen</span> on a tablet fixed in the kitchen. Tickets sit in three columns: <span class="chip warn">New</span>, <span class="chip">Cooking</span> and <span class="chip">Ready</span>. Each ticket shows the table, the dishes with quantity, extras and notes, the captain's name, and how many minutes it has waited. After 10 minutes the timer turns yellow, after 20 it turns red and blinks.</div></li>
+    <li><div><strong>The cook taps one button.</strong> <span class="ui">Start cooking</span>, then <span class="ui">Ready</span>. A small arrow undoes a wrong tap. The screen beeps when a new ticket arrives (the sound can be switched off), and cooks can show one station only.</div></li>
+    <li><div><strong>The waiter is told.</strong> The moment a ticket is Ready, that table shows <span class="chip">Food ready</span> and blinks on every waiter's screen. The waiter carries the food over and taps <span class="ui">Served</span>.</div></li>
+  </ol>
+  <div class="pair">
+    <figure><img src="img/kitchen.png" alt="Kitchen screen with new, cooking and ready columns" loading="lazy"><figcaption>The kitchen screen. Large buttons, one tap per step.</figcaption></figure>
+    <figure><img src="img/floor-states.png" alt="Tables screen with occupied tables" loading="lazy"><figcaption>The Tables screen. Free, occupied, bill ready, and food ready are different at a glance.</figcaption></figure>
+  </div>
+  <ul>
+    <li>If a dish is voided after it was sent, the ticket shows it struck through with <em>Cancelled</em>, and a cancel slip prints at the station.</li>
+    <li>If a printer is off, the ticket still shows on the kitchen screen, so cooking does not stop.</li>
+    <li>A kitchen login opens directly on this screen. Kitchen staff can see and move tickets. Waiters and cashiers can see them and mark food served.</li>
+    <li>The screen shows today's tickets only, plus tickets served in the last 30 minutes, which can be put back with <span class="ui">Undo</span>.</li>
+  </ul>
 
   <h3 id="bill">7. Make the bill</h3>
   <p>When every item is in the kitchen, the green button becomes <span class="ui">Bill · Rs …</span>. While something is still unsent, the Bill button does not appear, so the kitchen and the bill never disagree.</p>

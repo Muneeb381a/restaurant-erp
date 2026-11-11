@@ -14,6 +14,7 @@ import { ltr } from '../../lib/money';
 import { can, useDay, useFloor, useMe, usePrinterHealth, useShift } from '../../lib/queries';
 import type { Shift } from '../../lib/types';
 import { ADMIN_SECTIONS } from '../admin/AdminLayout';
+import { useKitchenBoard } from '../kitchen/KitchenPage';
 import { setLanguage, type Lang } from '../../i18n';
 import { DayCloseDialog, ShiftDialog } from './ShiftDialogs';
 
@@ -44,6 +45,11 @@ function SignedIn() {
   const shift = useShift();
   const printers = usePrinterHealth();
   const floor = useFloor();
+  const kitchen = useKitchenBoard(undefined, can(me.data, 'kitchen.view'));
+  const cooks = can(me.data, 'kitchen.update');
+  const kitchenN = (kitchen.data?.tickets ?? []).filter(
+    (x) => x.status === (cooks ? 'NEW' : 'READY'),
+  ).length;
   const loc = useLocation();
   const live = useLive((x) => x.connected);
   const tablesBusy = (floor.data?.tables ?? []).filter((x) => x.status !== 'FREE').length;
@@ -88,6 +94,19 @@ function SignedIn() {
           }
         : undefined,
   });
+  if (can(me.data, 'kitchen.view'))
+    items.push({
+      to: '/kitchen',
+      icon: 'flame',
+      label: t('shell.navKitchen'),
+      badge:
+        kitchenN > 0
+          ? {
+              n: kitchenN,
+              title: t(cooks ? 'shell.kitchenNew' : 'shell.kitchenReady', { count: kitchenN }),
+            }
+          : undefined,
+    });
   if (can(me.data, 'report.view'))
     items.push({ to: '/bills', icon: 'receipt', label: t('shell.navBills') });
   if (can(me.data, 'khata.collect'))
@@ -107,13 +126,15 @@ function SignedIn() {
     ? t('shell.navDashboard')
     : path.startsWith('/bills')
       ? t('shell.navBills')
-      : path.startsWith('/khata')
-        ? t('shell.navKhata')
-        : path.startsWith('/admin')
-          ? t('shell.navAdmin')
-          : path.startsWith('/order')
-            ? t('order.title')
-            : t('shell.navTables');
+      : path.startsWith('/kitchen')
+        ? t('shell.navKitchen')
+        : path.startsWith('/khata')
+          ? t('shell.navKhata')
+          : path.startsWith('/admin')
+            ? t('shell.navAdmin')
+            : path.startsWith('/order')
+              ? t('order.title')
+              : t('shell.navTables');
 
   const railItem = (it: NavItem): ReactNode => {
     const cls = ({ isActive }: { isActive?: boolean }): string =>

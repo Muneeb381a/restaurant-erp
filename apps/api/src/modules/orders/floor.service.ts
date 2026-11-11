@@ -47,6 +47,21 @@ export async function getFloor(ctx: AppContext, branchId: string) {
     orders.map((o) => o.id),
   );
   const byTable = new Map(orders.map((o) => [o.table_id as string, o]));
+  // how many of each order's kitchen tickets are ready to be carried to the table
+  const ready = orders.length
+    ? await ctx.db
+        .selectFrom('kots')
+        .select(['order_id', (eb) => eb.fn.countAll<number>().as('n')])
+        .where('status', '=', 'READY')
+        .where(
+          'order_id',
+          'in',
+          orders.map((o) => o.id),
+        )
+        .groupBy('order_id')
+        .execute()
+    : [];
+  const readyBy = new Map(ready.map((r) => [r.order_id, Number(r.n)]));
 
   return {
     areas: areas.map((a) => ({ id: a.id, name: a.name, sort: a.sort })),
@@ -72,6 +87,7 @@ export async function getFloor(ctx: AppContext, branchId: string) {
               version: o.version,
               itemCount: sum?.itemCount ?? 0,
               subtotalPaisa: sum?.subtotalPaisa ?? 0,
+              ticketsReady: readyBy.get(o.id) ?? 0,
             }
           : null,
       };

@@ -322,3 +322,151 @@ export async function getKot(ctx: AppContext, branchId: string, kotId: string) {
     })),
   };
 }
+
+// ──────────────────────────────── kitchen display ────────────────────────────────
+
+export type KotStatus = 'NEW' | 'PREPARING' | 'READY' | 'DONE';
+
+/** Which moves a ticket may make. One step back is allowed so a mis-tap can be undone. */
+const MOVES: Record<KotStatus, KotStatus[]> = {
+  NEW: ['PREPARING', 'READY'],
+  PREPARING: ['READY', 'NEW'],
+  READY: ['DONE', 'PREPARING'],
+  DONE: ['READY'],
+};
+/** The line status that matches each ticket status. */
+const LINE_STATUS: Record<KotStatus, 'SENT' | 'PREPARING' | 'READY' | 'SERVED'> = {
+  NEW: 'SENT',
+  PREPARING: 'PREPARING',
+  READY: 'READY',
+  DONE: 'SERVED',
+};
+
+/**
+ * Every ticket still in the kitchen (new, preparing, ready) plus tickets served in the last
+ * 30 minutes, each with its lines, so the screen can show the whole board in one request.
+ */
+export async function kitchenBoard(ctx: AppContext, branchId: string, stationCode?: string) {
+  const now = ctx.clock.now();
+  const since = new Date(now.getTime() - 30 * 60_000);
+  let q = ctx.db
+    .selectFrom('kots')
+    .innerJoin('stations', 'stations.id', 'kots.station_id')
+    .innerJoin('orders', 'orders.id', 'kots.order_id')
+    .innerJoin('business_days', 'business_days.id', 'kots.business_day_id')
+    .leftJoin('dining_tables', 'dining_tables.id', 'orders.table_id')
+    .leftJoin('users', 'users.id', 'orders.waiter_id')
+    .select([
+      'kots.id as id',
+      'kots.kot_no as kotNo',
+      'kots.status as status',
+      'kots.is_rush as rush',
+      'kots.created_at as createdAt',
+      'kots.started_at as startedAt',
+      'kots.ready_at as readyAt',
+      'kots.done_at as doneAt',
+      'stations.code as stationCode',
+      'stations.name as stationName',
+      'orders.id as orderId',
+      'orders.order_no as orderNo',
+      'orders.type as orderType',
+      'dining_tables.code as tableCode',
+      'users.full_name as waiter',
+    ])
+    .where('kots.branch_id', '=', branchId)
+    // only today's trading: tickets left over from a closed day must never clutter the screen
+    .where('business_days.status', '=', 'OPEN')
+    .where('orders.status', '<>', 'CANCELLED')
+    .where((eb) =>
+      eb.or([
+        eb('kots.status', 'in', ['NEW', 'PREPARING', 'READY']),
+        eb.and([eb('kots.status', '=', 'DONE'), eb('kots.done_at', '>=', since)]),
+      ]),
+    )
+    .orderBy('kots.created_at');
+  if (stationCode) q = q.where('stations.code', '=', stationCode);
+  const tickets = await q.execute();
+  const lines = tickets.length
+    ? await ctx.db
+        .selectFrom('order_items')
+        .selectAll()
+        .where(
+          'kot_id',
+          'in',
+          tickets.map((t) => t.id),
+        )
+        .orderBy('created_at')
+        .orderBy('id')
+        .execute()
+    : [];
+  const doc = await toKotLines(ctx.db, lines);
+  const stations = await ctx.db
+    .selectFrom('stations')
+    .select(['code', 'name'])
+    .where('branch_id', '=', branchId)
+    .orderBy('name')
+    .execute();
+  return {
+    now,
+    stations,
+    tickets: tickets.map((t) => ({
+      ...t,
+      lines: lines
+        .map((l, i) => ({ l, d: doc[i]! }))
+        .filter((x) => x.l.kot_id === t.id)
+        .map((x) => ({
+          id: x.l.id,
+          qty: x.d.qty,
+          name: x.d.name,
+          weightG: x.d.weightG,
+          modifiers: x.d.modifiers,
+          note: x.d.note,
+          fromDeal: x.d.fromDeal,
+          voided: x.l.status === 'VOID',
+        })),
+    })),
+  };
+}
+
+/** Moves a ticket (and its lines) one step on the kitchen board. */
+export function setKotStatus(ctx: AppContext, a: Actor, kotId: string, to: KotStatus) {
+  return withTx(ctx.db, async (trx) => {
+    const kot = await trx
+      .selectFrom('kots')
+      .selectAll()
+      .where('id', '=', kotId)
+      .where('branch_id', '=', a.branchId)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!kot) throw new AppError(404, 'NOT_FOUND', 'ticket not found');
+    const from = kot.status as KotStatus | 'CANCELLED';
+    if (from === 'CANCELLED') throw new AppError(409, 'KOT_CANCELLED', 'This ticket was cancelled');
+    if (from === to) return { id: kot.id, status: to };
+    if (!MOVES[from].includes(to))
+      throw new AppError(409, 'KOT_BAD_MOVE', `A ticket cannot go from ${from} to ${to}`);
+    // moving on to "served" is the waiter's step; the other steps are the kitchen's
+    const needed = to === 'DONE' ? 'kitchen.serve' : 'kitchen.update';
+    if (!a.permissions.has(needed) && !(to === 'DONE' && a.permissions.has('kitchen.update')))
+      throw new AppError(403, 'PERMISSION_DENIED', 'You do not have permission for this action', {
+        permission: needed,
+      });
+    const now = ctx.clock.now();
+    await trx
+      .updateTable('kots')
+      .set({
+        status: to,
+        started_at: to === 'NEW' ? null : (kot.started_at ?? now),
+        ready_at: to === 'READY' ? now : to === 'DONE' ? (kot.ready_at ?? now) : null,
+        done_at: to === 'DONE' ? now : null,
+      })
+      .where('id', '=', kotId)
+      .execute();
+    await trx
+      .updateTable('order_items')
+      .set({ status: LINE_STATUS[to] })
+      .where('kot_id', '=', kotId)
+      .where('status', '!=', 'VOID')
+      .execute();
+    return { id: kot.id, status: to };
+  });
+}

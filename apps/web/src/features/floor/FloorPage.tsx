@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
@@ -49,6 +49,7 @@ export function FloorPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['day'] }),
   });
   const [error, setError] = useState<string | null>(null);
+  const kitchenOnly = can(me.data, 'kitchen.update') && !can(me.data, 'order.create');
   const [filter, setFilter] = useState<Filter>('ALL');
 
   const create = useMutation({
@@ -93,16 +94,18 @@ export function FloorPage() {
     groups.set(key, [...(groups.get(key) ?? []), table]);
   }
   // a tile that just changed state pulses for a moment, so staff notice a table freeing up or asking for the bill
-  const seen = useRef<Map<string, FloorTable['status']> | null>(null);
+  const seen = useRef<Map<string, string> | null>(null);
   const [flash, setFlash] = useState<Set<string>>(new Set());
   useEffect(() => {
     if (!floor.data) return;
-    const now = new Map(floor.data.tables.map((x) => [x.id, x.status] as const));
+    const stateOf = (x: FloorTable): string =>
+      `${x.status}|${x.order?.ticketsReady ? 'ready' : ''}`;
+    const now = new Map(floor.data.tables.map((x) => [x.id, stateOf(x)] as const));
     const prev = seen.current;
     seen.current = now;
     if (!prev) return;
     const changed = floor.data.tables
-      .filter((x) => prev.get(x.id) !== undefined && prev.get(x.id) !== x.status)
+      .filter((x) => prev.get(x.id) !== undefined && prev.get(x.id) !== stateOf(x))
       .map((x) => x.id);
     if (changed.length === 0) return;
     setFlash(new Set(changed));
@@ -116,6 +119,8 @@ export function FloorPage() {
     { key: 'OCCUPIED', label: t('floor.occupied'), n: count('OCCUPIED') },
     { key: 'BILLED', label: t('floor.billed'), n: count('BILLED') },
   ];
+
+  if (kitchenOnly && me.isSuccess) return <Navigate to="/kitchen" replace />;
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 p-4">
@@ -156,7 +161,7 @@ export function FloorPage() {
           )}
         </div>
       )}
-      {!dayClosed && day.data && shift.isSuccess && !shift.data && (
+      {!dayClosed && day.data && shift.isSuccess && !shift.data && can(me.data, 'shift.open') && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-400 bg-amber-50 p-4 text-amber-900">
           <Icon name="info" />
           <p className="text-sm font-medium">{t('shell.startShiftHint')}</p>
@@ -235,6 +240,11 @@ export function FloorPage() {
                         <Icon name="clock" size={14} />
                         {t('floor.minAgo', { count: minutesSince(table.order.openedAt) })}
                       </span>
+                      {table.order.ticketsReady > 0 && (
+                        <span className="chip-ok mt-1">
+                          <Icon name="check" size={12} /> {t('floor.foodReady')}
+                        </span>
+                      )}
                       {table.order.waiterName && (
                         <span className="block truncate text-xs text-slate-600">
                           {table.order.waiterName}

@@ -380,11 +380,14 @@ export interface Kots {
   business_day_id: string;
   created_at: Generated<Timestamp>;
   created_by: string | null;
+  done_at: Timestamp | null;
   id: Generated<string>;
   is_rush: Generated<boolean>;
   kot_no: number;
   order_id: string;
   print_count: Generated<number>;
+  ready_at: Timestamp | null;
+  started_at: Timestamp | null;
   station_id: string;
   status: Generated<string>;
 }

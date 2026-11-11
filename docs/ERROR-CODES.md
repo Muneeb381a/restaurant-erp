@@ -50,6 +50,8 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | `NOTHING_TO_SEND`     | 409  | Send/reprint found nothing to print (no NEW lines, or every line of the KOT was voided)                                                      |
 | `STATION_MISSING`     | 409  | Some items have no kitchen station, so nothing was sent (`items` lists them)                                                                 |
 | `NO_PRINTER`          | 409  | The station of this KOT has no active printer                                                                                                |
+| `KOT_CANCELLED`       | 409  | The kitchen ticket was cancelled and cannot move                                                                                             |
+| `KOT_BAD_MOVE`        | 409  | Ticket moves are NEW → PREPARING → READY → DONE (one step back allowed)                                                                      |
 | `VERSION_CONFLICT`    | 409  | `If-Match` does not match; `currentVersion` says what the order is now                                                                      |
 | `PRECONDITION_REQUIRED`| 428 | A structural change needs the order version in `If-Match`                                                                                   |
 | `INTERNAL_ERROR`      | 500  | Unexpected error (details only in server logs, correlate with `requestId`)                                                                  |

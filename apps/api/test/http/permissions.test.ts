@@ -40,6 +40,9 @@ const ALL_PERMISSIONS = [
   'khata.collect',
   'customer.manage',
   'expense.manage',
+  'kitchen.view',
+  'kitchen.update',
+  'kitchen.serve',
 ];
 const NOT_MANAGER = ['user.manage', 'tax.manage', 'settings.manage', 'device.manage'];
 
@@ -62,9 +65,18 @@ const GRANTS: Record<RoleCode, string[]> = {
     'menu.availability',
     'report.view',
     'khata.collect',
+    'kitchen.view',
+    'kitchen.serve',
   ],
-  CAPTAIN: ['order.create', 'order.transfer', 'kot.reprint', 'bill.create'],
-  KITCHEN: ['menu.availability'],
+  CAPTAIN: [
+    'order.create',
+    'order.transfer',
+    'kot.reprint',
+    'bill.create',
+    'kitchen.view',
+    'kitchen.serve',
+  ],
+  KITCHEN: ['menu.availability', 'kitchen.view', 'kitchen.update'],
   STORE: ['stock.manage', 'report.view'],
   ACCOUNTANT: ['report.view', 'report.financial', 'audit.view', 'expense.manage'],
 };

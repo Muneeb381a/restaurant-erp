@@ -11,11 +11,11 @@ export const pollMs = (fast: number, slow = 30_000): number =>
 
 /** Which cached queries a change in each topic makes stale. */
 const KEYS: Record<string, string[]> = {
-  orders: ['floor', 'order', 'bill', 'bills', 'refundable', 'shift', 'khata'],
+  orders: ['floor', 'order', 'bill', 'bills', 'refundable', 'shift', 'khata', 'kitchen'],
   day: ['day', 'shift', 'floor', 'bills'],
   khata: ['khata'],
   menu: ['menu'],
-  printers: ['printers-health', 'floor'],
+  printers: ['printers-health', 'floor', 'kitchen'],
   misc: ['settings', 'branch', 'payment-methods', 'me'],
 };
 

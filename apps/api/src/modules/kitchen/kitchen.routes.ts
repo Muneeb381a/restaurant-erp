@@ -11,7 +11,14 @@ import { authenticate, requirePermission, resolveBranch } from '../auth/middlewa
 import type { Actor } from '../orders/orders.service';
 import { enqueuePrintJob, getPrinterHealth } from '../printing/print.service';
 import { clockTime } from './tickets';
-import { getKot, listKots, reprintKot, sendToKitchen } from './kitchen.service';
+import {
+  getKot,
+  kitchenBoard,
+  listKots,
+  reprintKot,
+  sendToKitchen,
+  setKotStatus,
+} from './kitchen.service';
 
 const uuid = z.string().uuid();
 
@@ -65,6 +72,28 @@ export function kitchenRouter(ctx: AppContext): Router {
     asyncHandler(async (req, res) => {
       const q = z.object({ orderId: uuid.optional() }).parse(req.query);
       res.json({ items: await listKots(ctx, req.branchId!, q.orderId) });
+    }),
+  );
+  /** The kitchen screen: open tickets with their lines, optionally for one station. */
+  r.get(
+    '/kitchen/board',
+    ...read,
+    requirePermission(ctx, 'kitchen.view'),
+    asyncHandler(async (req, res) => {
+      const q = z.object({ station: z.string().trim().max(40).optional() }).parse(req.query);
+      res.json(await kitchenBoard(ctx, req.branchId!, q.station));
+    }),
+  );
+  /** Moves a ticket: preparing, ready, served (or one step back). The service checks which permission the move needs. */
+  r.post(
+    '/kots/:id/status',
+    ...read,
+    asyncHandler(async (req, res) => {
+      const { status } = z
+        .object({ status: z.enum(['NEW', 'PREPARING', 'READY', 'DONE']) })
+        .strict()
+        .parse(req.body);
+      res.json(await setKotStatus(ctx, await actor(req), idParam.parse(req.params).id, status));
     }),
   );
   r.get(

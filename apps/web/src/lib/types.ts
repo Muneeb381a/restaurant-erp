@@ -40,6 +40,8 @@ export interface FloorTable {
     version: number;
     itemCount: number;
     subtotalPaisa: number;
+    /** Kitchen tickets that are ready to be carried to the table. */
+    ticketsReady: number;
   };
 }
 
