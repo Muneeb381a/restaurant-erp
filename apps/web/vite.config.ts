@@ -9,6 +9,8 @@ export default defineConfig({
   server: {
     port: Number(process.env.WEB_PORT ?? 15173),
     strictPort: true,
+    // lets `pnpm tunnel` (a Cloudflare quick tunnel) reach the dev server by its public name
+    allowedHosts: ['.trycloudflare.com'],
     proxy: { '/api': apiUrl, '/health': apiUrl },
   },
 });
