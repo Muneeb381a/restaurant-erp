@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatAge } from '../../lib/age';
 import { Icon } from '../../components/Icon';
 import { toast } from '../../components/Toast';
 import { ApiError, api } from '../../lib/api';
@@ -160,7 +161,10 @@ export function KitchenPage() {
   return (
     <div className="mx-auto max-w-[110rem] space-y-4 p-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="page-title me-auto">{t('kitchen.title')}</h1>
+        <div className="me-auto">
+          <h1 className="page-title">{t('kitchen.title')}</h1>
+          <p className="hint">{t('kitchen.hint')}</p>
+        </div>
         {(board.data?.stations.length ?? 0) > 1 && (
           <div
             className="seg max-w-full overflow-x-auto"
@@ -333,7 +337,7 @@ function TicketCard({
             className={`money inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-bold ${late ? 'animate-pulse bg-rose-600 text-white' : slow ? 'bg-amber-200 text-amber-900' : 'bg-slate-200 text-slate-800'}`}
           >
             <Icon name="clock" size={14} />
-            {t('kitchen.min', { count: age })}
+            {formatAge(age, t)}
           </span>
           {x.rush && (
             <span className="chip-bad">

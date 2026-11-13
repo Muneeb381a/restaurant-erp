@@ -2,7 +2,7 @@ import { parseRupees } from '@erp/domain';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Mark } from '../../components/Brand';
 import { Icon, type IconName } from '../../components/Icon';
 import { Modal } from '../../components/Modal';
@@ -16,6 +16,7 @@ import type { Shift } from '../../lib/types';
 import { ADMIN_SECTIONS } from '../admin/AdminLayout';
 import { useKitchenBoard } from '../kitchen/KitchenPage';
 import { localName, setLanguage, type Lang } from '../../i18n';
+import { HelpDialog, helpKeyFor } from './HelpDialog';
 import { DayCloseDialog, ShiftDialog } from './ShiftDialogs';
 import { watchResponsiveTables } from '../../lib/responsive-tables';
 
@@ -32,6 +33,8 @@ interface NavItem {
   label: string;
   onClick?: () => void;
   end?: boolean;
+  /** One plain line saying what the place is for, shown under the name. */
+  hint?: string;
   /** Small count on the icon, e.g. busy tables. */
   badge?: { n: number; title: string };
 }
@@ -86,6 +89,8 @@ function SignedIn() {
     }
   };
   const [moreOpen, setMoreOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const helpPage = helpKeyFor(useLocation().pathname);
 
   const [floatOpen, setFloatOpen] = useState(false);
   // the dialog keeps its own copy: closing the shift empties the 'current shift' query
@@ -112,11 +117,17 @@ function SignedIn() {
 
   const items: NavItem[] = [];
   if (can(me.data, 'report.financial'))
-    items.push({ to: '/dashboard', icon: 'chart', label: t('shell.navDashboard') });
+    items.push({
+      to: '/dashboard',
+      icon: 'chart',
+      label: t('shell.navDashboard'),
+      hint: t('shell.hint.dashboard'),
+    });
   items.push({
     to: '/',
     icon: 'tables',
     label: t('shell.navTables'),
+    hint: t('shell.hint.tables'),
     end: true,
     badge:
       tablesBusy > 0
@@ -131,6 +142,7 @@ function SignedIn() {
       to: '/kitchen',
       icon: 'flame',
       label: t('shell.navKitchen'),
+      hint: t('shell.hint.kitchen'),
       badge:
         kitchenN > 0
           ? {
@@ -140,17 +152,33 @@ function SignedIn() {
           : undefined,
     });
   if (can(me.data, 'report.view'))
-    items.push({ to: '/bills', icon: 'receipt', label: t('shell.navBills') });
+    items.push({
+      to: '/bills',
+      icon: 'receipt',
+      label: t('shell.navBills'),
+      hint: t('shell.hint.bills'),
+    });
   if (can(me.data, 'khata.collect'))
-    items.push({ to: '/khata', icon: 'book', label: t('shell.navKhata') });
+    items.push({
+      to: '/khata',
+      icon: 'book',
+      label: t('shell.navKhata'),
+      hint: t('shell.hint.khata'),
+    });
   if (shift.data)
     items.push({
       icon: 'cash',
       label: t('shell.navDrawer'),
+      hint: t('shell.hint.drawer'),
       onClick: () => setDrawerShift(shift.data ?? null),
     });
   const adminItem: NavItem | null = ADMIN_SECTIONS.some((x) => can(me.data, x.permission))
-    ? { to: '/admin', icon: 'sliders', label: t('shell.navAdmin') }
+    ? {
+        to: '/admin',
+        icon: 'sliders',
+        label: t('shell.navAdmin'),
+        hint: t('shell.hint.admin'),
+      }
     : null;
 
   // groups of the side menu: what you do during service, the money, and the owner's views
@@ -178,7 +206,7 @@ function SignedIn() {
 
   const sideItem = (it: NavItem): ReactNode => {
     const cls = ({ isActive }: { isActive?: boolean }): string =>
-      `group relative flex min-h-11 w-full items-center gap-3 rounded-lg text-[0.95rem] font-medium transition-colors ${
+      `group relative flex w-full items-center gap-3 rounded-lg text-[0.95rem] font-medium transition-colors ${expanded ? 'min-h-[3.25rem]' : 'min-h-11'} ${
         expanded ? 'px-3' : 'justify-center px-0'
       } ${isActive ? 'bg-white/[.12] text-white' : 'text-slate-300 hover:bg-white/[.07] hover:text-white'}`;
     const body = (active: boolean): ReactNode => (
@@ -194,8 +222,11 @@ function SignedIn() {
             </span>
           )}
         </span>
-        <span className={expanded ? 'min-w-0 flex-1 truncate text-start' : 'sr-only'}>
-          {it.label}
+        <span className={expanded ? 'min-w-0 flex-1 text-start leading-tight' : 'sr-only'}>
+          <span className="block truncate">{it.label}</span>
+          {it.hint && (
+            <span className="block truncate text-xs font-normal text-slate-400">{it.hint}</span>
+          )}
         </span>
         {it.badge && expanded && (
           <span
@@ -209,11 +240,25 @@ function SignedIn() {
     );
     const title = expanded ? undefined : it.badge ? `${it.label}: ${it.badge.title}` : it.label;
     return it.to ? (
-      <NavLink key={it.label} to={it.to} end={it.end} className={cls} title={title}>
+      <NavLink
+        key={it.label}
+        to={it.to}
+        end={it.end}
+        className={cls}
+        title={title}
+        aria-label={it.label}
+      >
         {({ isActive }) => body(isActive)}
       </NavLink>
     ) : (
-      <button key={it.label} type="button" className={cls({})} onClick={it.onClick} title={title}>
+      <button
+        key={it.label}
+        type="button"
+        className={cls({})}
+        onClick={it.onClick}
+        title={title}
+        aria-label={it.label}
+      >
         {body(false)}
       </button>
     );
@@ -352,7 +397,12 @@ function SignedIn() {
               const inner = (
                 <>
                   <Icon name={it.icon} size={22} />
-                  <span className="me-auto">{it.label}</span>
+                  <span className="me-auto leading-tight">
+                    {it.label}
+                    {it.hint && (
+                      <span className="block text-sm font-normal text-slate-400">{it.hint}</span>
+                    )}
+                  </span>
                   {it.badge && (
                     <span className="rounded-full bg-amber-400 px-2 text-xs font-bold text-slate-900">
                       {it.badge.n}
@@ -405,6 +455,16 @@ function SignedIn() {
             </div>
           </div>
           <ClockLive live={live} lang={i18n.language} />
+          <button
+            type="button"
+            className="btn-quiet min-h-11 px-2.5 text-slate-700 lg:px-3"
+            aria-label={t('help.open')}
+            title={t('help.open')}
+            onClick={() => setHelpOpen(true)}
+          >
+            <Icon name="info" size={20} />
+            <span className="hidden lg:inline">{t('help.open')}</span>
+          </button>
           <span className="hidden h-8 w-px bg-slate-300 md:block" aria-hidden="true" />
           <DayShiftControl
             dayDate={day.data?.businessDate}
@@ -449,6 +509,7 @@ function SignedIn() {
         </main>
       </div>
 
+      {helpOpen && <HelpDialog page={helpPage} onClose={() => setHelpOpen(false)} />}
       {floatOpen && <OpenShiftDialog onClose={() => setFloatOpen(false)} />}
       {drawerShift && <ShiftDialog shift={drawerShift} onClose={() => setDrawerShift(null)} />}
       {closingDay && <DayCloseDialog date={closingDate} onClose={() => setClosingDay(false)} />}
@@ -644,6 +705,9 @@ function DayShiftControl(p: {
           role="menu"
           className="absolute end-0 z-30 mt-1.5 w-80 rounded-xl border border-slate-300 bg-white p-2 shadow-sheet"
         >
+          <p className="rounded-lg bg-slate-100 px-3 py-2 text-xs leading-relaxed text-slate-700">
+            {t('shell.dayShiftExplain')}
+          </p>
           {!dayOpen && (
             <>
               <p className="hint px-3 py-2">{t('shell.startDayHint')}</p>

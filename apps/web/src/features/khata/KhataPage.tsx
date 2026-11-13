@@ -26,7 +26,7 @@ export function KhataPage() {
   const list = useKhataAccounts(search, owing);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-3 p-3">
+    <div className="mx-auto max-w-6xl space-y-4 p-4 md:p-6">
       <div className="flex flex-wrap items-end gap-3">
         <div className="me-auto">
           <h1 className="page-title">{t('khata.title')}</h1>
@@ -280,7 +280,7 @@ export function KhataDetail() {
   const manager = can(me.data, 'customer.manage');
 
   return (
-    <div className="mx-auto max-w-3xl space-y-3 p-3">
+    <div className="mx-auto max-w-6xl space-y-4 p-4 md:p-6">
       <div className="flex items-center gap-2">
         <Link to="/khata" className="btn-quiet px-2" aria-label={t('common.back')}>
           <Icon name="chevronLeft" data-flip />

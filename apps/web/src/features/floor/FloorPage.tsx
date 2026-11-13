@@ -7,6 +7,7 @@ import { Icon } from '../../components/Icon';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
 import { can, useCounterOrders, useDay, useFloor, useMe, useShift } from '../../lib/queries';
+import { formatAge } from '../../lib/age';
 import type { FloorTable, Order } from '../../lib/types';
 
 type Filter = 'ALL' | FloorTable['status'];
@@ -125,7 +126,7 @@ export function FloorPage() {
   if (kitchenOnly && me.isSuccess) return <Navigate to="/kitchen" replace />;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 p-4">
+    <div className="mx-auto max-w-6xl space-y-5 p-4 md:p-6">
       {setup.data && !setup.data.ready && (
         <section className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3">
           <Icon name="info" size={20} className="text-amber-800" />
@@ -138,7 +139,10 @@ export function FloorPage() {
         </section>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="page-title me-auto">{t('floor.title')}</h1>
+        <div className="me-auto">
+          <h1 className="page-title">{t('floor.title')}</h1>
+          <p className="hint">{t('floor.hint')}</p>
+        </div>
         <button
           className="btn-primary"
           disabled={dayClosed || create.isPending}
@@ -251,7 +255,7 @@ export function FloorPage() {
                         className={`flex items-center gap-1 whitespace-nowrap ${minutesSince(table.order.openedAt) > 90 ? 'font-semibold text-rose-700' : 'text-slate-700'}`}
                       >
                         <Icon name="clock" size={14} />
-                        {t('floor.minAgo', { count: minutesSince(table.order.openedAt) })}
+                        {formatAge(minutesSince(table.order.openedAt), t)}
                       </span>
                       {table.order.ticketsReady > 0 && (
                         <span className="chip-ok mt-1">
@@ -298,7 +302,7 @@ export function FloorPage() {
                     </span>
                     <span className="text-sm text-slate-600">
                       {t('floor.items', { count: o.itemCount })} ·{' '}
-                      {t('floor.minAgo', { count: minutesSince(o.openedAt) })}
+                      {formatAge(minutesSince(o.openedAt), t)}
                     </span>
                   </span>
                   <span className="text-end">

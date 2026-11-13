@@ -363,6 +363,39 @@ export function OrderPage() {
             />
           )}
         </div>
+        {o.status === 'OPEN' && !o.held && (
+          <ol
+            className="grid grid-cols-3 gap-1 border-b border-slate-200 bg-slate-50 px-3 py-2 text-center text-xs font-semibold"
+            aria-label={t('order.steps.title')}
+          >
+            {(['add', 'send', 'bill'] as const).map((k, n) => {
+              const at = liveLines.length === 0 ? 0 : unsent.length > 0 ? 1 : 2;
+              const state = n < at ? 'done' : n === at ? 'now' : 'next';
+              return (
+                <li
+                  key={k}
+                  aria-current={state === 'now' ? 'step' : undefined}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg px-1.5 py-1.5 ${
+                    state === 'now'
+                      ? 'bg-slate-900 text-white'
+                      : state === 'done'
+                        ? 'text-emerald-800'
+                        : 'text-slate-500'
+                  }`}
+                >
+                  <span
+                    className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[0.7rem] ${
+                      state === 'done' ? 'bg-emerald-600 text-white' : 'border border-current'
+                    }`}
+                  >
+                    {state === 'done' ? <Icon name="check" size={12} /> : n + 1}
+                  </span>
+                  {t(`order.steps.${k}`)}
+                </li>
+              );
+            })}
+          </ol>
+        )}
 
         {message && (
           <p role="alert" className="m-3 mb-0 rounded-lg bg-amber-50 p-2 text-sm text-amber-900">

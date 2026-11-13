@@ -77,7 +77,17 @@
     "pos": "Point of sale",
     "foldMenu": "Fold menu",
     "expandMenu": "Expand menu",
-    "more": "More"
+    "more": "More",
+    "hint": {
+      "tables": "Take orders",
+      "kitchen": "Cooking board",
+      "bills": "Past bills, refunds",
+      "khata": "Credit customers",
+      "drawer": "Cash in / out, close shift",
+      "dashboard": "Sales and profit",
+      "admin": "Menu, staff, settings"
+    },
+    "dayShiftExplain": "Business day: the trading day your reports are counted for. Shift: your own cash-drawer session inside it."
   },
   "floor": {
     "title": "Tables",
@@ -99,7 +109,8 @@
     "noCounter": "No open takeaway or delivery orders.",
     "noTables": "No tables to show.",
     "inProgress": "In progress",
-    "foodReady": "Food ready"
+    "foodReady": "Food ready",
+    "hint": "Tap a free table to start an order. Tap a busy table to see or add to its order."
   },
   "admin": {
     "title": "Admin",
@@ -282,7 +293,13 @@
     "optional": "optional",
     "pickN": "choose {{count}}",
     "viewOrder": "View order · {{count}} items",
-    "popular": "Popular"
+    "popular": "Popular",
+    "steps": {
+      "title": "Order steps",
+      "add": "Add items",
+      "send": "Send to kitchen",
+      "bill": "Bill & pay"
+    }
   },
   "bill": {
     "bill": "Bill",
@@ -458,7 +475,8 @@
       "SETTLED": "Paid",
       "PRE_BILLED": "Unpaid"
     },
-    "state": "Status"
+    "state": "Status",
+    "billsHint": "Every bill, newest first. Tap one to reprint it or give a refund."
   },
   "settingsPage": {
     "restaurant": "Restaurant",
@@ -886,7 +904,8 @@
     "fromDeal": "from {{deal}}",
     "waitNEW": "Waiting for the kitchen",
     "waitPREPARING": "Being cooked",
-    "waitREADY": "Ready for the waiter"
+    "waitREADY": "Ready for the waiter",
+    "hint": "Each card is one order for your station. Move it along as you cook."
   },
   "role": {
     "OWNER": "Owner",
@@ -1029,5 +1048,115 @@
       "qrMenu": "Let guests read today's menu on their phone.",
       "tax": "Leave tax off until your accountant has confirmed the rates."
     }
+  },
+  "help": {
+    "open": "Help",
+    "steps": "What to do",
+    "tips": "Good to know",
+    "gotIt": "Got it",
+    "tables": {
+      "title": "Tables",
+      "what": "The home screen. It shows every table and whether it is free, busy or waiting for payment.",
+      "steps": [
+        "Tap a free table to start an order for the guests sitting there.",
+        "Tap a busy table to see its order or add more.",
+        "Use New takeaway or New delivery for orders without a table."
+      ],
+      "tips": [
+        "A table that pulses has just changed: food is ready, or the guest asked for the bill.",
+        "If the top bar says the day has not started, tap it and start the day first."
+      ]
+    },
+    "order": {
+      "title": "Taking an order",
+      "what": "Build the guests' order here: dishes on the left, the order on the right.",
+      "steps": [
+        "Tap a dish to add it. Tap again to add one more.",
+        "Press Send to kitchen. The kitchen gets the ticket and the items show \"In kitchen\".",
+        "When the guests ask for the bill, press Bill, then take the payment."
+      ],
+      "tips": [
+        "Use the search box or the category tabs; Popular shows what sells most.",
+        "Items already in the kitchen cannot be changed: use Void and give a reason.",
+        "More lets you hold the order, move it to another table, merge tables or cancel it."
+      ]
+    },
+    "pay": {
+      "title": "Taking payment",
+      "what": "Take the payment for a bill.",
+      "steps": [
+        "Choose how the guest pays: cash, card, wallet or khata (credit).",
+        "For cash, type the amount received. The change is shown.",
+        "Press Take payment. The receipt prints."
+      ],
+      "tips": [
+        "To split between two methods, take the first payment, then the rest.",
+        "A discount needs a reason, and a large one needs a manager's PIN."
+      ]
+    },
+    "kitchen": {
+      "title": "Kitchen board",
+      "what": "The cooking board. Each card is one order for one kitchen station.",
+      "steps": [
+        "New: press Start cooking when the cook begins.",
+        "Cooking: press Ready when the food is done.",
+        "Ready: the waiter presses Served when it reaches the table."
+      ],
+      "tips": [
+        "A red timer means the ticket has waited too long.",
+        "Use the station tabs to see only your station (BBQ, Tandoor…)."
+      ]
+    },
+    "bills": {
+      "title": "Bills",
+      "what": "Every bill, newest first. Open one to reprint it or give a refund.",
+      "steps": [
+        "Search or scroll to find the bill.",
+        "Tap it to see the lines and payments.",
+        "Reprint the receipt, or refund (needs permission and a reason)."
+      ],
+      "tips": [
+        "Bills are never edited or deleted. A mistake is corrected with a refund (credit note)."
+      ]
+    },
+    "khata": {
+      "title": "Khata (credit)",
+      "what": "Regular customers who pay later.",
+      "steps": [
+        "Create an account with a credit limit.",
+        "At payment choose Khata and pick the customer.",
+        "When they pay, open their account and record the payment."
+      ],
+      "tips": ["The till refuses a sale that would go over the credit limit."]
+    },
+    "dashboard": {
+      "title": "Business overview",
+      "what": "How the business is doing: sales, costs and profit.",
+      "steps": [
+        "Pick a period at the top.",
+        "Read the headline numbers, then the profit and loss.",
+        "Check \"Watch for leaks\" for discounts, voids and cash differences."
+      ],
+      "tips": [
+        "Share summary sends the day's result to WhatsApp.",
+        "Profit counts only dishes that have a recipe cost."
+      ]
+    },
+    "admin": {
+      "title": "Admin",
+      "what": "Set up the restaurant: menu, tables, stock, staff and settings.",
+      "steps": [
+        "Pick an area at the top: Menu & tables, Stock & costs, People & access or Business.",
+        "Then pick the screen inside it.",
+        "Start with Setup to see what is still missing."
+      ],
+      "tips": ["Changing a price never changes old bills."]
+    }
+  },
+  "age": {
+    "min": "{{count}} min",
+    "h": "{{h}} h",
+    "hm": "{{h}} h {{m}} min",
+    "d": "{{count}} d"
   }
 }

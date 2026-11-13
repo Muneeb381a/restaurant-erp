@@ -23,8 +23,11 @@ export function BillsPage() {
   });
 
   return (
-    <div className="mx-auto max-w-3xl space-y-3 p-3">
-      <h1 className="page-title">{t('refund.billsTitle')}</h1>
+    <div className="mx-auto max-w-6xl space-y-4 p-4 md:p-6">
+      <div>
+        <h1 className="page-title">{t('refund.billsTitle')}</h1>
+        <p className="hint">{t('refund.billsHint')}</p>
+      </div>
       <div className="flex flex-wrap items-end gap-3">
         <label className="space-y-1">
           <span className="label block">{t('refund.date')}</span>
