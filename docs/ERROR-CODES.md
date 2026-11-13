@@ -46,6 +46,7 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | `KHATA_REFUND_EXCEEDS`| 409  | Refund to khata is more than the bill charged to khata (`maxPaisa` says what is left)                                                       |
 | `KHATA_LIMIT_EXCEEDED` | 409 | Credit sale would pass the customer's limit; body has `balancePaisa`, `limitPaisa`, `availablePaisa`                                      |
 | `KHATA_OVERPAYMENT`   | 409  | A khata payment is larger than the balance (advance deposits are not supported); body has `balancePaisa`                                    |
+| `KHATA_PHONE_EXISTS`  | 409  | The phone number already belongs to another customer (compared by its last ten digits, so formatting does not matter); the message names them |
 | `KHATA_ACCOUNT_INACTIVE` | 409 | The khata account is switched off and takes no new credit sales                                                                          |
 | `SHIFTS_STILL_OPEN`   | 409  | Day close refused: some shifts are open (`cashiers` lists them)                                                                             |
 | `ORDERS_STILL_OPEN`   | 409  | Day close refused: orders still OPEN or BILLED (`orders` lists number and status)                                                           |

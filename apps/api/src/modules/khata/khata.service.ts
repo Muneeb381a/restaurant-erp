@@ -7,10 +7,14 @@ import { writeAudit } from '../audit/audit.service';
 import type { Actor } from '../orders/orders.service';
 import {
   accountWithCustomer,
+  agingOf,
   balanceOf,
   chargeOfBill,
+  customerByPhone,
   entriesOf,
   listAccounts,
+  summaryOf,
+  type Aging,
 } from './khata.repo';
 
 const bad = (message: string): AppError => new AppError(400, 'VALIDATION_FAILED', message);
@@ -56,6 +60,7 @@ const present = (
     isActive: boolean;
   },
   balancePaisa: number,
+  aging?: Aging,
 ) => ({
   id: a.id,
   name: a.name,
@@ -64,6 +69,8 @@ const present = (
   isActive: a.isActive,
   balancePaisa,
   availableCreditPaisa: a.isActive ? availableCredit(balancePaisa, a.creditLimitPaisa) : 0,
+  owingSince: aging?.owingSince?.toISOString() ?? null,
+  lastPaymentAt: aging?.lastPaymentAt?.toISOString() ?? null,
 });
 
 // ───────────────────────────────── reads ─────────────────────────────────
@@ -71,20 +78,48 @@ const present = (
 export async function searchAccounts(
   ctx: AppContext,
   branchId: string,
-  opts: { search?: string | undefined; onlyOwing?: boolean | undefined; limit: number },
+  opts: {
+    search?: string | undefined;
+    onlyOwing?: boolean | undefined;
+    limit: number;
+    sort?: 'name' | 'owed' | undefined;
+  },
 ) {
   const rows = await listAccounts(ctx.db, branchId, {
     ...opts,
     onlyOwing: opts.onlyOwing ?? false,
   });
-  return rows.map((r) => present(r, r.balancePaisa));
+  const aging = await agingOf(
+    ctx.db,
+    rows.map((r) => r.id),
+  );
+  return rows.map((r) => present(r, r.balancePaisa, aging.get(r.id)));
+}
+
+/** Totals over every account of the branch, for the strip at the top of the khata page. */
+export function khataSummary(ctx: AppContext, branchId: string) {
+  return summaryOf(ctx.db, branchId);
 }
 
 export async function getAccount(q: Queryable, branchId: string, id: string, limit: number) {
   const acct = await accountWithCustomer(q, branchId, id);
   const balance = await balanceOf(q, id);
   const entries = await entriesOf(q, id, limit);
-  return { ...present(acct, balance), notes: acct.notes, entries };
+  const aging = (await agingOf(q, [id])).get(id);
+  return { ...present(acct, balance, aging), notes: acct.notes, entries };
+}
+
+/** One customer per phone number, however it is typed; the message names who already has it. */
+async function assertPhoneFree(q: Queryable, phone: string | null | undefined, selfId?: string) {
+  if (!phone) return;
+  const other = await customerByPhone(q, phone, selfId);
+  if (other)
+    throw new AppError(
+      409,
+      'KHATA_PHONE_EXISTS',
+      `This phone number already belongs to ${other.name}`,
+      { customer: other.name },
+    );
 }
 
 /** What a bill's khata tender charged and the customer's balance now (for the bill view and receipt). */
@@ -112,6 +147,7 @@ export function createAccount(
   },
 ) {
   return withTx(ctx.db, async (trx) => {
+    await assertPhoneFree(trx, input.phone);
     const customer = await trx
       .insertInto('customers')
       .values({ name: input.name, phone: input.phone ?? null, notes: input.notes ?? null })
@@ -148,6 +184,7 @@ export function updateAccount(
 ) {
   return withTx(ctx.db, async (trx) => {
     const before = await accountWithCustomer(trx, a.branchId, id, true);
+    if (input.phone !== undefined) await assertPhoneFree(trx, input.phone, before.customerId);
     const custPatch = {
       ...(input.name !== undefined && { name: input.name }),
       ...(input.phone !== undefined && { phone: input.phone }),
@@ -331,6 +368,13 @@ export function adjustBalance(
   return withTx(ctx.db, async (trx) => {
     const acct = await accountWithCustomer(trx, a.branchId, accountId, true);
     const balance = await balanceOf(trx, acct.id);
+    // a write-off cannot take the balance below zero: money paid ahead is not supported yet (OPEN-QUESTIONS #31)
+    if (input.direction === 'DOWN')
+      try {
+        assertCanReceivePayment(balance, input.amountPaisa);
+      } catch (e) {
+        return asApiError(e);
+      }
     const kind = input.direction === 'UP' ? 'ADJUST_UP' : 'ADJUST_DOWN';
     await trx
       .insertInto('khata_entries')

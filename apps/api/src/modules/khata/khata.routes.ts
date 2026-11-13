@@ -10,6 +10,7 @@ import {
   adjustBalance,
   createAccount,
   getAccount,
+  khataSummary,
   receivePayment,
   searchAccounts,
   updateAccount,
@@ -39,16 +40,26 @@ export function khataRouter(ctx: AppContext): Router {
         .object({
           search: z.string().trim().max(100).optional(),
           owing: z.enum(['true', 'false']).optional(),
-          limit: z.coerce.number().int().min(1).max(200).default(50),
+          sort: z.enum(['name', 'owed']).optional(),
+          limit: z.coerce.number().int().min(1).max(500).default(200),
         })
         .parse(req.query);
       res.json({
         items: await searchAccounts(ctx, req.branchId!, {
           search: q.search,
           onlyOwing: q.owing === 'true',
+          sort: q.sort,
           limit: q.limit,
         }),
       });
+    }),
+  );
+
+  r.get(
+    '/khata/summary',
+    ...collect,
+    asyncHandler(async (req, res) => {
+      res.json(await khataSummary(ctx, req.branchId!));
     }),
   );
 

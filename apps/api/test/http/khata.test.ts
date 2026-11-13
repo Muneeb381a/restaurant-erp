@@ -371,11 +371,116 @@ describe('adjustments and reports', () => {
     expect(log.reason).toBe('Goodwill write-off');
   });
 
+  it('a write-off cannot take the balance below zero', async () => {
+    const id = await newAccount('No negative', 1_000_000);
+    await api(manager).post(`/khata/accounts/${id}/adjustments`, {
+      direction: 'UP',
+      amountPaisa: 30000,
+      reason: 'Opening balance',
+    });
+    const over = await api(manager).post(`/khata/accounts/${id}/adjustments`, {
+      direction: 'DOWN',
+      amountPaisa: 30001,
+      reason: 'Too much',
+    });
+    expect(over.status).toBe(409);
+    expect(over.body.code).toBe('KHATA_OVERPAYMENT');
+    expect((await account(id)).balancePaisa).toBe(30000);
+  });
+
   it('the day report shows khata charged and collected', async () => {
     const day = (await api(manager).get('/business-days/current')).body.day;
     const rep = (await api(owner).get(`/business-days/${day.id}/report`)).body;
     expect(rep.khata.chargedPaisa).toBeGreaterThan(0);
     expect(rep.khata.collectedPaisa).toBeGreaterThan(0);
     expect(rep.byMethod.map((m: Json) => m.code)).toContain('KHATA');
+  });
+});
+
+describe('who owes what, and since when', () => {
+  const daysAgo = (n: number): Date => new Date(Date.now() - n * 86_400_000);
+  const put = async (
+    accountId: string,
+    kind: 'ADJUST_UP' | 'ADJUST_DOWN',
+    paisa: number,
+    at: Date,
+  ) => {
+    const by = await t.kdb.selectFrom('users').select('id').limit(1).executeTakeFirstOrThrow();
+    await t.kdb
+      .insertInto('khata_entries')
+      .values({
+        account_id: accountId,
+        kind,
+        amount_paisa: paisa,
+        note: 'test entry',
+        created_by: by.id,
+        created_at: at,
+      })
+      .execute();
+  };
+
+  it('the same phone number is refused however it is typed, naming who has it', async () => {
+    const id = await newAccount('Phone owner', 1000);
+    const phone = (await account(id)).phone as string; // 0300-1234NNN
+    const digits = phone.replace(/\D/g, '');
+    for (const typed of [
+      digits,
+      `+92${digits.slice(1)}`,
+      `${digits.slice(0, 4)} ${digits.slice(4)}`,
+    ]) {
+      const res = await api(manager).post('/khata/accounts', {
+        name: 'Copy',
+        phone: typed,
+        creditLimitPaisa: 1,
+      });
+      expect(res.status, typed).toBe(409);
+      expect(res.body.code).toBe('KHATA_PHONE_EXISTS');
+      expect(res.body.title).toContain('Phone owner');
+    }
+    // changing someone else's number to it is refused too; keeping your own is fine
+    const other = await newAccount('Someone else', 1000);
+    expect((await api(manager).patch(`/khata/accounts/${other}`, { phone })).status).toBe(409);
+    expect((await api(manager).patch(`/khata/accounts/${id}`, { phone })).status).toBe(200);
+  });
+
+  it('shows what the customer owed after each entry, and how old the debt is (oldest credit is paid first)', async () => {
+    const id = await newAccount('Aged', 10_000_000);
+    await put(id, 'ADJUST_UP', 100_000, daysAgo(40)); // Rs 1,000, 40 days ago
+    await put(id, 'ADJUST_UP', 50_000, daysAgo(5)); //   Rs   500,  5 days ago
+    await put(id, 'ADJUST_DOWN', 100_000, daysAgo(4)); // pays the old Rs 1,000
+    const a = await account(id);
+    expect(a.balancePaisa).toBe(50_000);
+    expect(a.entries.map((e: Json) => e.balanceAfterPaisa)).toEqual([50_000, 150_000, 100_000]);
+    // only the Rs 500 from 5 days ago is still owed
+    const since = new Date(a.owingSince).getTime();
+    expect(Math.round((Date.now() - since) / 86_400_000)).toBe(5);
+
+    // a part-payment of the newer credit leaves the same date; clearing it leaves none
+    await put(id, 'ADJUST_DOWN', 20_000, daysAgo(1));
+    expect(
+      Math.round((Date.now() - new Date((await account(id)).owingSince).getTime()) / 86_400_000),
+    ).toBe(5);
+    await put(id, 'ADJUST_DOWN', 30_000, daysAgo(0));
+    const cleared = await account(id);
+    expect(cleared.balancePaisa).toBe(0);
+    expect(cleared.owingSince).toBeNull();
+  });
+
+  it('lists the biggest debts first on request and totals every account', async () => {
+    const small = await newAccount('Sort small', 5_000_000);
+    const big = await newAccount('Sort big', 5_000_000);
+    await put(small, 'ADJUST_UP', 10_000, daysAgo(1));
+    await put(big, 'ADJUST_UP', 900_000, daysAgo(1));
+    const items = (await api(cashier).get('/khata/accounts?sort=owed')).body.items as Json[];
+    const order = items.map((x) => x.id);
+    expect(order.indexOf(big)).toBeLessThan(order.indexOf(small));
+    expect(items[0].balancePaisa).toBeGreaterThanOrEqual(items[1].balancePaisa);
+
+    const sum = (await api(cashier).get('/khata/summary')).body;
+    const owing = items.filter((x) => x.balancePaisa > 0);
+    expect(sum.accountsOwing).toBe(owing.length);
+    expect(sum.owedPaisa).toBe(owing.reduce((n, x) => n + x.balancePaisa, 0));
+    expect(sum.accounts).toBe(items.length);
+    expect((await api(captain).get('/khata/summary')).status).toBe(403);
   });
 });

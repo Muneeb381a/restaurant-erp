@@ -12,6 +12,15 @@
 - **Adjustments** (opening balances from the paper register, write-offs) need `customer.manage`, a reason, and are audited. Accounts (customer + credit limit) are created and switched off by managers; every change is audited. Customers are unique by phone number (existing index).
 - **Permissions:** `khata.collect` (OWNER, MANAGER, CASHIER) lists accounts, takes khata at settle and receives payments; `customer.manage` (OWNER, MANAGER) creates accounts, sets limits, adjusts.
 
+## Addendum — seeing who owes, and since when
+
+- **Age of a debt = first in, first out.** Payments settle the oldest credit first, so what is still owed is made of the newest increases. `owingSince` is the date of the oldest increase (`CHARGE` or `ADJUST_UP`) still inside that balance; `lastPaymentAt` is the newest `PAYMENT`. Computed in one SQL query (`agingOf`), read-only, nothing stored. If the restaurant settles bills differently (a customer says "this payment is for the March bill"), the age is an estimate; the balance itself is exact.
+- **Each ledger row carries the balance after it** (window `SUM(delta_paisa) OVER (ORDER BY seq)`), so a customer disputing a figure can be walked down the page.
+- **A write-off (`ADJUST_DOWN`) cannot exceed the balance**, like a payment: money paid ahead is not supported until OPEN-QUESTIONS #31(b) is answered. Before this it could push a balance below zero and silently raise the customer's available credit above their limit.
+- **One customer per phone number, however it is typed** (last ten digits compared), with `KHATA_PHONE_EXISTS` naming the owner. The unique index alone missed `0300-1234567` vs `03001234567` vs `+92 300 1234567`.
+- **The list shows up to 200 accounts (was 50, with no way to see the rest)**, sorted by biggest debt or by name, and `GET /khata/summary` totals every account (owed, customers owing, near limit) for the strip at the top.
+- **Reminders are a WhatsApp link the person sends**, in Urdu or English, with the exact amount (same approach as the day summary: no server-side sending, no consent or opt-out to manage). Whether to send them automatically, and after how many days, is still OPEN-QUESTIONS #31(c).
+
 ## Consequences / limits
 
 - No advance deposits, due dates, interest, statements or WhatsApp reminders (OPEN-QUESTIONS #31).
