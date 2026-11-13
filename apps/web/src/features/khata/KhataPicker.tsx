@@ -59,8 +59,13 @@ export function KhataPicker({
                     <span className="ms-2 text-sm text-slate-500">{ltr(a.phone)}</span>
                   ) : null}
                 </span>
-                <span className="text-sm text-slate-600">
-                  {ltr(formatRs(a.availableCreditPaisa))}
+                <span className="text-end text-sm text-slate-600">
+                  <span className="block">{ltr(formatRs(a.availableCreditPaisa))}</span>
+                  {a.balancePaisa > 0 && (
+                    <span className="block text-xs text-rose-700">
+                      {t('khata.owes')} {ltr(formatRs(a.balancePaisa))}
+                    </span>
+                  )}
                 </span>
               </button>
             </li>
@@ -69,6 +74,7 @@ export function KhataPicker({
           <li className="p-2 text-slate-500">{t('khata.none')}</li>
         )}
       </ul>
+      <p className="hint">{t('khata.askManager')}</p>
     </div>
   );
 }

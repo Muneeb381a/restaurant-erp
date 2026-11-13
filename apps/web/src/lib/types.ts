@@ -14,12 +14,14 @@ export interface BusinessDay {
   id: string;
   businessDate: string;
   status: string;
+  openedAt?: string;
 }
 
 export interface Shift {
   id: string;
   openingFloatPaisa: number;
   status: string;
+  openedAt?: string;
 }
 
 export type TableStatus = 'FREE' | 'OCCUPIED' | 'BILLED';
@@ -339,9 +341,21 @@ export interface KhataAccount {
   balancePaisa: number;
   availableCreditPaisa: number;
   isActive: boolean;
+  /** When the oldest part of what is still owed was put on the account; null when nothing is owed. */
+  owingSince: string | null;
+  lastPaymentAt: string | null;
+}
+
+export interface KhataSummary {
+  owedPaisa: number;
+  accountsOwing: number;
+  nearLimit: number;
+  accounts: number;
 }
 
 export interface KhataEntry {
+  /** What the customer owed right after this entry. */
+  balanceAfterPaisa: number;
   id: string;
   kind: 'CHARGE' | 'PAYMENT' | 'ADJUST_UP' | 'ADJUST_DOWN' | 'REFUND';
   amountPaisa: number;

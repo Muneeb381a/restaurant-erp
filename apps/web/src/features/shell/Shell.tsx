@@ -10,7 +10,7 @@ import { Toaster } from '../../components/Toast';
 import { ApiError, api } from '../../lib/api';
 import { useAuth } from '../../lib/auth-store';
 import { startLive, useLive } from '../../lib/live';
-import { ltr } from '../../lib/money';
+import { formatRs, ltr } from '../../lib/money';
 import { can, useDay, useFloor, useMe, usePrinterHealth, useShift } from '../../lib/queries';
 import type { Shift } from '../../lib/types';
 import { ADMIN_SECTIONS } from '../admin/AdminLayout';
@@ -90,7 +90,8 @@ function SignedIn() {
   };
   const [moreOpen, setMoreOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const helpPage = helpKeyFor(useLocation().pathname);
+  const { pathname } = useLocation();
+  const helpPage = helpKeyFor(pathname);
 
   const [floatOpen, setFloatOpen] = useState(false);
   // the dialog keeps its own copy: closing the shift empties the 'current shift' query
@@ -203,19 +204,21 @@ function SignedIn() {
       ? all.filter((x) => ['/', '/kitchen', '/bills'].includes(x.to ?? '')).slice(0, 4)
       : all;
   const more = all.filter((x) => !primary.includes(x));
+  // where you are: shown at the start of the top bar (order and payment screens belong to Tables)
+  const current =
+    all.find(
+      (x) => x.to && x.to !== '/' && (pathname === x.to || pathname.startsWith(`${x.to}/`)),
+    ) ?? all.find((x) => x.to === '/');
 
   const sideItem = (it: NavItem): ReactNode => {
     const cls = ({ isActive }: { isActive?: boolean }): string =>
-      `group relative flex w-full items-center gap-3 rounded-lg text-[0.95rem] font-medium transition-colors ${expanded ? 'min-h-[3.25rem]' : 'min-h-11'} ${
+      `group relative flex w-full items-center gap-3 rounded-xl text-[0.95rem] font-medium transition-colors ${expanded ? 'min-h-[3.25rem]' : 'min-h-11'} ${
         expanded ? 'px-3' : 'justify-center px-0'
-      } ${isActive ? 'bg-white/[.12] text-white' : 'text-slate-300 hover:bg-white/[.07] hover:text-white'}`;
+      } ${isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-300 hover:bg-white/[.08] hover:text-white'}`;
     const body = (active: boolean): ReactNode => (
       <>
-        {active && (
-          <span className="absolute inset-y-2 start-0 w-[3px] rounded-full bg-amber-400" />
-        )}
         <span className="relative shrink-0">
-          <Icon name={it.icon} size={22} className={active ? 'text-amber-300' : ''} />
+          <Icon name={it.icon} size={22} className={active ? 'text-emerald-700' : ''} />
           {it.badge && !expanded && (
             <span className="absolute -end-1.5 -top-1.5 flex min-w-[1.05rem] items-center justify-center rounded-full bg-amber-400 px-1 text-[0.65rem] font-bold leading-[1.05rem] text-slate-900">
               {it.badge.n}
@@ -225,7 +228,11 @@ function SignedIn() {
         <span className={expanded ? 'min-w-0 flex-1 text-start leading-tight' : 'sr-only'}>
           <span className="block truncate">{it.label}</span>
           {it.hint && (
-            <span className="block truncate text-xs font-normal text-slate-400">{it.hint}</span>
+            <span
+              className={`block truncate text-xs font-normal ${active ? 'text-slate-500' : 'text-slate-400'}`}
+            >
+              {it.hint}
+            </span>
           )}
         </span>
         {it.badge && expanded && (
@@ -304,26 +311,28 @@ function SignedIn() {
           aria-label={t('app.title')}
           className={`flex h-16 shrink-0 items-center gap-3 border-b border-white/10 ${expanded ? 'px-4' : 'justify-center'}`}
         >
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm ring-1 ring-white/15">
             <Mark size={26} />
           </span>
           {expanded && (
             <span className="min-w-0 leading-tight">
-              <span className="block truncate text-[0.95rem] font-semibold text-white">
+              <span className="block truncate text-[1rem] font-semibold tracking-tight text-white">
                 {restaurant || t('app.title')}
               </span>
-              <span className="block text-xs text-slate-400">{t('shell.pos')}</span>
+              <span className="block text-[0.7rem] font-medium uppercase tracking-[0.12em] text-slate-400">
+                {t('shell.pos')}
+              </span>
             </span>
           )}
         </Link>
         <nav
           aria-label={t('shell.mainNav')}
-          className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4"
+          className="min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-5"
         >
           {groups.map((g, i) => (
             <div key={g.label} className="space-y-1">
               {expanded ? (
-                <div className="px-3 pb-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                <div className="px-3 pb-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   {g.label}
                 </div>
               ) : (
@@ -333,30 +342,6 @@ function SignedIn() {
             </div>
           ))}
         </nav>
-        <div className="shrink-0 space-y-1 border-t border-white/10 p-3">
-          <div
-            className={`flex items-center gap-2 px-3 py-1 text-xs ${live ? 'text-slate-400' : 'text-amber-300'}`}
-            title={live ? t('shell.liveHint') : t('shell.offlineHint')}
-          >
-            <span
-              className={`size-2 shrink-0 rounded-full ${live ? 'bg-emerald-500' : 'bg-amber-400'}`}
-            />
-            {expanded && (live ? t('shell.live') : t('shell.reconnecting'))}
-          </div>
-          {wide && (
-            <button
-              type="button"
-              onClick={toggleRail}
-              aria-label={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
-              aria-expanded={!folded}
-              title={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
-              className={`flex min-h-10 w-full items-center gap-3 rounded-lg text-sm text-slate-400 hover:bg-white/[.07] hover:text-white ${expanded ? 'px-3' : 'justify-center'}`}
-            >
-              <Icon name="chevronLeft" size={20} data-flip className={folded ? 'rotate-180' : ''} />
-              {expanded && t('shell.foldMenu')}
-            </button>
-          )}
-        </div>
       </div>
 
       {/* phones: a bar at the bottom with the four main places and "More" */}
@@ -435,22 +420,29 @@ function SignedIn() {
       )}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-300 bg-white px-3 sm:px-5">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-slate-300 bg-white px-3 shadow-[0_1px_0_rgba(15,23,42,.04)] sm:gap-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-3 me-auto">
-            <span className="text-emerald-700 md:hidden">
-              <Mark size={26} />
-            </span>
+            {wide && (
+              <button
+                type="button"
+                onClick={toggleRail}
+                aria-label={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
+                aria-expanded={!folded}
+                title={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
+                className="btn-quiet size-11 shrink-0 justify-center px-0 text-slate-700"
+              >
+                <Icon name="sidebar" size={22} data-flip />
+              </button>
+            )}
             <div className="min-w-0 leading-tight">
-              <div className="truncate text-base font-semibold tracking-tight text-slate-900">
-                <span className="md:hidden">{restaurant || t('app.title')}</span>
-                <span className="hidden md:inline">
-                  {day.data?.businessDate
-                    ? ltr(longDate(day.data.businessDate, i18n.language))
-                    : t('shell.dayClosed')}
-                </span>
+              <div className="truncate text-lg font-semibold tracking-tight text-slate-900">
+                {current?.label || restaurant || t('app.title')}
               </div>
-              <div className="hidden truncate text-xs font-medium text-slate-600 md:block">
-                {restaurant}
+              <div className="truncate text-xs font-medium text-slate-600">
+                {day.data?.businessDate
+                  ? ltr(longDate(day.data.businessDate, i18n.language))
+                  : t('shell.dayClosed')}
+                <span className="hidden sm:inline">{restaurant ? ` · ${restaurant}` : ''}</span>
               </div>
             </div>
           </div>
@@ -468,7 +460,10 @@ function SignedIn() {
           <span className="hidden h-8 w-px bg-slate-300 md:block" aria-hidden="true" />
           <DayShiftControl
             dayDate={day.data?.businessDate}
+            dayOpenedAt={day.data?.openedAt}
             shiftOpen={!!shift.data}
+            shiftOpenedAt={shift.data?.openedAt}
+            floatPaisa={shift.data?.openingFloatPaisa}
             cashier={me.data?.fullName ?? ''}
             lang={i18n.language}
             canOpenDay={can(me.data, 'day.open')}
@@ -487,6 +482,7 @@ function SignedIn() {
             name={me.data?.fullName ?? ''}
             role={me.data?.role ?? ''}
             lang={i18n.language as Lang}
+            live={live}
             onLang={setLanguage}
             onLogout={() => void logout()}
           />
@@ -598,13 +594,10 @@ function ClockLive({ live, lang }: { live: boolean; lang: string }) {
   });
   return (
     <div
-      className="hidden flex-col items-end leading-tight md:flex"
+      className="hidden items-center md:flex"
       title={live ? t('shell.liveHint') : t('shell.offlineHint')}
     >
       <span className="money text-lg font-semibold tracking-tight text-slate-900">{ltr(time)}</span>
-      <span className={`text-xs font-medium ${live ? 'text-slate-600' : 'text-amber-800'}`}>
-        {live ? t('shell.live') : t('shell.reconnecting')}
-      </span>
     </div>
   );
 }
@@ -616,27 +609,47 @@ const dateLabel = (iso: string, lang: string): string =>
     month: 'short',
   });
 
+const timeOf = (iso: string | undefined, lang: string): string =>
+  iso
+    ? new Date(iso).toLocaleTimeString(lang === 'ur' ? 'ur-PK' : 'en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '';
+
+/** One half of the top-bar status: a small caption (what it is), the state in bold, one line of detail. */
 function StatusCell({
   on,
   icon,
+  caption,
   title,
   sub,
+  nudge,
 }: {
   on: boolean;
   icon: IconName;
+  caption: string;
   title: string;
   sub: string;
+  /** This is the step the person should do next: the icon pulses. */
+  nudge?: boolean;
 }) {
   return (
-    <span className="flex items-center gap-2.5 px-1.5 py-1.5 sm:px-3">
+    <span className="flex items-center gap-2.5 px-2 py-1.5 sm:px-3">
       <span
-        className={`flex size-8 shrink-0 items-center justify-center rounded-full ${on ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}`}
+        className={`relative flex size-9 shrink-0 items-center justify-center rounded-lg ${on ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}`}
       >
-        <Icon name={icon} size={17} />
+        {nudge && (
+          <span className="absolute inset-0 animate-ping rounded-lg bg-amber-400/60 motion-reduce:hidden" />
+        )}
+        <Icon name={icon} size={18} className="relative" />
       </span>
       <span className="sr-only flex-col items-start leading-tight sm:not-sr-only sm:flex">
+        <span className="whitespace-nowrap text-[0.65rem] font-semibold uppercase tracking-[0.1em] opacity-70">
+          {caption}
+        </span>
         <span className="whitespace-nowrap text-sm font-semibold">{title}</span>
-        <span className="max-w-[9rem] truncate whitespace-nowrap text-xs font-medium opacity-80">
+        <span className="max-w-[9.5rem] truncate whitespace-nowrap text-xs font-medium opacity-80">
           {sub}
         </span>
       </span>
@@ -644,13 +657,51 @@ function StatusCell({
   );
 }
 
+/** A numbered step in the menu: where it stands, what it means, and the one thing to do about it. */
+function Step({
+  n,
+  done,
+  title,
+  status,
+  detail,
+  children,
+}: {
+  n: number;
+  done: boolean;
+  title: string;
+  status: string;
+  detail: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="flex gap-3 rounded-xl border border-slate-200 p-3">
+      <span
+        className={`flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${done ? 'bg-emerald-600' : 'bg-amber-500'}`}
+      >
+        {done ? <Icon name="check" size={16} /> : n}
+      </span>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold">{title}</span>
+          <span className={done ? 'chip-ok' : 'chip-warn'}>{status}</span>
+        </div>
+        <p className="text-sm leading-snug text-slate-600">{detail}</p>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /**
- * The only place the business day and shift are handled. Two cells show where you are (day, shift);
- * the menu offers exactly the next step (start day → start shift → cash drawer / close day).
+ * The only place the business day and shift are handled. Two labelled cells say where you are (the
+ * business day, your own shift); the menu shows the same two as numbered steps with the next action.
  */
 function DayShiftControl(p: {
   dayDate: string | undefined;
+  dayOpenedAt: string | undefined;
   shiftOpen: boolean;
+  shiftOpenedAt: string | undefined;
+  floatPaisa: number | undefined;
   cashier: string;
   lang: string;
   canOpenDay: boolean;
@@ -670,6 +721,8 @@ function DayShiftControl(p: {
     setOpen(false);
     fn();
   };
+  const dayTitle = dayOpen ? t('shell.dayOpen') : t('shell.dayClosed');
+  const shiftTitle = p.shiftOpen ? t('shell.shiftOpen') : t('shell.shiftClosed');
 
   return (
     <div className="relative" ref={ref}>
@@ -677,6 +730,7 @@ function DayShiftControl(p: {
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={`${dayTitle} · ${shiftTitle}`}
         className={`flex min-h-touch items-stretch divide-x rounded-xl border text-start transition-colors rtl:divide-x-reverse ${
           needsAction
             ? 'divide-amber-300 border-amber-400 bg-amber-50 text-amber-950 hover:bg-amber-100'
@@ -687,14 +741,24 @@ function DayShiftControl(p: {
         <StatusCell
           on={dayOpen}
           icon="clock"
-          title={dayOpen ? t('shell.dayOpen') : t('shell.dayClosed')}
-          sub={dayOpen ? ltr(dateLabel(p.dayDate ?? '', p.lang)) : t('shell.tapToStart')}
+          caption={t('shell.captionDay')}
+          title={dayTitle}
+          sub={dayOpen ? ltr(dateLabel(p.dayDate ?? '', p.lang)) : t('shell.tapStartDay')}
+          nudge={!dayOpen}
         />
         <StatusCell
           on={p.shiftOpen}
           icon="cash"
-          title={p.shiftOpen ? t('shell.shiftOpen') : t('shell.shiftClosed')}
-          sub={p.shiftOpen ? p.cashier : dayOpen ? t('shell.tapToStart') : '–'}
+          caption={t('shell.captionShift')}
+          title={shiftTitle}
+          sub={
+            p.shiftOpen
+              ? `${p.cashier}${p.shiftOpenedAt ? ` · ${ltr(timeOf(p.shiftOpenedAt, p.lang))}` : ''}`
+              : dayOpen
+                ? t('shell.tapStartShift')
+                : t('shell.afterDay')
+          }
+          nudge={dayOpen && !p.shiftOpen}
         />
         <span className="flex items-center px-2 text-slate-500">
           <Icon name="chevronDown" size={16} />
@@ -703,47 +767,67 @@ function DayShiftControl(p: {
       {open && (
         <div
           role="menu"
-          className="absolute end-0 z-30 mt-1.5 w-80 rounded-xl border border-slate-300 bg-white p-2 shadow-sheet"
+          className="absolute end-0 z-30 mt-1.5 w-[min(24rem,calc(100vw-1.5rem))] space-y-2 rounded-2xl border border-slate-300 bg-white p-3 shadow-sheet"
         >
-          <p className="rounded-lg bg-slate-100 px-3 py-2 text-xs leading-relaxed text-slate-700">
+          <Step
+            n={1}
+            done={dayOpen}
+            title={t('shell.captionDay')}
+            status={dayOpen ? t('shell.statusOpen') : t('shell.statusNotStarted')}
+            detail={
+              dayOpen
+                ? `${t('shell.stepDayOpen', { date: ltr(dateLabel(p.dayDate ?? '', p.lang)) })}${
+                    p.dayOpenedAt
+                      ? ` ${t('shell.openedAt', { time: ltr(timeOf(p.dayOpenedAt, p.lang)) })}`
+                      : ''
+                  }`
+                : t('shell.startDayHint')
+            }
+          >
+            {!dayOpen && p.canOpenDay && (
+              <button className="btn-primary w-full" disabled={p.busy} onClick={act(p.onOpenDay)}>
+                {t('shell.openDay')}
+              </button>
+            )}
+            {dayOpen && p.canCloseDay && (
+              <MenuItem onClick={act(p.onCloseDay)}>
+                <Icon name="check" size={20} />
+                {t('cash.closeDay')}
+              </MenuItem>
+            )}
+          </Step>
+          <Step
+            n={2}
+            done={p.shiftOpen}
+            title={t('shell.captionShift')}
+            status={p.shiftOpen ? t('shell.statusOpen') : t('shell.statusNotStarted')}
+            detail={
+              p.shiftOpen
+                ? t('shell.stepShiftOpen', {
+                    name: p.cashier,
+                    time: ltr(timeOf(p.shiftOpenedAt, p.lang)),
+                    float: ltr(formatRs(p.floatPaisa ?? 0)),
+                  })
+                : dayOpen
+                  ? t('shell.startShiftHint')
+                  : t('shell.needDayFirst')
+            }
+          >
+            {dayOpen && !p.shiftOpen && p.canOpenShift && (
+              <button className="btn-primary w-full" onClick={act(p.onOpenShift)}>
+                {t('shell.openShift')}
+              </button>
+            )}
+            {dayOpen && p.shiftOpen && (
+              <MenuItem onClick={act(p.onDrawer)}>
+                <Icon name="cash" size={20} />
+                {t('cash.drawer')}
+              </MenuItem>
+            )}
+          </Step>
+          <p className="px-1 text-xs leading-relaxed text-slate-600">
             {t('shell.dayShiftExplain')}
           </p>
-          {!dayOpen && (
-            <>
-              <p className="hint px-3 py-2">{t('shell.startDayHint')}</p>
-              {p.canOpenDay && (
-                <button
-                  className="btn-primary mb-1 w-full"
-                  disabled={p.busy}
-                  onClick={act(p.onOpenDay)}
-                >
-                  {t('shell.openDay')}
-                </button>
-              )}
-            </>
-          )}
-          {dayOpen && !p.shiftOpen && (
-            <>
-              <p className="hint px-3 py-2">{t('shell.startShiftHint')}</p>
-              {p.canOpenShift && (
-                <button className="btn-primary mb-1 w-full" onClick={act(p.onOpenShift)}>
-                  {t('shell.openShift')}
-                </button>
-              )}
-            </>
-          )}
-          {dayOpen && p.shiftOpen && (
-            <MenuItem onClick={act(p.onDrawer)}>
-              <Icon name="cash" size={20} />
-              {t('cash.drawer')}
-            </MenuItem>
-          )}
-          {dayOpen && p.canCloseDay && (
-            <MenuItem onClick={act(p.onCloseDay)}>
-              <Icon name="check" size={20} />
-              {t('cash.closeDay')}
-            </MenuItem>
-          )}
         </div>
       )}
     </div>
@@ -774,12 +858,14 @@ function AccountMenu({
   name,
   role,
   lang,
+  live,
   onLang,
   onLogout,
 }: {
   name: string;
   role: string;
   lang: Lang;
+  live: boolean;
   onLang: (l: Lang) => void;
   onLogout: () => void;
 }) {
@@ -797,10 +883,18 @@ function AccountMenu({
         className="flex min-h-touch items-center gap-2.5 rounded-xl border border-transparent py-1 ps-1 pe-2 hover:border-slate-300 hover:bg-slate-50"
         onClick={() => setOpen(!open)}
       >
-        <Avatar name={name} />
+        <span className="relative" title={live ? t('shell.liveHint') : t('shell.offlineHint')}>
+          <Avatar name={name} />
+          <span
+            aria-hidden="true"
+            className={`absolute -bottom-0.5 -end-0.5 size-3.5 rounded-full ring-2 ring-white ${live ? 'bg-emerald-500' : 'animate-pulse bg-amber-500'}`}
+          />
+        </span>
         <span className="hidden flex-col items-start leading-tight lg:flex">
           <span className="max-w-[10rem] truncate text-sm font-semibold">{name}</span>
-          <span className="text-xs font-medium text-slate-600">{roleName}</span>
+          <span className="text-xs font-medium text-slate-600">
+            {roleName} · {live ? t('shell.live') : t('shell.reconnecting')}
+          </span>
         </span>
         <Icon name="chevronDown" size={16} className="hidden text-slate-500 sm:block" />
       </button>
@@ -876,17 +970,22 @@ function OpenShiftDialog({ onClose }: { onClose: () => void }) {
         </>
       }
     >
-      <label className="block space-y-1">
-        <span className="label">{t('shell.float')}</span>
-        <input
-          className="input"
-          inputMode="decimal"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
-          autoFocus
-        />
-      </label>
+      <div className="space-y-3">
+        <p className="rounded-lg bg-slate-100 p-3 text-sm leading-relaxed text-slate-700">
+          {t('shell.floatHint')}
+        </p>
+        <label className="block space-y-1">
+          <span className="label">{t('shell.float')}</span>
+          <input
+            className="input text-2xl font-semibold"
+            inputMode="decimal"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            autoFocus
+          />
+        </label>
+      </div>
       {error && (
         <p role="alert" className="mt-2 text-sm text-rose-700">
           {error}

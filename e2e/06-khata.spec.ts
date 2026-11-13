@@ -100,18 +100,26 @@ test('the customer pays part of the balance at the counter and the ledger shows 
 
   await page.getByRole('button', { name: 'Receive payment' }).click();
   await page.getByRole('button', { name: 'Cash', exact: true }).click();
-  await page.getByLabel('Amount (Rs)').fill('1500'); // more than owed
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByLabel('Amount (Rs)').fill('1500'); // more than owed: refused before it is sent
   await expect(page.getByText('More than the customer owes')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled();
 
   await page.getByLabel('Amount (Rs)').fill('300');
+  await expect(page.getByText(/Balance after this payment:.*Rs 700/)).toBeVisible();
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('Saved')).toBeVisible();
   await expect(page.getByTestId('khata-balance')).toContainText('Rs 700');
 
-  const ledger = page.getByRole('row').filter({ hasText: /Credit sale|Payment/ });
+  const ledger = page.getByTestId('khata-entry');
   await expect(ledger.filter({ hasText: 'Payment' })).toHaveCount(1);
   await expect(ledger.filter({ hasText: 'Credit sale' })).toHaveCount(3);
+  // each line says what the customer owed right after it: the Rs 300 payment left Rs 700
+  await expect(ledger.filter({ hasText: 'Payment' })).toContainText('Rs 700');
+  // the filter narrows the list to one kind of entry
+  await page.getByRole('button', { name: 'Payments', exact: true }).click();
+  await expect(ledger).toHaveCount(1);
+  await page.getByRole('button', { name: 'All', exact: true }).click();
+  await expect(ledger).toHaveCount(4);
 
   // cashiers cannot adjust or change limits
   await expect(page.getByRole('button', { name: 'Adjust balance' })).toHaveCount(0);

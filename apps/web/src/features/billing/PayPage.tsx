@@ -493,6 +493,13 @@ export function PayPage() {
                       })}
                     </p>
                   )}
+                  {r.khata && amt > 0 && amt <= r.khata.availableCreditPaisa && (
+                    <p className="text-sm text-slate-700">
+                      {t('khata.afterBill', {
+                        amount: ltr(formatRs(r.khata.balancePaisa + amt)),
+                      })}
+                    </p>
+                  )}
                 </div>
               )}
               {m.needs_reference && (

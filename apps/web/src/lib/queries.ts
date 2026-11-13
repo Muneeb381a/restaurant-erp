@@ -7,6 +7,7 @@ import type {
   Floor,
   KhataAccount,
   KhataEntry,
+  KhataSummary,
   Me,
   Menu,
   Order,
@@ -111,20 +112,31 @@ export const usePaymentMethods = () =>
     staleTime: 60_000,
   });
 
-export const useKhataAccounts = (search: string, owingOnly = false) =>
+export const useKhataAccounts = (
+  search: string,
+  owingOnly = false,
+  sort: 'name' | 'owed' = 'name',
+) =>
   useQuery({
-    queryKey: ['khata', 'list', search, owingOnly],
+    queryKey: ['khata', 'list', search, owingOnly, sort],
     queryFn: async () =>
       (
         await api<{ items: KhataAccount[] }>(
-          `/khata/accounts?search=${encodeURIComponent(search)}${owingOnly ? '&owing=true' : ''}`,
+          `/khata/accounts?search=${encodeURIComponent(search)}&sort=${sort}${owingOnly ? '&owing=true' : ''}`,
         )
       ).items,
     placeholderData: (prev) => prev,
   });
 
-export const useKhataAccount = (id: string) =>
+export const useKhataSummary = () =>
+  useQuery({ queryKey: ['khata', 'summary'], queryFn: () => api<KhataSummary>('/khata/summary') });
+
+export const useKhataAccount = (id: string, entries = 100) =>
   useQuery({
-    queryKey: ['khata', 'one', id],
-    queryFn: () => api<KhataAccount & { entries: KhataEntry[] }>(`/khata/accounts/${id}`),
+    queryKey: ['khata', 'one', id, entries],
+    queryFn: () =>
+      api<KhataAccount & { notes: string | null; entries: KhataEntry[] }>(
+        `/khata/accounts/${id}?limit=${entries}`,
+      ),
+    placeholderData: (prev) => prev,
   });

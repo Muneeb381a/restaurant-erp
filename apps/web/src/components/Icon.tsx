@@ -23,6 +23,7 @@ const PATHS = {
   check: 'M5 12.5l4.5 4.5L19 7.5',
   x: 'M6 6l12 12M18 6L6 18',
   more: 'M5 12v.01M12 12v.01M19 12v.01',
+  sidebar: 'M4 5h16v14H4V5ZM9 5v14',
   printer: 'M7 9V4h10v5M7 17H5V9h14v8h-2M7 14h10v6H7v-6Z',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 7v5l3 2',
   search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14ZM20 20l-4-4',
