@@ -3,6 +3,7 @@ dist
 coverage
 .env
 .env.local
+.env.cloud
 *.log
 .DS_Store
 .vite

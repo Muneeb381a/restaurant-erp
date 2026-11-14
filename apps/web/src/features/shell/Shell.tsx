@@ -444,7 +444,7 @@ function SignedIn() {
       )}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-slate-300 bg-white px-3 shadow-[0_1px_0_rgba(15,23,42,.04)] sm:gap-3 sm:px-5">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3 sm:gap-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-3 me-auto">
             {wide && (
               <button
@@ -453,35 +453,32 @@ function SignedIn() {
                 aria-label={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
                 aria-expanded={!folded}
                 title={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
-                className="btn-quiet size-11 shrink-0 justify-center px-0 text-slate-700"
+                className="btn-quiet size-10 shrink-0 justify-center rounded-lg px-0 text-slate-600 hover:bg-slate-100"
               >
                 <Icon name="sidebar" size={22} data-flip />
               </button>
             )}
             <div className="min-w-0 leading-tight">
-              <div className="truncate text-lg font-semibold tracking-tight text-slate-900">
+              {restaurant && (!wide || folded) && (
+                <div className="hidden truncate text-xs font-medium text-slate-500 sm:block">
+                  {restaurant}
+                </div>
+              )}
+              <div className="truncate text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
                 {current?.label || restaurant || t('app.title')}
-              </div>
-              <div className="truncate text-xs font-medium text-slate-600">
-                {day.data?.businessDate
-                  ? ltr(longDate(day.data.businessDate, i18n.language))
-                  : t('shell.dayClosed')}
-                <span className="hidden sm:inline">{restaurant ? ` · ${restaurant}` : ''}</span>
               </div>
             </div>
           </div>
           <ClockLive live={live} lang={i18n.language} />
           <button
             type="button"
-            className="btn-quiet min-h-11 px-2.5 text-slate-700 lg:px-3"
+            className="btn-quiet hidden size-10 shrink-0 justify-center rounded-full px-0 text-slate-500 hover:bg-slate-100 hover:text-slate-800 sm:inline-flex"
             aria-label={t('help.open')}
             title={t('help.open')}
             onClick={() => setHelpOpen(true)}
           >
             <Icon name="info" size={20} />
-            <span className="hidden lg:inline">{t('help.open')}</span>
           </button>
-          <span className="hidden h-8 w-px bg-slate-300 md:block" aria-hidden="true" />
           <DayShiftControl
             dayDate={day.data?.businessDate}
             dayOpenedAt={day.data?.openedAt}
@@ -555,13 +552,6 @@ function useMediaQuery(query: string): boolean {
   return match;
 }
 
-const longDate = (iso: string, lang: string): string =>
-  new Date(`${iso}T00:00:00`).toLocaleDateString(lang === 'ur' ? 'ur-PK' : 'en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
-
 /** Closes a popover on outside click / Esc. */
 function usePopover(): {
   open: boolean;
@@ -623,10 +613,10 @@ function ClockLive({ live, lang }: { live: boolean; lang: string }) {
   });
   return (
     <div
-      className="hidden items-center md:flex"
+      className="hidden items-center lg:flex"
       title={live ? t('shell.liveHint') : t('shell.offlineHint')}
     >
-      <span className="money text-lg font-semibold tracking-tight text-slate-900">{ltr(time)}</span>
+      <span className="money text-sm font-medium text-slate-500">{ltr(time)}</span>
     </div>
   );
 }
@@ -663,22 +653,21 @@ function StatusCell({
   /** This is the step the person should do next: the icon pulses. */
   nudge?: boolean;
 }) {
+  const first = icon === 'clock';
   return (
-    <span className="flex items-center gap-2.5 px-2 py-1.5 sm:px-3">
+    <span className={`flex items-center gap-2 py-1.5 ${first ? 'ps-3.5 pe-3' : 'px-3'}`}>
       <span
-        className={`relative flex size-9 shrink-0 items-center justify-center rounded-lg ${on ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}`}
+        aria-hidden="true"
+        className={`relative size-2.5 shrink-0 rounded-full ${on ? 'bg-emerald-600' : 'bg-amber-500'}`}
       >
         {nudge && (
-          <span className="absolute inset-0 animate-ping rounded-lg bg-amber-400/60 motion-reduce:hidden" />
+          <span className="absolute inset-0 animate-ping rounded-full bg-amber-400 motion-reduce:hidden" />
         )}
-        <Icon name={icon} size={18} className="relative" />
       </span>
-      <span className="sr-only flex-col items-start leading-tight sm:not-sr-only sm:flex">
-        <span className="whitespace-nowrap text-[0.65rem] font-semibold uppercase tracking-[0.1em] opacity-70">
-          {caption}
-        </span>
+      <span className="flex flex-col items-start leading-tight">
+        <span className="sr-only">{caption}</span>
         <span className="whitespace-nowrap text-sm font-semibold">{title}</span>
-        <span className="max-w-[9.5rem] truncate whitespace-nowrap text-xs font-medium opacity-80">
+        <span className="hidden max-w-[9.5rem] truncate whitespace-nowrap text-xs font-medium text-slate-500 lg:block">
           {sub}
         </span>
       </span>
@@ -760,10 +749,10 @@ function DayShiftControl(p: {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`${dayTitle} · ${shiftTitle}`}
-        className={`flex min-h-touch items-stretch divide-x rounded-xl border text-start transition-colors rtl:divide-x-reverse ${
+        className={`flex min-h-11 items-stretch divide-x rounded-full border text-start transition-colors rtl:divide-x-reverse ${
           needsAction
-            ? 'divide-amber-300 border-amber-400 bg-amber-50 text-amber-950 hover:bg-amber-100'
-            : 'divide-emerald-200 border-emerald-300 bg-emerald-50 text-emerald-950 hover:bg-emerald-100'
+            ? 'divide-amber-200 border-amber-400 bg-amber-50 text-amber-950 hover:bg-amber-100'
+            : 'divide-slate-200 border-slate-300 bg-white text-slate-900 hover:bg-slate-50'
         }`}
         onClick={() => setOpen(!open)}
       >
@@ -789,7 +778,7 @@ function DayShiftControl(p: {
           }
           nudge={dayOpen && !p.shiftOpen}
         />
-        <span className="flex items-center px-2 text-slate-500">
+        <span className="flex items-center pe-3 ps-1 text-slate-400">
           <Icon name="chevronDown" size={16} />
         </span>
       </button>
