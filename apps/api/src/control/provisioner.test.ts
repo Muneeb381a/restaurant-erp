@@ -69,7 +69,10 @@ describe('Neon provisioner', () => {
         .fn()
         .mockResolvedValue(json(401, { message: 'bad key' })) as unknown as typeof fetch,
     });
-    await expect(refused.provision('abc')).rejects.toMatchObject({ mayHaveCreated: false });
+    await expect(refused.provision('abc')).rejects.toMatchObject({
+      mayHaveCreated: false,
+      message: 'Neon refused to create the project (HTTP 401): bad key',
+    });
 
     const timedOut = createNeonProvisioner({
       apiKey: 'secret-key',

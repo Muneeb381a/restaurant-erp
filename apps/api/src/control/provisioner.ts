@@ -105,8 +105,15 @@ export function createNeonProvisioner(o: NeonOptions): Provisioner {
       }
       if (!res.ok) {
         // 503 and 423 are safe to retry (Neon documents them so); any other refusal created nothing
+        let why = '';
+        try {
+          const j = (await res.json()) as { message?: unknown };
+          if (typeof j.message === 'string') why = `: ${j.message.slice(0, 200)}`;
+        } catch {
+          // the body is only a hint; the status code is enough
+        }
         throw new ProvisionError(
-          `Neon refused to create the project (HTTP ${res.status})`,
+          `Neon refused to create the project (HTTP ${res.status})${why}`,
           res.status >= 500 && res.status !== 503,
         );
       }
