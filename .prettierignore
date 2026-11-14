@@ -8,3 +8,4 @@ apps/api/src/db/types.ts
 docs
 CLAUDE.md
 README.md
+.vercel

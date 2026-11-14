@@ -15,6 +15,8 @@
     "db:migrate": "pnpm --filter @erp/api db:migrate",
     "db:migrate:phase2": "pnpm --filter @erp/api db:migrate:phase2",
     "db:reset": "pnpm db:up && pnpm --filter @erp/api db:reset",
+    "platform:admin": "pnpm --filter @erp/api platform:admin",
+    "platform:migrate": "pnpm --filter @erp/api platform:migrate",
     "db:codegen": "pnpm --filter @erp/api db:codegen",
     "test": "pnpm -r --workspace-concurrency=1 test",
     "test:e2e": "playwright test",
@@ -22,12 +24,15 @@
     "format": "prettier --write .",
     "typecheck": "pnpm -r typecheck",
     "prepare": "husky",
-    "tunnel": "node scripts/tunnel.mjs"
+    "tunnel": "node scripts/tunnel.mjs",
+    "vercel:build": "node scripts/vercel-build.mjs",
+    "vercel:local": "node scripts/vercel-local.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@playwright/test": "^1.65.0",
     "@types/node": "^22.10.0",
+    "esbuild": "0.25.12",
     "eslint": "^9.17.0",
     "globals": "^15.14.0",
     "husky": "^9.1.7",

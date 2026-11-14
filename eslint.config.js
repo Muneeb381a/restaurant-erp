@@ -3,7 +3,15 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', 'apps/api/src/db/types.ts'] },
+  {
+    ignores: [
+      '**/dist/**',
+      '.vercel/**',
+      '**/coverage/**',
+      '**/node_modules/**',
+      'apps/api/src/db/types.ts',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
