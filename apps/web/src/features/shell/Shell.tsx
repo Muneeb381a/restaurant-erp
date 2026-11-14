@@ -236,13 +236,13 @@ function SignedIn() {
 
   const sideItem = (it: NavItem): ReactNode => {
     const cls = ({ isActive }: { isActive?: boolean }): string =>
-      `group relative flex w-full items-center gap-3 rounded-xl text-[0.95rem] font-medium transition-colors ${expanded ? 'min-h-[3.25rem]' : 'min-h-11'} ${
-        expanded ? 'px-3' : 'justify-center px-0'
+      `group relative flex w-full items-center gap-2.5 rounded-lg text-sm font-medium transition-colors min-h-10 ${
+        expanded ? 'px-2.5' : 'justify-center px-0'
       } ${isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-300 hover:bg-white/[.08] hover:text-white'}`;
     const body = (active: boolean): ReactNode => (
       <>
         <span className="relative shrink-0">
-          <Icon name={it.icon} size={22} className={active ? 'text-emerald-700' : ''} />
+          <Icon name={it.icon} size={20} className={active ? 'text-emerald-700' : ''} />
           {it.badge && !expanded && (
             <span className="absolute -end-1.5 -top-1.5 flex min-w-[1.05rem] items-center justify-center rounded-full bg-amber-400 px-1 text-[0.65rem] font-bold leading-[1.05rem] text-slate-900">
               {it.badge.n}
@@ -251,13 +251,6 @@ function SignedIn() {
         </span>
         <span className={expanded ? 'min-w-0 flex-1 text-start leading-tight' : 'sr-only'}>
           <span className="block truncate">{it.label}</span>
-          {it.hint && (
-            <span
-              className={`block truncate text-xs font-normal ${active ? 'text-slate-500' : 'text-slate-400'}`}
-            >
-              {it.hint}
-            </span>
-          )}
         </span>
         {it.badge && expanded && (
           <span
@@ -269,7 +262,7 @@ function SignedIn() {
         )}
       </>
     );
-    const title = expanded ? undefined : it.badge ? `${it.label}: ${it.badge.title}` : it.label;
+    const title = expanded ? it.hint : it.badge ? `${it.label}: ${it.badge.title}` : it.label;
     return it.to ? (
       <NavLink
         key={it.label}
@@ -328,22 +321,22 @@ function SignedIn() {
     <div className="flex h-full flex-col-reverse md:flex-row">
       {/* tablets and desktops: the side menu */}
       <div
-        className={`hidden shrink-0 flex-col bg-slate-900 text-slate-200 transition-[width] duration-200 md:flex ${expanded ? 'w-60' : 'w-[4.75rem]'}`}
+        className={`hidden shrink-0 flex-col bg-slate-900 text-slate-200 transition-[width] duration-200 md:flex ${expanded ? 'w-52' : 'w-16'}`}
       >
         <Link
           to="/"
           aria-label={t('app.title')}
-          className={`flex h-16 shrink-0 items-center gap-3 border-b border-white/10 ${expanded ? 'px-4' : 'justify-center'}`}
+          className={`flex h-14 shrink-0 items-center gap-2.5 border-b border-white/10 ${expanded ? 'px-3.5' : 'justify-center'}`}
         >
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm ring-1 ring-white/15">
-            <Mark size={26} />
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm ring-1 ring-white/15">
+            <Mark size={22} />
           </span>
           {expanded && (
             <span className="min-w-0 leading-tight">
-              <span className="block truncate text-[1rem] font-semibold tracking-tight text-white">
+              <span className="block truncate text-sm font-semibold tracking-tight text-white">
                 {restaurant || t('app.title')}
               </span>
-              <span className="block text-[0.7rem] font-medium uppercase tracking-[0.12em] text-slate-400">
+              <span className="block text-[0.62rem] font-medium uppercase tracking-[0.12em] text-slate-400">
                 {t('shell.pos')}
               </span>
             </span>
@@ -351,16 +344,16 @@ function SignedIn() {
         </Link>
         <nav
           aria-label={t('shell.mainNav')}
-          className="min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-5"
+          className="min-h-0 flex-1 space-y-3 overflow-y-auto px-2.5 py-3"
         >
           {groups.map((g, i) => (
-            <div key={g.label} className="space-y-1">
+            <div key={g.label} className="space-y-0.5">
               {expanded ? (
-                <div className="px-3 pb-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                <div className="px-2.5 pb-1 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500">
                   {g.label}
                 </div>
               ) : (
-                i > 0 && <div className="mx-3 mb-3 border-t border-white/10" />
+                i > 0 && <div className="mx-2 mb-2 border-t border-white/10" />
               )}
               {g.items.map((it) => sideItem(it))}
             </div>
@@ -444,7 +437,7 @@ function SignedIn() {
       )}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3 sm:gap-3 sm:px-5">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3 sm:gap-2.5 sm:px-4">
           <div className="flex min-w-0 items-center gap-3 me-auto">
             {wide && (
               <button
@@ -453,9 +446,9 @@ function SignedIn() {
                 aria-label={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
                 aria-expanded={!folded}
                 title={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
-                className="btn-quiet size-10 shrink-0 justify-center rounded-lg px-0 text-slate-600 hover:bg-slate-100"
+                className="btn-quiet size-9 shrink-0 justify-center rounded-lg px-0 text-slate-600 hover:bg-slate-100"
               >
-                <Icon name="sidebar" size={22} data-flip />
+                <Icon name="sidebar" size={20} data-flip />
               </button>
             )}
             <div className="min-w-0 leading-tight">
@@ -464,7 +457,7 @@ function SignedIn() {
                   {restaurant}
                 </div>
               )}
-              <div className="truncate text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
+              <div className="truncate text-base font-semibold tracking-tight text-slate-900 sm:text-base">
                 {current?.label || restaurant || t('app.title')}
               </div>
             </div>
@@ -472,12 +465,12 @@ function SignedIn() {
           <ClockLive live={live} lang={i18n.language} />
           <button
             type="button"
-            className="btn-quiet hidden size-10 shrink-0 justify-center rounded-full px-0 text-slate-500 hover:bg-slate-100 hover:text-slate-800 sm:inline-flex"
+            className="btn-quiet hidden size-9 shrink-0 justify-center rounded-full px-0 text-slate-500 hover:bg-slate-100 hover:text-slate-800 sm:inline-flex"
             aria-label={t('help.open')}
             title={t('help.open')}
             onClick={() => setHelpOpen(true)}
           >
-            <Icon name="info" size={20} />
+            <Icon name="info" size={18} />
           </button>
           <DayShiftControl
             dayDate={day.data?.businessDate}
@@ -655,7 +648,7 @@ function StatusCell({
 }) {
   const first = icon === 'clock';
   return (
-    <span className={`flex items-center gap-2 py-1.5 ${first ? 'ps-3.5 pe-3' : 'px-3'}`}>
+    <span className={`flex items-center gap-1.5 py-1 ${first ? 'ps-3 pe-2.5' : 'px-2.5'}`}>
       <span
         aria-hidden="true"
         className={`relative size-2.5 shrink-0 rounded-full ${on ? 'bg-emerald-600' : 'bg-amber-500'}`}
@@ -664,10 +657,10 @@ function StatusCell({
           <span className="absolute inset-0 animate-ping rounded-full bg-amber-400 motion-reduce:hidden" />
         )}
       </span>
-      <span className="flex flex-col items-start leading-tight">
+      <span className="flex items-baseline gap-1.5 leading-tight">
         <span className="sr-only">{caption}</span>
-        <span className="whitespace-nowrap text-sm font-semibold">{title}</span>
-        <span className="hidden max-w-[9.5rem] truncate whitespace-nowrap text-xs font-medium text-slate-500 lg:block">
+        <span className="whitespace-nowrap text-[0.8rem] font-semibold">{title}</span>
+        <span className="hidden max-w-[8rem] truncate whitespace-nowrap text-xs font-medium text-slate-500 xl:block">
           {sub}
         </span>
       </span>
@@ -749,7 +742,7 @@ function DayShiftControl(p: {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`${dayTitle} · ${shiftTitle}`}
-        className={`flex min-h-11 items-stretch divide-x rounded-full border text-start transition-colors rtl:divide-x-reverse ${
+        className={`flex min-h-9 items-stretch divide-x rounded-full border text-start transition-colors rtl:divide-x-reverse ${
           needsAction
             ? 'divide-amber-200 border-amber-400 bg-amber-50 text-amber-950 hover:bg-amber-100'
             : 'divide-slate-200 border-slate-300 bg-white text-slate-900 hover:bg-slate-50'
@@ -778,8 +771,8 @@ function DayShiftControl(p: {
           }
           nudge={dayOpen && !p.shiftOpen}
         />
-        <span className="flex items-center pe-3 ps-1 text-slate-400">
-          <Icon name="chevronDown" size={16} />
+        <span className="flex items-center pe-2.5 ps-0.5 text-slate-400">
+          <Icon name="chevronDown" size={14} />
         </span>
       </button>
       {open && (
@@ -902,7 +895,7 @@ function AccountMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t('shell.account')}
-        className="flex min-h-touch items-center gap-2.5 rounded-xl border border-transparent py-1 ps-1 pe-2 hover:border-slate-300 hover:bg-slate-50"
+        className="flex min-h-10 items-center gap-2 rounded-lg border border-transparent py-0.5 ps-0.5 pe-1.5 hover:border-slate-300 hover:bg-slate-50"
         onClick={() => setOpen(!open)}
       >
         <span
@@ -911,20 +904,20 @@ function AccountMenu({
             polling ? t('shell.pollingHint') : live ? t('shell.liveHint') : t('shell.offlineHint')
           }
         >
-          <Avatar name={name} />
+          <Avatar name={name} size={32} />
           <span
             aria-hidden="true"
-            className={`absolute -bottom-0.5 -end-0.5 size-3.5 rounded-full ring-2 ring-white ${live ? 'bg-emerald-500' : 'animate-pulse bg-amber-500'}`}
+            className={`absolute -bottom-0.5 -end-0.5 size-3 rounded-full ring-2 ring-white ${live ? 'bg-emerald-500' : 'animate-pulse bg-amber-500'}`}
           />
         </span>
         <span className="hidden flex-col items-start leading-tight lg:flex">
-          <span className="max-w-[10rem] truncate text-sm font-semibold">{name}</span>
-          <span className="text-xs font-medium text-slate-600">
+          <span className="max-w-[9rem] truncate text-[0.8rem] font-semibold">{name}</span>
+          <span className="text-[0.7rem] font-medium text-slate-500">
             {roleName} ·{' '}
             {polling ? t('shell.autoRefresh') : live ? t('shell.live') : t('shell.reconnecting')}
           </span>
         </span>
-        <Icon name="chevronDown" size={16} className="hidden text-slate-500 sm:block" />
+        <Icon name="chevronDown" size={14} className="hidden text-slate-400 sm:block" />
       </button>
       {open && (
         <div
