@@ -7,7 +7,50 @@ export interface Me {
   role: string;
   branchId: string | null;
   discountLimitBps: number;
+  /** A temporary password is still in use: the server serves nothing else until it is changed. */
+  mustChangePassword?: boolean;
   permissions: string[];
+}
+
+/** The receipt as the API sends it for the browser to print (mirrors packages/printing ReceiptDoc). */
+export interface ReceiptDocView {
+  restaurant: string;
+  restaurantUr?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  ntn?: string | null;
+  strn?: string | null;
+  taxLabel?: string | null;
+  fiscalNo?: string | null;
+  billNo: number;
+  orderNo: number;
+  orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
+  tableCode?: string | null;
+  waiter?: string | null;
+  cashier?: string | null;
+  dateTime: string;
+  lines: {
+    qty: number;
+    name: string;
+    nameUr?: string | null;
+    weightG?: number | null;
+    modifiers?: string[];
+    amountPaisa: number;
+  }[];
+  subtotalPaisa: number;
+  discountPaisa: number;
+  serviceChargePaisa: number;
+  taxPaisa: number;
+  roundOffPaisa: number;
+  totalPaisa: number;
+  payments: {
+    method: string;
+    amountPaisa: number;
+    tenderedPaisa?: number | null;
+    changePaisa: number;
+  }[];
+  khataCustomer?: string | null;
+  duplicate?: number;
 }
 
 export interface BusinessDay {

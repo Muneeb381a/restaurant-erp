@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { storageKey } from './tenant';
 
 export interface Tokens {
   accessToken: string;
@@ -25,6 +26,9 @@ export const useAuth = create<AuthState>()(
       setLastUsername: (lastUsername) => set({ lastUsername }),
       logout: () => set({ tokens: null }),
     }),
-    { name: 'erp-auth', partialize: (s) => ({ tokens: s.tokens, lastUsername: s.lastUsername }) },
+    {
+      name: storageKey('erp-auth'),
+      partialize: (s) => ({ tokens: s.tokens, lastUsername: s.lastUsername }),
+    },
   ),
 );

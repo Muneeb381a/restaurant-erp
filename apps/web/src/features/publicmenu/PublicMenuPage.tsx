@@ -6,6 +6,7 @@ import { Icon } from '../../components/Icon';
 import { Mark } from '../../components/Brand';
 import { localName, setLanguage, type Lang } from '../../i18n';
 import { formatRs, ltr } from '../../lib/money';
+import { apiBase, withApiBase } from '../../lib/tenant';
 
 /** Shape of GET /public/menu (apps/api/src/modules/menu/public.routes.ts). */
 interface PublicMenu {
@@ -49,7 +50,7 @@ class MenuUnavailable extends Error {
 
 async function loadMenu(branch: string | null): Promise<PublicMenu> {
   const res = await fetch(
-    `/api/v1/public/menu${branch ? `?branch=${encodeURIComponent(branch)}` : ''}`,
+    `${apiBase()}/public/menu${branch ? `?branch=${encodeURIComponent(branch)}` : ''}`,
   );
   if (!res.ok) throw new MenuUnavailable(res.status === 404);
   return (await res.json()) as PublicMenu;
@@ -365,7 +366,7 @@ export function PublicMenuPage() {
                             </div>
                             {i.imageUrl && (
                               <img
-                                src={i.imageUrl}
+                                src={withApiBase(i.imageUrl)}
                                 alt={localName(lang, i.name, i.nameUr)}
                                 loading="lazy"
                                 className="mc-photo size-[5.5rem] shrink-0 object-cover"

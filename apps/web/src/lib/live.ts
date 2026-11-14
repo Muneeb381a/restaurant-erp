@@ -2,12 +2,23 @@ import type { QueryClient } from '@tanstack/react-query';
 import { create } from 'zustand';
 import { api } from './api';
 import { useAuth } from './auth-store';
+import { apiBase } from './tenant';
 
 /** True while the live stream is connected: screens then poll slowly (a safety net) instead of every 3 s. */
-export const useLive = create<{ connected: boolean }>(() => ({ connected: false }));
+export const useLive = create<{ connected: boolean; polling: boolean }>(() => ({
+  connected: false,
+  polling: false,
+}));
 
-export const pollMs = (fast: number, slow = 30_000): number =>
-  useLive.getState().connected ? slow : fast;
+export const pollMs = (fast: number, slow = 30_000): number => {
+  const s = useLive.getState();
+  if (s.connected) return slow;
+  // no live stream on this server (serverless): refresh at a calmer pace than the offline retry
+  return s.polling ? Math.max(fast, POLLING_MIN_MS) : fast;
+};
+
+/** Fastest refresh when the server has no live stream: every screen asks the server this often. */
+const POLLING_MIN_MS = 8_000;
 
 /** Which cached queries a change in each topic makes stale. */
 const KEYS: Record<string, string[]> = {
@@ -66,10 +77,16 @@ export function startLive(qc: QueryClient): () => void {
     const tokens = useAuth.getState().tokens;
     if (!tokens || stopped) return;
     abort = new AbortController();
-    const res = await fetch('/api/v1/events', {
+    const res = await fetch(`${apiBase()}/events`, {
       headers: { authorization: `Bearer ${tokens.accessToken}`, accept: 'text/event-stream' },
       signal: abort.signal,
     });
+    if (res.status === 501) {
+      // the server runs without a live stream: screens poll, and there is nothing to retry
+      useLive.setState({ polling: true, connected: false });
+      stopped = true;
+      return;
+    }
     if (!res.ok || !res.body) throw new Error(`events ${res.status}`);
     const reader = res.body.getReader();
     const decoder = new TextDecoder();

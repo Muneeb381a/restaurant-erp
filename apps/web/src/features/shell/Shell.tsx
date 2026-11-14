@@ -16,6 +16,7 @@ import type { Shift } from '../../lib/types';
 import { ADMIN_SECTIONS } from '../admin/AdminLayout';
 import { useKitchenBoard } from '../kitchen/KitchenPage';
 import { localName, setLanguage, type Lang } from '../../i18n';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { HelpDialog, helpKeyFor } from './HelpDialog';
 import { DayCloseDialog, ShiftDialog } from './ShiftDialogs';
 import { watchResponsiveTables } from '../../lib/responsive-tables';
@@ -24,7 +25,26 @@ import { watchResponsiveTables } from '../../lib/responsive-tables';
 export function Shell() {
   const tokens = useAuth((s) => s.tokens);
   if (!tokens) return <Navigate to="/login" replace />;
-  return <SignedIn />;
+  return (
+    <PasswordGate>
+      <SignedIn />
+    </PasswordGate>
+  );
+}
+
+/**
+ * A temporary password must be replaced before anything else loads: the server refuses every other
+ * request until then, so the app behind is not even started (no screen firing requests that fail).
+ */
+function PasswordGate({ children }: { children: ReactNode }) {
+  const me = useMe();
+  if (me.data?.mustChangePassword)
+    return (
+      <div className="h-full bg-slate-100">
+        <ChangePasswordDialog forced onClose={() => undefined} />
+      </div>
+    );
+  return <>{children}</>;
 }
 
 interface NavItem {
@@ -54,7 +74,8 @@ function SignedIn() {
   const kitchenN = (kitchen.data?.tickets ?? []).filter(
     (x) => x.status === (cooks ? 'NEW' : 'READY'),
   ).length;
-  const live = useLive((x) => x.connected);
+  const polling = useLive((x) => x.polling);
+  const live = useLive((x) => x.connected) || polling; // polling is a normal state, not a fault
   const tablesBusy = (floor.data?.tables ?? []).filter((x) => x.status !== 'FREE').length;
   const tablesBilled = (floor.data?.tables ?? []).filter((x) => x.status === 'BILLED').length;
   const offline = (printers.data ?? []).filter((p) => p.state === 'OFFLINE');
@@ -90,6 +111,7 @@ function SignedIn() {
   };
   const [moreOpen, setMoreOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const { pathname } = useLocation();
   const helpPage = helpKeyFor(pathname);
 
@@ -483,7 +505,9 @@ function SignedIn() {
             role={me.data?.role ?? ''}
             lang={i18n.language as Lang}
             live={live}
+            polling={polling}
             onLang={setLanguage}
+            onPassword={() => setPasswordOpen(true)}
             onLogout={() => void logout()}
           />
         </header>
@@ -506,6 +530,9 @@ function SignedIn() {
       </div>
 
       {helpOpen && <HelpDialog page={helpPage} onClose={() => setHelpOpen(false)} />}
+      {passwordOpen && (
+        <ChangePasswordDialog forced={false} onClose={() => setPasswordOpen(false)} />
+      )}
       {floatOpen && <OpenShiftDialog onClose={() => setFloatOpen(false)} />}
       {drawerShift && <ShiftDialog shift={drawerShift} onClose={() => setDrawerShift(null)} />}
       {closingDay && <DayCloseDialog date={closingDate} onClose={() => setClosingDay(false)} />}
@@ -859,14 +886,18 @@ function AccountMenu({
   role,
   lang,
   live,
+  polling,
   onLang,
+  onPassword,
   onLogout,
 }: {
   name: string;
   role: string;
   lang: Lang;
   live: boolean;
+  polling: boolean;
   onLang: (l: Lang) => void;
+  onPassword: () => void;
   onLogout: () => void;
 }) {
   const { t } = useTranslation();
@@ -883,7 +914,12 @@ function AccountMenu({
         className="flex min-h-touch items-center gap-2.5 rounded-xl border border-transparent py-1 ps-1 pe-2 hover:border-slate-300 hover:bg-slate-50"
         onClick={() => setOpen(!open)}
       >
-        <span className="relative" title={live ? t('shell.liveHint') : t('shell.offlineHint')}>
+        <span
+          className="relative"
+          title={
+            polling ? t('shell.pollingHint') : live ? t('shell.liveHint') : t('shell.offlineHint')
+          }
+        >
           <Avatar name={name} />
           <span
             aria-hidden="true"
@@ -893,7 +929,8 @@ function AccountMenu({
         <span className="hidden flex-col items-start leading-tight lg:flex">
           <span className="max-w-[10rem] truncate text-sm font-semibold">{name}</span>
           <span className="text-xs font-medium text-slate-600">
-            {roleName} · {live ? t('shell.live') : t('shell.reconnecting')}
+            {roleName} ·{' '}
+            {polling ? t('shell.autoRefresh') : live ? t('shell.live') : t('shell.reconnecting')}
           </span>
         </span>
         <Icon name="chevronDown" size={16} className="hidden text-slate-500 sm:block" />
@@ -919,6 +956,15 @@ function AccountMenu({
           >
             <Icon name="globe" size={20} />
             {t('common.language')}
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setOpen(false);
+              onPassword();
+            }}
+          >
+            <Icon name="user" size={20} />
+            {t('shell.changePassword')}
           </MenuItem>
           <MenuItem tone="bad" onClick={onLogout}>
             <Icon name="logout" size={20} />

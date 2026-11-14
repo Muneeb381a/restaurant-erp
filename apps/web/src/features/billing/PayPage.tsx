@@ -7,8 +7,16 @@ import { Modal } from '../../components/Modal';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr, parseRs } from '../../lib/money';
 import { can, useBill, useMe, usePaymentMethods } from '../../lib/queries';
-import type { Bill, BillQuotes, KhataAccount, PaymentMethod, SettleResult } from '../../lib/types';
+import type {
+  Bill,
+  BillQuotes,
+  KhataAccount,
+  PaymentMethod,
+  ReceiptDocView,
+  SettleResult,
+} from '../../lib/types';
 import { KhataPicker } from '../khata/KhataPicker';
+import { ReceiptSheet } from './ReceiptSheet';
 import { RefundDialog } from './RefundDialog';
 
 interface TenderRow {
@@ -133,10 +141,35 @@ export function PayPage() {
       else fail(e);
     },
   });
+  // a receipt for the browser's print dialog: used when no receipt printer is set up (cloud)
+  const [sheet, setSheet] = useState<{ doc: ReceiptDocView; language: 'en' | 'ur' } | null>(null);
+  const browserPrint = useMutation({
+    mutationFn: (reason?: string) =>
+      api<{ doc: ReceiptDocView; language: 'en' | 'ur' }>(`/bills/${b!.id}/browser-print`, {
+        method: 'POST',
+        body: reason ? { reason } : {},
+      }),
+    onSuccess: async (out) => {
+      setSheet({ doc: out.doc, language: out.language });
+      await qc.invalidateQueries({ queryKey: ['bill'] });
+    },
+    onError: fail,
+  });
   const reprint = useMutation({
-    mutationFn: () =>
-      api(`/bills/${b!.id}/reprint`, { method: 'POST', body: { reason: 'Customer copy' } }),
-    onSuccess: () => setMessage(t('bill.reprinted')),
+    mutationFn: async () => {
+      try {
+        await api(`/bills/${b!.id}/reprint`, { method: 'POST', body: { reason: 'Customer copy' } });
+        return 'printer' as const;
+      } catch (e) {
+        // no receipt printer here (a cloud restaurant): print the copy from the browser instead
+        if (e instanceof ApiError && e.code === 'NO_PRINTER') return 'browser' as const;
+        throw e;
+      }
+    },
+    onSuccess: (how) => {
+      if (how === 'browser') browserPrint.mutate('Customer copy');
+      else setMessage(t('bill.reprinted'));
+    },
     onError: fail,
   });
   const voidBill = useMutation({
@@ -264,6 +297,16 @@ export function PayPage() {
             {message}
           </p>
         )}
+        {b.printCount === 0 && (
+          <button
+            className="btn-secondary btn-lg w-full"
+            disabled={browserPrint.isPending}
+            onClick={() => browserPrint.mutate(undefined)}
+          >
+            <Icon name="printer" size={20} />
+            {t('bill.printReceipt')}
+          </button>
+        )}
         <Link to="/" className="btn-primary btn-lg w-full">
           {t('bill.done')}
         </Link>
@@ -285,6 +328,9 @@ export function PayPage() {
           )}
         </div>
         {refunding && <RefundDialog bill={b} onClose={() => setRefunding(false)} />}
+        {sheet && (
+          <ReceiptSheet doc={sheet.doc} language={sheet.language} onDone={() => setSheet(null)} />
+        )}
       </div>
     );
   }

@@ -249,6 +249,8 @@ html[lang='ur'] body {
   body * {
     visibility: hidden;
   }
+  .receipt-print,
+  .receipt-print *,
   .qr-poster,
   .qr-poster * {
     visibility: visible;
@@ -490,4 +492,65 @@ html[lang='ur'] body {
   .dt tbody tr[data-cont] td:first-child {
     font-size: 0.95rem;
   }
+}
+
+/* A receipt printed from the browser (80 mm roll). Rendered into <body>, shown only while printing. */
+.receipt-print {
+  display: none;
+}
+@media print {
+  body[data-printing='receipt'] .receipt-print {
+    display: block;
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 72mm;
+    padding: 0;
+    color: #000;
+    background: #fff;
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  @page {
+    size: 80mm auto;
+    margin: 4mm;
+  }
+}
+.receipt-print hr {
+  border: 0;
+  border-top: 1px dashed #000;
+  margin: 4px 0;
+}
+.rc-center {
+  text-align: center;
+}
+.rc-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+.rc-banner {
+  border: 2px solid #000;
+  text-align: center;
+  font-weight: 700;
+  margin-bottom: 4px;
+  padding: 2px;
+}
+.rc-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.rc-amt {
+  white-space: nowrap;
+}
+.rc-strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+.rc-small {
+  font-size: 10px;
+}
+.rc-mod {
+  padding-inline-start: 12px;
 }

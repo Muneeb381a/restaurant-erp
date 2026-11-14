@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Icon } from '../../components/Icon';
 import { QrCode, qrPngBlob } from '../../components/QrCode';
 import { api } from '../../lib/api';
+import { appOrigin } from '../../lib/tenant';
 import { ErrorText, Field, PageHead, Toggle } from './ui';
 
 interface Branch {
@@ -38,7 +39,7 @@ export function QrMenuAdmin() {
   useEffect(() => {
     if (!settings.data) return;
     const saved = settings.data['menu.public_url'];
-    setBase(typeof saved === 'string' ? saved : window.location.origin);
+    setBase(typeof saved === 'string' ? saved : appOrigin());
     const n = settings.data['menu.public_note'];
     setNote(typeof n === 'string' ? n : '');
   }, [settings.data]);
@@ -149,7 +150,7 @@ export function QrMenuAdmin() {
               >
                 {t('qr.saveAddress')}
               </button>
-              <button className="btn-secondary" onClick={() => setBase(window.location.origin)}>
+              <button className="btn-secondary" onClick={() => setBase(appOrigin())}>
                 {t('qr.useThis')}
               </button>
             </div>

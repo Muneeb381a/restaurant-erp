@@ -1,4 +1,5 @@
 import { useAuth, type Tokens } from './auth-store';
+import { apiBase, useTenantState } from './tenant';
 
 /** RFC 7807 problem+json from the API, with its stable `code`. */
 export class ApiError extends Error {
@@ -12,8 +13,6 @@ export class ApiError extends Error {
   }
 }
 
-const BASE = '/api/v1';
-
 let refreshing: Promise<Tokens | null> | null = null;
 
 /** Rotates the refresh token once even if several requests expire together (single flight). */
@@ -22,7 +21,7 @@ function refreshTokens(): Promise<Tokens | null> {
     const current = useAuth.getState().tokens;
     refreshing = (async () => {
       if (!current) return null;
-      const res = await fetch(`${BASE}/auth/refresh`, {
+      const res = await fetch(`${apiBase()}/auth/refresh`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ refreshToken: current.refreshToken }),
@@ -46,6 +45,11 @@ async function toError(res: Response): Promise<ApiError> {
   } catch {
     /* not JSON */
   }
+  if (body.code === 'TENANT_SUSPENDED')
+    useTenantState.setState({
+      suspended: true,
+      reason: typeof body.reason === 'string' ? body.reason : null,
+    });
   return new ApiError(
     res.status,
     String(body.code ?? 'HTTP_ERROR'),
@@ -76,7 +80,7 @@ export interface RequestOptions {
  */
 export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const send = (tokens: Tokens | null): Promise<Response> =>
-    fetch(`${BASE}${path}`, {
+    fetch(`${apiBase()}${path}`, {
       method: opts.method ?? 'GET',
       headers: {
         ...opts.headers,

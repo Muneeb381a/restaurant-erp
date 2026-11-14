@@ -5,6 +5,8 @@ import { Jali, Mark } from '../../components/Brand';
 import { Icon, type IconName } from '../../components/Icon';
 import { ApiError, api } from '../../lib/api';
 import { useAuth, type Tokens } from '../../lib/auth-store';
+import { healthPath } from '../../lib/tenant';
+import { useTenantInfo } from '../landing/TenantGate';
 import { LanguageToggle } from '../shell/LanguageToggle';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const;
@@ -17,7 +19,7 @@ function useServerUp(): boolean | null {
     let alive = true;
     const ping = async (): Promise<void> => {
       try {
-        const r = await fetch('/health', { cache: 'no-store' });
+        const r = await fetch(healthPath(), { cache: 'no-store' });
         if (alive) setUp(r.ok);
       } catch {
         if (alive) setUp(false);
@@ -48,7 +50,11 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [shake, setShake] = useState(false);
+  // managers and owners may sign in with a password; staff use the PIN pad
+  const [usePassword, setUsePassword] = useState(false);
+  const [password, setPassword] = useState('');
   const up = useServerUp();
+  const tenant = useTenantInfo();
   const pinRef = useRef(pin);
   pinRef.current = pin;
   const hour = new Date().getHours();
@@ -56,13 +62,15 @@ export function LoginPage() {
     hour < 12 ? t('login.morning') : hour < 17 ? t('login.afternoon') : t('login.evening');
 
   async function submit(code: string): Promise<void> {
-    if (!username.trim() || code.length < 4 || busy) return;
+    if (!username.trim() || code.length < (usePassword ? 1 : 4) || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const tokens = await api<Tokens>('/auth/login-pin', {
+      const tokens = await api<Tokens>(usePassword ? '/auth/login' : '/auth/login-pin', {
         method: 'POST',
-        body: { username: username.trim(), pin: code },
+        body: usePassword
+          ? { username: username.trim(), password: code }
+          : { username: username.trim(), pin: code },
         auth: false,
       });
       setLastUsername(username.trim());
@@ -70,6 +78,7 @@ export function LoginPage() {
       nav('/', { replace: true });
     } catch (e) {
       setPin('');
+      setPassword('');
       setShake(true);
       setTimeout(() => setShake(false), 400);
       if (e instanceof ApiError && e.code === 'ACCOUNT_LOCKED') {
@@ -108,7 +117,9 @@ export function LoginPage() {
   }, []);
 
   const slots = Math.max(4, pin.length);
-  const ready = pin.length >= 4 && username.trim().length > 0;
+  const ready = usePassword
+    ? password.length > 0 && username.trim().length > 0
+    : pin.length >= 4 && username.trim().length > 0;
 
   return (
     <main className="grid min-h-full lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
@@ -152,6 +163,14 @@ export function LoginPage() {
             <div>
               <p className="micro">{greeting}</p>
               <h1 className="mt-1 text-3xl font-semibold tracking-tight">{t('login.title')}</h1>
+              {tenant && (
+                <p
+                  className="mt-1 text-lg font-medium text-emerald-800"
+                  data-testid="restaurant-name"
+                >
+                  {tenant.name}
+                </p>
+              )}
               <p className="hint mt-1">{t('login.sub')}</p>
             </div>
 
@@ -175,7 +194,24 @@ export function LoginPage() {
               </div>
             </label>
 
-            <div className="space-y-3" dir="ltr">
+            {usePassword && (
+              <label className="block space-y-1.5">
+                <span className="label">{t('login.password')}</span>
+                <input
+                  className="input text-lg"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => {
+                    setError(null);
+                    setPassword(e.target.value);
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && ready && void submit(password)}
+                />
+              </label>
+            )}
+
+            <div className={`space-y-3 ${usePassword ? 'hidden' : ''}`} dir="ltr">
               <div className="flex items-baseline justify-between">
                 <span className="label">{t('login.pin')}</span>
                 <button
@@ -235,9 +271,21 @@ export function LoginPage() {
               type="button"
               className="btn-primary btn-lg w-full"
               disabled={busy || !ready}
-              onClick={() => void submit(pin)}
+              onClick={() => void submit(usePassword ? password : pin)}
             >
               {busy ? t('common.loading') : t('login.submit')}
+            </button>
+            <button
+              type="button"
+              className="block w-full text-center text-sm font-medium text-slate-700 underline-offset-2 hover:underline"
+              onClick={() => {
+                setUsePassword(!usePassword);
+                setError(null);
+                setPin('');
+                setPassword('');
+              }}
+            >
+              {usePassword ? t('login.usePin') : t('login.usePassword')}
             </button>
           </div>
         </div>
