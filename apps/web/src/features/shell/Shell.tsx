@@ -236,26 +236,34 @@ function SignedIn() {
 
   const sideItem = (it: NavItem): ReactNode => {
     const cls = ({ isActive }: { isActive?: boolean }): string =>
-      `group relative flex w-full items-center gap-2.5 rounded-lg text-sm font-medium transition-colors min-h-10 ${
-        expanded ? 'px-2.5' : 'justify-center px-0'
-      } ${isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-300 hover:bg-white/[.08] hover:text-white'}`;
+      `group relative flex min-h-10 w-full items-center gap-3 rounded-lg text-[0.875rem] font-medium transition-colors ${
+        expanded ? 'px-3' : 'justify-center px-0'
+      } ${
+        isActive
+          ? 'bg-emerald-50 text-emerald-900 before:absolute before:inset-y-2 before:start-0 before:w-[3px] before:rounded-full before:bg-emerald-600'
+          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+      }`;
     const body = (active: boolean): ReactNode => (
       <>
         <span className="relative shrink-0">
-          <Icon name={it.icon} size={20} className={active ? 'text-emerald-700' : ''} />
+          <Icon
+            name={it.icon}
+            size={19}
+            className={active ? 'text-emerald-700' : 'text-slate-500 group-hover:text-slate-700'}
+          />
           {it.badge && !expanded && (
-            <span className="absolute -end-1.5 -top-1.5 flex min-w-[1.05rem] items-center justify-center rounded-full bg-amber-400 px-1 text-[0.65rem] font-bold leading-[1.05rem] text-slate-900">
+            <span className="absolute -end-1.5 -top-1.5 flex min-w-[1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[0.62rem] font-bold leading-4 text-white">
               {it.badge.n}
             </span>
           )}
         </span>
-        <span className={expanded ? 'min-w-0 flex-1 text-start leading-tight' : 'sr-only'}>
-          <span className="block truncate">{it.label}</span>
+        <span className={expanded ? 'min-w-0 flex-1 truncate text-start' : 'sr-only'}>
+          {it.label}
         </span>
         {it.badge && expanded && (
           <span
             title={it.badge.title}
-            className="ms-auto flex min-w-[1.4rem] items-center justify-center rounded-full bg-amber-400 px-1.5 text-xs font-bold leading-[1.4rem] text-slate-900"
+            className="ms-auto flex min-w-[1.35rem] items-center justify-center rounded-full bg-amber-100 px-1.5 text-xs font-semibold leading-[1.35rem] text-amber-800"
           >
             {it.badge.n}
           </span>
@@ -291,14 +299,14 @@ function SignedIn() {
   const tabItem = (it: NavItem): ReactNode => {
     const cls = ({ isActive }: { isActive?: boolean }): string =>
       `relative flex min-h-[3.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[0.72rem] font-medium ${
-        isActive ? 'bg-white/[.12] text-white' : 'text-slate-300'
+        isActive ? 'bg-emerald-50 text-emerald-900' : 'text-slate-500'
       }`;
     const body = (active: boolean): ReactNode => (
       <>
         <span className="relative">
-          <Icon name={it.icon} size={22} className={active ? 'text-amber-300' : ''} />
+          <Icon name={it.icon} size={22} className={active ? 'text-emerald-700' : ''} />
           {it.badge && (
-            <span className="absolute -end-2.5 -top-1.5 flex min-w-[1.1rem] items-center justify-center rounded-full bg-amber-400 px-1 text-[0.65rem] font-bold leading-[1.1rem] text-slate-900">
+            <span className="absolute -end-2.5 -top-1.5 flex min-w-[1.1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[0.65rem] font-bold leading-[1.1rem] text-white">
               {it.badge.n}
             </span>
           )}
@@ -321,22 +329,22 @@ function SignedIn() {
     <div className="flex h-full flex-col-reverse md:flex-row">
       {/* tablets and desktops: the side menu */}
       <div
-        className={`hidden shrink-0 flex-col bg-slate-900 text-slate-200 transition-[width] duration-200 md:flex ${expanded ? 'w-52' : 'w-16'}`}
+        className={`hidden shrink-0 flex-col border-e border-slate-200 bg-white text-slate-700 transition-[width] duration-200 md:flex ${expanded ? 'w-56' : 'w-16'}`}
       >
         <Link
           to="/"
           aria-label={t('app.title')}
-          className={`flex h-14 shrink-0 items-center gap-2.5 border-b border-white/10 ${expanded ? 'px-3.5' : 'justify-center'}`}
+          className={`flex h-14 shrink-0 items-center gap-2.5 border-b border-slate-200 ${expanded ? 'px-4' : 'justify-center'}`}
         >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm ring-1 ring-white/15">
-            <Mark size={22} />
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
+            <Mark size={20} />
           </span>
           {expanded && (
             <span className="min-w-0 leading-tight">
-              <span className="block truncate text-sm font-semibold tracking-tight text-white">
+              <span className="block truncate text-sm font-semibold tracking-tight text-slate-900">
                 {restaurant || t('app.title')}
               </span>
-              <span className="block text-[0.62rem] font-medium uppercase tracking-[0.12em] text-slate-400">
+              <span className="block text-[0.65rem] font-medium uppercase tracking-[0.12em] text-slate-500">
                 {t('shell.pos')}
               </span>
             </span>
@@ -344,27 +352,52 @@ function SignedIn() {
         </Link>
         <nav
           aria-label={t('shell.mainNav')}
-          className="min-h-0 flex-1 space-y-3 overflow-y-auto px-2.5 py-3"
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2.5 py-4"
         >
           {groups.map((g, i) => (
             <div key={g.label} className="space-y-0.5">
               {expanded ? (
-                <div className="px-2.5 pb-1 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <div className="px-3 pb-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   {g.label}
                 </div>
               ) : (
-                i > 0 && <div className="mx-2 mb-2 border-t border-white/10" />
+                i > 0 && <div className="mx-2 mb-3 border-t border-slate-200" />
               )}
               {g.items.map((it) => sideItem(it))}
             </div>
           ))}
         </nav>
+        <div className="space-y-1 border-t border-slate-200 p-2.5">
+          <button
+            type="button"
+            onClick={() => setHelpOpen(true)}
+            title={t('help.open')}
+            aria-label={t('help.open')}
+            className={`group flex min-h-10 w-full items-center gap-3 rounded-lg text-[0.875rem] font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 ${expanded ? 'px-3' : 'justify-center'}`}
+          >
+            <Icon name="info" size={19} className="text-slate-500 group-hover:text-slate-700" />
+            {expanded && t('help.open')}
+          </button>
+          <div
+            className={`flex min-h-8 items-center gap-2 text-xs font-medium text-slate-500 ${expanded ? 'px-3' : 'justify-center'}`}
+            title={
+              polling ? t('shell.pollingHint') : live ? t('shell.liveHint') : t('shell.offlineHint')
+            }
+          >
+            <span
+              aria-hidden="true"
+              className={`size-2 rounded-full ${live ? 'bg-emerald-500' : 'animate-pulse bg-amber-500'}`}
+            />
+            {expanded &&
+              (polling ? t('shell.autoRefresh') : live ? t('shell.live') : t('shell.reconnecting'))}
+          </div>
+        </div>
       </div>
 
       {/* phones: a bar at the bottom with the four main places and "More" */}
       <nav
         aria-label={t('shell.mainNav')}
-        className="flex shrink-0 gap-1 bg-slate-900 p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden"
+        className="flex shrink-0 gap-1 border-t border-slate-200 bg-white p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden"
       >
         {primary.map((it) => tabItem(it))}
         {more.length > 0 && (
@@ -373,7 +406,7 @@ function SignedIn() {
             aria-haspopup="dialog"
             aria-expanded={moreOpen}
             onClick={() => setMoreOpen(true)}
-            className="relative flex min-h-[3.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[0.72rem] font-medium text-slate-300"
+            className="relative flex min-h-[3.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[0.72rem] font-medium text-slate-500"
           >
             <Icon name="more" size={22} />
             {t('shell.more')}
@@ -393,8 +426,8 @@ function SignedIn() {
             className="absolute inset-0 bg-black/50"
             onClick={() => setMoreOpen(false)}
           />
-          <div className="absolute inset-x-0 bottom-0 space-y-1 rounded-t-2xl bg-slate-900 p-3 pb-[max(1rem,env(safe-area-inset-bottom))] text-slate-100 shadow-sheet">
-            <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-white/25" />
+          <div className="absolute inset-x-0 bottom-0 space-y-1 rounded-t-2xl bg-white p-3 pb-[max(1rem,env(safe-area-inset-bottom))] text-slate-800 shadow-sheet">
+            <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-slate-300" />
             {more.map((it) => {
               const inner = (
                 <>
@@ -402,18 +435,18 @@ function SignedIn() {
                   <span className="me-auto leading-tight">
                     {it.label}
                     {it.hint && (
-                      <span className="block text-sm font-normal text-slate-400">{it.hint}</span>
+                      <span className="block text-sm font-normal text-slate-500">{it.hint}</span>
                     )}
                   </span>
                   {it.badge && (
-                    <span className="rounded-full bg-amber-400 px-2 text-xs font-bold text-slate-900">
+                    <span className="rounded-full bg-amber-100 px-2 text-xs font-semibold text-amber-800">
                       {it.badge.n}
                     </span>
                   )}
                 </>
               );
               const cls =
-                'flex min-h-touch w-full items-center gap-3 rounded-xl px-4 text-lg font-medium hover:bg-white/10';
+                'flex min-h-touch w-full items-center gap-3 rounded-xl px-4 text-lg font-medium hover:bg-slate-100';
               return it.to ? (
                 <Link key={it.label} to={it.to} className={cls} onClick={() => setMoreOpen(false)}>
                   {inner}
@@ -451,27 +484,26 @@ function SignedIn() {
                 <Icon name="sidebar" size={20} data-flip />
               </button>
             )}
-            <div className="min-w-0 leading-tight">
-              {restaurant && (!wide || folded) && (
-                <div className="hidden truncate text-xs font-medium text-slate-500 sm:block">
-                  {restaurant}
-                </div>
+            <div className="flex min-w-0 items-center gap-2">
+              {restaurant && (
+                <>
+                  <span className="hidden max-w-[14rem] truncate text-sm font-medium text-slate-500 md:block">
+                    {restaurant}
+                  </span>
+                  <Icon
+                    name="chevronRight"
+                    size={14}
+                    data-flip
+                    className="hidden shrink-0 text-slate-300 md:block"
+                  />
+                </>
               )}
-              <div className="truncate text-base font-semibold tracking-tight text-slate-900 sm:text-base">
+              <div className="truncate text-base font-semibold tracking-tight text-slate-900">
                 {current?.label || restaurant || t('app.title')}
               </div>
             </div>
           </div>
           <ClockLive live={live} lang={i18n.language} />
-          <button
-            type="button"
-            className="btn-quiet hidden size-9 shrink-0 justify-center rounded-full px-0 text-slate-500 hover:bg-slate-100 hover:text-slate-800 sm:inline-flex"
-            aria-label={t('help.open')}
-            title={t('help.open')}
-            onClick={() => setHelpOpen(true)}
-          >
-            <Icon name="info" size={18} />
-          </button>
           <DayShiftControl
             dayDate={day.data?.businessDate}
             dayOpenedAt={day.data?.openedAt}
@@ -500,6 +532,7 @@ function SignedIn() {
             polling={polling}
             onLang={setLanguage}
             onPassword={() => setPasswordOpen(true)}
+            onHelp={() => setHelpOpen(true)}
             onLogout={() => void logout()}
           />
         </header>
@@ -873,6 +906,7 @@ function AccountMenu({
   polling,
   onLang,
   onPassword,
+  onHelp,
   onLogout,
 }: {
   name: string;
@@ -882,6 +916,7 @@ function AccountMenu({
   polling: boolean;
   onLang: (l: Lang) => void;
   onPassword: () => void;
+  onHelp: () => void;
   onLogout: () => void;
 }) {
   const { t } = useTranslation();
@@ -940,6 +975,15 @@ function AccountMenu({
           >
             <Icon name="globe" size={20} />
             {t('common.language')}
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setOpen(false);
+              onHelp();
+            }}
+          >
+            <Icon name="info" size={20} />
+            {t('help.open')}
           </MenuItem>
           <MenuItem
             onClick={() => {
