@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { asyncHandler } from '../../http/async-handler';
 import type { AppContext } from '../../http/context';
 import { authenticate } from './middleware';
-import { login, logout, refresh, type TokenPair } from './auth.service';
-import { pinSchema } from './password';
+import { changePassword, login, logout, refresh, type TokenPair } from './auth.service';
+import { passwordSchema, pinSchema } from './password';
 
 const username = z.string().trim().min(1).max(100);
 const deviceHeader = 'x-device-token';
@@ -71,6 +71,19 @@ export function authRouter(ctx: AppContext): Router {
     }),
   );
 
+  r.post(
+    '/change-password',
+    authenticate(ctx),
+    asyncHandler(async (req, res) => {
+      const b = z
+        .object({ currentPassword: z.string().min(1).max(200), newPassword: passwordSchema })
+        .strict()
+        .parse(req.body);
+      await changePassword(ctx, req.principal!, b, req.ip);
+      res.status(204).end();
+    }),
+  );
+
   r.get(
     '/me',
     authenticate(ctx),
@@ -84,6 +97,7 @@ export function authRouter(ctx: AppContext): Router {
         role: p.roleCode,
         branchId: p.userBranchId,
         discountLimitBps: p.discountLimitBps,
+        mustChangePassword: p.mustChangePassword,
         permissions: perms,
       });
     }),

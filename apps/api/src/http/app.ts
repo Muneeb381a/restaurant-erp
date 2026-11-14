@@ -24,10 +24,21 @@ import type { AppContext } from './context';
 import { errorHandler, notFound } from './errors';
 import { eventsRouter, notifyOnWrite } from './events';
 
-export function createApp(ctx: AppContext): Express {
+export interface AppOptions {
+  /**
+   * false: no live stream (`GET /events` answers 501) and screens poll instead. Serverless hosting
+   * has no memory shared between requests, so a stream cannot be fed from other requests.
+   */
+  liveEvents?: boolean;
+  /** Proxies in front of the API: makes `req.ip` the visitor's address. */
+  trustProxyHops?: number;
+}
+
+export function createApp(ctx: AppContext, opts: AppOptions = {}): Express {
   const { db, logger } = ctx;
   const app = express();
   app.disable('x-powered-by');
+  if (opts.trustProxyHops) app.set('trust proxy', opts.trustProxyHops);
   app.use(express.json({ limit: '1mb' }));
 
   // Request id (honour inbound header for tracing across proxy) + child logger.
@@ -56,7 +67,7 @@ export function createApp(ctx: AppContext): Express {
 
   const v1 = Router();
   v1.use(notifyOnWrite);
-  v1.use('/', eventsRouter(ctx)); // GET /events (live change notifications)
+  v1.use('/', eventsRouter(ctx, 20_000, opts.liveEvents !== false)); // GET /events (live change notifications)
   v1.use('/public', publicRouter(ctx)); // unauthenticated, read-only customer menu (QR code)
   v1.use('/auth', authRouter(ctx));
   v1.use('/audit-log', auditRouter(ctx));

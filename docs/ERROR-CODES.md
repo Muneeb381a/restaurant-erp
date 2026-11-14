@@ -57,6 +57,15 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | `KOT_BAD_MOVE`        | 409  | Ticket moves are NEW → PREPARING → READY → DONE (one step back allowed)                                                                      |
 | `VERSION_CONFLICT`    | 409  | `If-Match` does not match; `currentVersion` says what the order is now                                                                      |
 | `PRECONDITION_REQUIRED`| 428 | A structural change needs the order version in `If-Match`                                                                                   |
+| `PASSWORD_CHANGE_REQUIRED` | 403 | A temporary password is still in use: only `/auth/me`, `/auth/change-password` and `/auth/logout` are served until it is changed |
+| `TENANT_NOT_FOUND`    | 404  | (cloud) no restaurant has that code, or it is archived                                                                                     |
+| `TENANT_SUSPENDED`    | 403  | (cloud) the restaurant is switched off; the body has `name` and, when given, `reason`                                                      |
+| `TENANT_UNAVAILABLE`  | 503  | (cloud) the restaurant is still being set up, or its setup failed                                                                          |
+| `TENANT_SLUG_INVALID` | 400  | (cloud) the restaurant code is badly shaped or reserved                                                                                    |
+| `TENANT_SLUG_TAKEN`   | 409  | (cloud) another restaurant already has that code                                                                                           |
+| `TENANT_BAD_STATE`    | 409  | (cloud) the action does not fit the restaurant's status (e.g. switching off one that is already off)                                       |
+| `PROVISIONING_FAILED` | 502  | (cloud) creating the restaurant's database or setting it up stopped; the restaurant is saved as FAILED and can be retried                 |
+| `LIVE_DISABLED`       | 501  | The server runs without a live stream; screens poll instead                                                                                |
 | `INTERNAL_ERROR`      | 500  | Unexpected error (details only in server logs, correlate with `requestId`)                                                                  |
 
 Domain rule violations (bad deal pick, modifier min/max, missing weight, …) return `VALIDATION_FAILED` (400) with a `reason` such as `DEAL_SLOT_COUNT`, `MODIFIER_GROUP_MIN`, `LINE_WEIGHT_REQUIRED`, `TENDER_SUM_MISMATCH` or `DRAWER_INSUFFICIENT_CASH` (paid-out/drop or cash refund larger than the cash in the drawer) or `REFUND_QTY_EXCEEDS` / `REFUND_UNKNOWN_LINE` (credit notes).

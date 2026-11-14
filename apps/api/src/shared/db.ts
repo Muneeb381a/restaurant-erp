@@ -11,8 +11,11 @@ const PG_INT8 = 20;
  * on purpose — quantities are handled with integer math in packages/domain.
  * See docs/adr/0001-money-type.md.
  */
-export function createPool(connectionString: string): pg.Pool {
-  const pool = new pg.Pool({ connectionString, max: 10 });
+export function createPool(connectionString: string, max = 10): pg.Pool {
+  // idle connections are given back quickly: a serverless database (Neon) suspends when none are open
+  const pool = new pg.Pool({ connectionString, max, idleTimeoutMillis: 10_000 });
+  // an idle client dropped by the server must not crash the process
+  pool.on('error', () => undefined);
   return pool;
 }
 

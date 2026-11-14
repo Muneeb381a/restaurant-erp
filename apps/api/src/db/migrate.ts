@@ -3,17 +3,30 @@ import { fileURLToPath } from 'node:url';
 import { runner } from 'node-pg-migrate';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const apiRoot = path.resolve(here, '../..');
+
+/**
+ * Where the SQL migration folders are. From source it is apps/api; in the Vercel bundle the folders
+ * are copied next to the function and `ERP_API_ROOT` points at them. Read at call time, not import time.
+ */
+const apiRoot = (): string => process.env.ERP_API_ROOT ?? path.resolve(here, '../..');
 
 /**
  * `core`   = Phase 1 schema, applied everywhere.
  * `phase2` = inventory/recipes/purchasing (db/002). Separate directory AND separate
  *            tracking table, so it can be applied later without upsetting `core` ordering.
+ * `control` = the control plane (cloud mode): which restaurants exist and where their databases are.
  */
 export const MIGRATION_SETS = {
-  core: { dir: path.join(apiRoot, 'migrations'), table: 'pgmigrations' },
-  phase2: { dir: path.join(apiRoot, 'migrations-phase2'), table: 'pgmigrations_phase2' },
-} as const;
+  get core() {
+    return { dir: path.join(apiRoot(), 'migrations'), table: 'pgmigrations' };
+  },
+  get phase2() {
+    return { dir: path.join(apiRoot(), 'migrations-phase2'), table: 'pgmigrations_phase2' };
+  },
+  get control() {
+    return { dir: path.join(apiRoot(), 'control-migrations'), table: 'pgmigrations_control' };
+  },
+};
 
 export type MigrationSet = keyof typeof MIGRATION_SETS;
 

@@ -14,6 +14,7 @@ import {
   getBillView,
   listBills,
   quoteBill,
+  browserReceipt,
   reprintBill,
   settleBill,
   voidBill,
@@ -225,6 +226,22 @@ export function billingRouter(ctx: AppContext): Router {
       res
         .status(201)
         .json(await reprintBill(ctx, await actor(req), idParam.parse(req.params).id, body.reason));
+    }),
+  );
+
+  r.post(
+    '/bills/:id/browser-print',
+    ...read,
+    asyncHandler(async (req, res) => {
+      const body = z
+        .object({ reason: z.string().trim().max(300).optional() })
+        .strict()
+        .parse(req.body ?? {});
+      res
+        .status(201)
+        .json(
+          await browserReceipt(ctx, await actor(req), idParam.parse(req.params).id, body.reason),
+        );
     }),
   );
 

@@ -305,3 +305,100 @@ export async function revokeAllSessions(
     .where('revoked_at', 'is', null)
     .execute();
 }
+
+/**
+ * A signed-in user replaces their own password. Needs the current one (a stolen open session cannot
+ * lock the owner out), refuses the same password again, clears "must change", and signs out every
+ * other session of the user. Failed attempts count towards the same lockout as a sign-in.
+ */
+export async function changePassword(
+  ctx: AppContext,
+  principal: Principal,
+  input: { currentPassword: string; newPassword: string },
+  ip?: string,
+): Promise<void> {
+  const now = ctx.clock.now();
+  const newHash = await ctx.hasher.hash(input.newPassword);
+  const outcome = await withTx(ctx.db, async (trx) => {
+    const user = await trx
+      .selectFrom('users')
+      .select(['id', 'password_hash', 'failed_attempts', 'last_failed_at', 'locked_until'])
+      .where('id', '=', principal.userId)
+      .forUpdate()
+      .executeTakeFirstOrThrow();
+    const state: LockState = {
+      failedAttempts: user.failed_attempts,
+      lastFailedAt: user.last_failed_at,
+      lockedUntil: user.locked_until,
+    };
+    if (isLocked(state, now))
+      return {
+        error: new AppError(423, 'ACCOUNT_LOCKED', 'Account temporarily locked', {
+          retryAfterSeconds: Math.ceil((state.lockedUntil!.getTime() - now.getTime()) / 1000),
+        }),
+      };
+    if (!user.password_hash)
+      return {
+        error: new AppError(409, 'CONFLICT', 'This user signs in with a PIN and has no password'),
+      };
+    if (!(await ctx.hasher.verify(user.password_hash, input.currentPassword))) {
+      const next = onFailure(state, now);
+      await trx
+        .updateTable('users')
+        .set({
+          failed_attempts: next.failedAttempts,
+          last_failed_at: next.lastFailedAt,
+          locked_until: next.lockedUntil,
+        })
+        .where('id', '=', user.id)
+        .execute();
+      await writeAudit(trx, {
+        branchId: principal.userBranchId,
+        userId: user.id,
+        action: 'PASSWORD_CHANGE_FAILED',
+        entity: 'user',
+        entityId: user.id,
+        ip,
+      });
+      return { error: new AppError(401, 'INVALID_CREDENTIALS', 'The current password is wrong') };
+    }
+    if (await ctx.hasher.verify(user.password_hash, input.newPassword))
+      return {
+        error: new AppError(
+          400,
+          'VALIDATION_FAILED',
+          'Choose a password different from the current one',
+        ),
+      };
+    await trx
+      .updateTable('users')
+      .set({
+        password_hash: newHash,
+        must_change_password: false,
+        failed_attempts: CLEAN_STATE.failedAttempts,
+        last_failed_at: null,
+        locked_until: null,
+      })
+      .where('id', '=', user.id)
+      .execute();
+    // every other sign-in of this user ends; this one carries on
+    await trx
+      .updateTable('sessions')
+      .set({ revoked_at: now })
+      .where('user_id', '=', user.id)
+      .where('id', '<>', principal.sessionId)
+      .where('revoked_at', 'is', null)
+      .execute();
+    await writeAudit(trx, {
+      branchId: principal.userBranchId,
+      userId: user.id,
+      action: 'PASSWORD_CHANGED',
+      entity: 'user',
+      entityId: user.id,
+      after: { passwordChanged: true },
+      ip,
+    });
+    return { error: null };
+  });
+  if (outcome.error) throw outcome.error;
+}

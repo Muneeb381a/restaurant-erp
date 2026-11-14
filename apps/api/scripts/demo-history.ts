@@ -47,6 +47,7 @@ type Json = any;
 
 async function main(): Promise<void> {
   const env = loadEnv();
+  if (!env.DATABASE_URL) throw new Error('DATABASE_URL is required');
   const db = createDb(createPool(env.DATABASE_URL));
   const clock = new Clock();
   const ctx: AppContext = {

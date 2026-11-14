@@ -1073,4 +1073,60 @@ export function reprintBill(ctx: AppContext, a: Actor, billId: string, reason: s
   });
 }
 
+/**
+ * The receipt as data, for a browser to print (cloud deployments have no LAN thermal printer to send
+ * it to). The first print of a settled bill is free; every further print is a copy, which needs
+ * `bill.reprint` and a reason, is numbered "DUPLICATE #n" and is audited, exactly like a reprint on
+ * paper. The count is shared with thermal printing, so the two cannot be used to dodge each other.
+ */
+export function browserReceipt(ctx: AppContext, a: Actor, billId: string, reason?: string) {
+  return withTx(ctx.db, async (trx) => {
+    const bill = await trx
+      .selectFrom('bills')
+      .select(['id', 'status', 'print_count'])
+      .where('id', '=', billId)
+      .where('branch_id', '=', a.branchId)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!bill) throw new AppError(404, 'NOT_FOUND', 'bill not found');
+    if (bill.status !== 'SETTLED')
+      throw new AppError(409, 'BILL_NOT_PAYABLE', 'Only a settled bill has a receipt to print');
+    const original = bill.print_count === 0;
+    if (!original) {
+      if (!a.permissions.has('bill.reprint'))
+        throw new AppError(403, 'PERMISSION_DENIED', 'You do not have permission for this action', {
+          permission: 'bill.reprint',
+        });
+      if (!reason || reason.trim().length < 3)
+        throw new AppError(400, 'VALIDATION_FAILED', 'A reason is needed to print a copy', {
+          reasonRequired: true,
+        });
+    }
+    const duplicate = original ? 0 : bill.print_count;
+    const view = await getBillView(trx, a.branchId, billId);
+    const { doc } = await receiptDoc(trx, a.branchId, view, duplicate);
+    const lang = await trx
+      .selectFrom('settings')
+      .select('value')
+      .where('branch_id', '=', a.branchId)
+      .where('key', '=', 'receipt.language')
+      .executeTakeFirst();
+    await trx
+      .updateTable('bills')
+      .set({ print_count: bill.print_count + 1 })
+      .where('id', '=', billId)
+      .execute();
+    await audit(
+      trx,
+      a,
+      original ? 'BILL_PRINT' : 'BILL_REPRINT',
+      billId,
+      { printCount: bill.print_count },
+      { printCount: bill.print_count + 1, duplicate, via: 'browser' },
+      original ? undefined : reason,
+    );
+    return { doc, language: lang?.value === 'ur' ? ('ur' as const) : ('en' as const), duplicate };
+  });
+}
+
 export type { Paisa };

@@ -69,8 +69,20 @@ export const notifyOnWrite: RequestHandler = (req: Request, res: Response, next:
   next();
 };
 
-export function eventsRouter(ctx: AppContext, heartbeatMs = 20_000): Router {
+export function eventsRouter(ctx: AppContext, heartbeatMs = 20_000, enabled = true): Router {
   const r = makeRouter();
+  if (!enabled) {
+    // the screens read this as "poll instead" and stop retrying the stream
+    r.get('/events', (_req, res) => {
+      res.status(501).type('application/problem+json').json({
+        type: 'urn:erp:error:LIVE_DISABLED',
+        title: 'Live updates are off on this server; screens refresh on a timer',
+        status: 501,
+        code: 'LIVE_DISABLED',
+      });
+    });
+    return r;
+  }
   r.get('/events', authenticate(ctx), resolveBranch(ctx), (req, res) => {
     res.status(200).set({
       'Content-Type': 'text/event-stream; charset=utf-8',

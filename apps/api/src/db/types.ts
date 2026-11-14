@@ -3,11 +3,12 @@
  * Please do not edit it manually.
  */
 
-import type { ColumnType } from "kysely";
+import type { ColumnType } from 'kysely';
 
-export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
-  ? ColumnType<S, I | undefined, U>
-  : ColumnType<T, T | undefined, T>;
+export type Generated<T> =
+  T extends ColumnType<infer S, infer I, infer U>
+    ? ColumnType<S, I | undefined, U>
+    : ColumnType<T, T | undefined, T>;
 
 /** Postgres date as YYYY-MM-DD (see ADR 0001 / shared/db.ts). */
 export type DateString = ColumnType<string, string, string>;
@@ -777,6 +778,7 @@ export interface Users {
   is_active: Generated<boolean>;
   last_failed_at: Timestamp | null;
   locked_until: Timestamp | null;
+  must_change_password: Generated<boolean>;
   password_hash: string | null;
   pin_hash: string | null;
   role_id: string;

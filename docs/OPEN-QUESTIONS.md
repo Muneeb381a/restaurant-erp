@@ -45,3 +45,13 @@
 
 38. **Automatic daily report.** Today the owner taps a WhatsApp link to send the day's summary. For a message that goes out by itself at closing time we need a provider (WhatsApp Business API, SMS gateway or email), its credentials and the owner's consent. Which one, and should it also send alerts (cash short, large discount, printer offline)?
 
+39. **Printing from the cloud deployment.** Vercel cannot reach a restaurant's LAN thermal printer. *Answered by the owner:* first print from the browser (a receipt and a kitchen ticket page that opens the print dialog), later a small **local print agent** on a restaurant computer that fetches jobs from the cloud and prints to the thermal printer. Open: which browsers/printers must the browser path support (80 mm roll via the system print dialog, or WebUSB/Web Serial ESC/POS), and who installs the agent?
+
+40. **Live updates on serverless.** The change stream lives in one process's memory; Vercel runs many instances, so it is switched off (`LIVE_EVENTS=off`) and screens poll every 8 s or more. A real push needs a shared channel (Redis pub/sub such as a Vercel Marketplace store, or a hosted realtime service). Decide when the number of devices makes polling too costly or too slow.
+
+41. **Pricing and billing of restaurants.** `tenants.plan` is a free text label today; nothing meters or invoices. Decide: flat monthly fee, per device, per bill; who collects it; what happens to a restaurant that does not pay (the platform admin can already *Switch off* with a reason).
+
+42. **Platform admin and a restaurant's data.** *Answered by the owner:* the platform admin only manages (create, switch off/on, archive, reset the owner's password, technical health) and **cannot see** sales, customers or menu. Open: do you want an audited, time-limited **support access** (for example 30 minutes, visible to the restaurant) for help desk cases? Also: who may have a platform admin account, and is a second factor required?
+
+43. **Data protection for other people's restaurants.** Once the system holds another business's customers (khata names and phone numbers) the owner of the platform is a data processor: a written agreement with each restaurant, where the data is stored (Neon region), backup/retention period, what happens to the data when a restaurant leaves (archive keeps it; deletion is manual). Needs a lawyer, not code.
+

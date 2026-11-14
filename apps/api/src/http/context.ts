@@ -32,4 +32,6 @@ export interface Principal {
   sessionId: string;
   deviceId: string | null;
   discountLimitBps: number;
+  /** A temporary password is still in use: only /auth/me, /auth/change-password and /auth/logout are served. */
+  mustChangePassword: boolean;
 }

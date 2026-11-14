@@ -27,6 +27,7 @@ export function authenticate(ctx: AppContext): RequestHandler {
         'users.branch_id as branch_id',
         'users.discount_limit_bps as discount_limit_bps',
         'users.is_active as is_active',
+        'users.must_change_password as must_change_password',
         'sessions.id as session_id',
         'sessions.device_id as device_id',
         'sessions.revoked_at as revoked_at',
@@ -39,6 +40,16 @@ export function authenticate(ctx: AppContext): RequestHandler {
     if (!row || row.revoked_at || !row.is_active || row.expires_at.getTime() <= now.getTime()) {
       throw new AppError(401, 'UNAUTHENTICATED', 'Session is no longer valid');
     }
+    if (
+      row.must_change_password &&
+      !/\/auth\/(me|change-password|logout)$/.test(req.originalUrl.split('?')[0]!)
+    ) {
+      throw new AppError(
+        403,
+        'PASSWORD_CHANGE_REQUIRED',
+        'Change your temporary password before continuing',
+      );
+    }
     req.principal = {
       userId: row.user_id,
       username: row.username,
@@ -49,6 +60,7 @@ export function authenticate(ctx: AppContext): RequestHandler {
       sessionId: row.session_id,
       deviceId: row.device_id,
       discountLimitBps: row.discount_limit_bps,
+      mustChangePassword: row.must_change_password,
     };
     next();
   });
