@@ -141,27 +141,55 @@ export function createNeonProvisioner(o: NeonOptions): Provisioner {
 
 // ───────────────────────────────── local ─────────────────────────────────
 
+/** The pooled twin of a Neon host (`ep-x.region` becomes `ep-x-pooler.region`); other hosts are unchanged. */
+export function pooledHost(host: string): string {
+  if (!host.endsWith('.neon.tech') || host.split('.')[0]!.endsWith('-pooler')) return host;
+  const [first, ...rest] = host.split('.');
+  return [`${first}-pooler`, ...rest].join('.');
+}
+
 /**
- * A new database on a Postgres server you already run (development, tests, or a self-hosted
- * multi-restaurant install). `adminUrl` must be allowed to CREATE DATABASE.
+ * Many restaurants on ONE Postgres server (a single Neon project, or a server you run): each gets its
+ * own database and its own login that can open nothing else. One compute is shared, so it costs a
+ * fraction of a project per restaurant. `adminUrl` must be a DIRECT connection of a role that may
+ * create databases and roles (on Neon, the project's default role).
  */
 export function createLocalProvisioner(adminUrl: string): Provisioner {
   return {
     provider: 'LOCAL',
     async provision(slug) {
-      const name = `erp_${slug.replace(/-/g, '_')}_${randomBytes(3).toString('hex')}`;
-      if (!/^[a-z0-9_]+$/.test(name)) throw new ProvisionError('Unsafe database name');
+      const suffix = randomBytes(3).toString('hex');
+      const db = `erp_${slug.replace(/-/g, '_')}_${suffix}`;
+      const role = `${db}_app`;
+      if (!/^[a-z0-9_]+$/.test(db) || db.length > 60)
+        throw new ProvisionError('Unsafe database name');
+      const password = randomBytes(24).toString('hex'); // hex only: safe inside a SQL literal
       const admin = new pg.Client({ connectionString: adminUrl });
       await admin.connect();
       try {
-        await admin.query(`CREATE DATABASE "${name}"`);
+        await admin.query(`CREATE ROLE "${role}" LOGIN PASSWORD '${password}'`);
+        // the creating role must belong to the new owner before it may create a database owned by it
+        await admin.query(`GRANT "${role}" TO CURRENT_USER`);
+        await admin.query(`CREATE DATABASE "${db}" OWNER "${role}"`);
+        await admin.query(`REVOKE ALL ON DATABASE "${db}" FROM PUBLIC`);
+        await admin.query(`GRANT CONNECT ON DATABASE "${db}" TO "${role}"`);
       } finally {
         await admin.end();
       }
-      const target = new URL(adminUrl);
-      target.pathname = `/${name}`;
-      const url = target.toString();
-      return { provider: 'LOCAL', providerRef: name, region: null, url, directUrl: url };
+      const direct = new URL(adminUrl);
+      direct.username = role;
+      direct.password = password;
+      direct.pathname = `/${db}`;
+      direct.search = direct.search.replace(/[?&]channel_binding=[^&]*/, '');
+      const pooled = new URL(direct.toString());
+      pooled.hostname = pooledHost(direct.hostname);
+      return {
+        provider: 'LOCAL',
+        providerRef: db,
+        region: null,
+        url: pooled.toString(),
+        directUrl: direct.toString(),
+      };
     },
   };
 }

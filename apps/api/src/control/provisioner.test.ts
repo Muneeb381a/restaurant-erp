@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createNeonProvisioner, ProvisionError } from './provisioner';
+import { createNeonProvisioner, pooledHost, ProvisionError } from './provisioner';
 
 const ok = {
   project: { id: 'gentle-river-202020' },
@@ -90,5 +90,17 @@ describe('Neon provisioner', () => {
       fetchImpl: vi.fn().mockResolvedValue(json(201, { project: {} })) as unknown as typeof fetch,
     });
     await expect(malformed.provision('abc')).rejects.toMatchObject({ mayHaveCreated: true });
+  });
+});
+
+describe('pooledHost', () => {
+  it('adds -pooler to a Neon host once and leaves other hosts alone', () => {
+    expect(pooledHost('ep-a-b-123.ap-southeast-1.aws.neon.tech')).toBe(
+      'ep-a-b-123-pooler.ap-southeast-1.aws.neon.tech',
+    );
+    expect(pooledHost('ep-a-b-123-pooler.ap-southeast-1.aws.neon.tech')).toBe(
+      'ep-a-b-123-pooler.ap-southeast-1.aws.neon.tech',
+    );
+    expect(pooledHost('localhost')).toBe('localhost');
   });
 });
