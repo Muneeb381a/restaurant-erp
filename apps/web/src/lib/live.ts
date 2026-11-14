@@ -61,6 +61,7 @@ export function startLive(qc: QueryClient): () => void {
   let abort: AbortController | null = null;
   let pending = new Set<string>();
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let connectedBefore = false;
 
   const flush = (): void => {
     timer = null;
@@ -73,7 +74,9 @@ export function startLive(qc: QueryClient): () => void {
   };
 
   async function connectOnce(): Promise<void> {
-    await api('/auth/me'); // refreshes an expired access token the usual way
+    // refreshes an expired access token the usual way; shares the cached answer with the screen's own
+    // useMe, so the page start does not ask twice
+    await qc.fetchQuery({ queryKey: ['me'], queryFn: () => api('/auth/me'), staleTime: 60_000 });
     const tokens = useAuth.getState().tokens;
     if (!tokens || stopped) return;
     abort = new AbortController();
@@ -100,7 +103,9 @@ export function startLive(qc: QueryClient): () => void {
       for (const e of events) {
         if (e.event === 'ready') {
           useLive.setState({ connected: true });
-          void qc.invalidateQueries(); // anything missed while disconnected
+          // only a RE-connection can have missed changes; on the first one the screens have just loaded
+          if (connectedBefore) void qc.invalidateQueries();
+          connectedBefore = true;
         } else if (e.event === 'change') {
           try {
             schedule((JSON.parse(e.data) as { topic?: string }).topic ?? 'misc');

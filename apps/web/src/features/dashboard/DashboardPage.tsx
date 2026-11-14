@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon, type IconName } from '../../components/Icon';
 import { api } from '../../lib/api';
+import { useDay } from '../../lib/queries';
 import { formatRs, ltr } from '../../lib/money';
 import { Bar, HourChart, KitchenHourChart, TrendChart } from './charts';
 import { Modal } from '../../components/Modal';
@@ -16,8 +17,14 @@ const iso = (d: Date): string => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${
 const addDays = (d: Date, n: number): Date =>
   new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
-function rangeFor(p: Exclude<Preset, 'custom'>): { from: string; to: string } {
-  const now = new Date();
+/**
+ * `now` is the business day that is open, not the clock: a restaurant that trades past midnight is still
+ * on yesterday's business day at 1 a.m., and its "Today" must keep showing that day's sales.
+ */
+export function rangeFor(
+  p: Exclude<Preset, 'custom'>,
+  now: Date = new Date(),
+): { from: string; to: string } {
   switch (p) {
     case 'today':
       return { from: iso(now), to: iso(now) };
@@ -196,8 +203,11 @@ export function DashboardPage() {
   const lang = i18n.language;
   const [preset, setPreset] = useState<Preset>('today');
   const [sharing, setSharing] = useState<string | null>(null);
+  const day = useDay();
+  const businessDate = day.data?.businessDate;
+  const base = businessDate ? new Date(`${businessDate}T00:00:00`) : new Date();
   const [custom, setCustom] = useState(() => rangeFor('7d'));
-  const range = preset === 'custom' ? custom : rangeFor(preset);
+  const range = preset === 'custom' ? custom : rangeFor(preset, base);
   const q = useQuery({
     queryKey: ['dashboard', range.from, range.to],
     queryFn: () => api<Dashboard>(`/reports/dashboard?from=${range.from}&to=${range.to}`),

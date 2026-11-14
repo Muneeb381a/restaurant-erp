@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
-import { can, useMe } from '../../lib/queries';
+import { localDate } from '../../lib/dates';
+import { can, useDay, useMe } from '../../lib/queries';
 import { EmptyRow, ErrorText, Field } from './ui';
 
 interface Summary {
@@ -51,7 +52,10 @@ export function FiscalAdmin() {
     queryFn: async () => (await api<{ items: Job[] }>('/fiscal/jobs?status=open')).items,
     refetchInterval: 10_000,
   });
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  // the reconciliation is for a business day: the open one unless someone picks another
+  const day = useDay();
+  const [picked, setDate] = useState<string | null>(null);
+  const date = picked ?? day.data?.businessDate ?? localDate();
   const recon = useQuery({
     queryKey: ['fiscal-recon', date],
     queryFn: () => api<Reconciliation>(`/fiscal/reconciliation?businessDate=${date}`),

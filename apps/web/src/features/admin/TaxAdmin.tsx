@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError, api } from '../../lib/api';
+import { localDate } from '../../lib/dates';
 import { parseRs } from '../../lib/money';
 import type { TaxCategory, TaxReadiness, TaxRuleRow } from '../../lib/types';
 import { EmptyRow, ErrorText, Field, Toggle } from './ui';
@@ -13,7 +14,7 @@ interface Branch {
 }
 type Settings = Record<string, unknown>;
 const AUTHORITIES = ['NONE', 'PRA', 'SRB', 'KPRA', 'BRA', 'FBR'] as const;
-const today = (): string => new Date().toISOString().slice(0, 10);
+const today = (): string => localDate();
 const pctText = (bps: number): string => `${bps / 100}%`;
 
 /**

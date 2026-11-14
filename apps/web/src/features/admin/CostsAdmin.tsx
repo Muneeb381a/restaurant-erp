@@ -2,13 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api';
+import { localDate } from '../../lib/dates';
 import { formatRs, ltr, parseRs } from '../../lib/money';
 import { can, useMe } from '../../lib/queries';
 import type { ExpenseList, FoodCostReport } from '../../lib/types';
 import { EmptyRow, ErrorText, Field, PageHead } from './ui';
 
 const SOURCES = ['DRAWER_CASH', 'OWNER_CASH', 'BANK'] as const;
-const today = (): string => new Date().toISOString().slice(0, 10);
+const today = (): string => localDate();
 const monthStart = (): string => `${today().slice(0, 8)}01`;
 const newKey = (): string => `ui-${crypto.randomUUID()}`;
 

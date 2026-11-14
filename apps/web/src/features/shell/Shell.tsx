@@ -236,20 +236,20 @@ function SignedIn() {
 
   const sideItem = (it: NavItem): ReactNode => {
     const cls = ({ isActive }: { isActive?: boolean }): string =>
-      `group relative flex min-h-10 w-full items-center gap-3 rounded-lg text-[0.875rem] font-medium transition-colors ${
-        expanded ? 'px-3' : 'justify-center px-0'
+      `group relative flex min-h-9 w-full items-center gap-2.5 rounded-md text-[0.8125rem] font-medium transition-colors ${
+        expanded ? 'px-2.5' : 'justify-center px-0'
       } ${
         isActive
-          ? 'bg-emerald-50 text-emerald-900 before:absolute before:inset-y-2 before:start-0 before:w-[3px] before:rounded-full before:bg-emerald-600'
-          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          ? 'bg-white text-slate-900 shadow-[0_0_0_1px_rgba(30,27,22,0.09),0_1px_2px_rgba(30,27,22,0.06)]'
+          : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
       }`;
     const body = (active: boolean): ReactNode => (
       <>
         <span className="relative shrink-0">
           <Icon
             name={it.icon}
-            size={19}
-            className={active ? 'text-emerald-700' : 'text-slate-500 group-hover:text-slate-700'}
+            size={18}
+            className={active ? 'text-slate-900' : 'text-slate-500 group-hover:text-slate-800'}
           />
           {it.badge && !expanded && (
             <span className="absolute -end-1.5 -top-1.5 flex min-w-[1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[0.62rem] font-bold leading-4 text-white">
@@ -299,12 +299,12 @@ function SignedIn() {
   const tabItem = (it: NavItem): ReactNode => {
     const cls = ({ isActive }: { isActive?: boolean }): string =>
       `relative flex min-h-[3.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[0.72rem] font-medium ${
-        isActive ? 'bg-emerald-50 text-emerald-900' : 'text-slate-500'
+        isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500'
       }`;
     const body = (active: boolean): ReactNode => (
       <>
         <span className="relative">
-          <Icon name={it.icon} size={22} className={active ? 'text-emerald-700' : ''} />
+          <Icon name={it.icon} size={22} className={active ? 'text-slate-900' : ''} />
           {it.badge && (
             <span className="absolute -end-2.5 -top-1.5 flex min-w-[1.1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[0.65rem] font-bold leading-[1.1rem] text-white">
               {it.badge.n}
@@ -326,232 +326,225 @@ function SignedIn() {
   };
 
   return (
-    <div className="flex h-full flex-col-reverse md:flex-row">
-      {/* tablets and desktops: the side menu */}
-      <div
-        className={`hidden shrink-0 flex-col border-e border-slate-200 bg-white text-slate-700 transition-[width] duration-200 md:flex ${expanded ? 'w-56' : 'w-16'}`}
-      >
-        <Link
-          to="/"
-          aria-label={t('app.title')}
-          className={`flex h-14 shrink-0 items-center gap-2.5 border-b border-slate-200 ${expanded ? 'px-4' : 'justify-center'}`}
-        >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
-            <Mark size={20} />
-          </span>
-          {expanded && (
-            <span className="min-w-0 leading-tight">
-              <span className="block truncate text-sm font-semibold tracking-tight text-slate-900">
-                {restaurant || t('app.title')}
-              </span>
-              <span className="block text-[0.65rem] font-medium uppercase tracking-[0.12em] text-slate-500">
-                {t('shell.pos')}
-              </span>
-            </span>
+    <div className="flex h-full flex-col">
+      <header className="flex h-12 shrink-0 items-center gap-2 bg-slate-900 px-3 text-slate-100 sm:gap-3 sm:px-4">
+        <div className="flex min-w-0 items-center gap-3 me-auto">
+          {wide && (
+            <button
+              type="button"
+              onClick={toggleRail}
+              aria-label={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
+              aria-expanded={!folded}
+              title={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <Icon name="sidebar" size={18} data-flip />
+            </button>
           )}
-        </Link>
+          <Link
+            to="/"
+            aria-label={t('app.title')}
+            className="flex min-w-0 items-center gap-2.5 rounded-md"
+          >
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-emerald-600 text-white">
+              <Mark size={18} />
+            </span>
+            <span className="hidden max-w-[16rem] truncate text-sm font-semibold tracking-tight text-white sm:block">
+              {restaurant || t('app.title')}
+            </span>
+          </Link>
+          <span aria-hidden="true" className="h-4 w-px shrink-0 bg-white/20" />
+          <div className="truncate text-sm font-medium text-slate-300">
+            {current?.label || restaurant || t('app.title')}
+          </div>
+        </div>
+        <ClockLive live={live} lang={i18n.language} />
+        <DayShiftControl
+          dayDate={day.data?.businessDate}
+          dayOpenedAt={day.data?.openedAt}
+          shiftOpen={!!shift.data}
+          shiftOpenedAt={shift.data?.openedAt}
+          floatPaisa={shift.data?.openingFloatPaisa}
+          cashier={me.data?.fullName ?? ''}
+          lang={i18n.language}
+          canOpenDay={can(me.data, 'day.open')}
+          canOpenShift={can(me.data, 'shift.open')}
+          canCloseDay={can(me.data, 'day.close')}
+          busy={openDay.isPending}
+          onOpenDay={() => openDay.mutate()}
+          onOpenShift={() => setFloatOpen(true)}
+          onDrawer={() => setDrawerShift(shift.data ?? null)}
+          onCloseDay={() => {
+            setClosingDate(day.data?.businessDate);
+            setClosingDay(true);
+          }}
+        />
+        <AccountMenu
+          name={me.data?.fullName ?? ''}
+          role={me.data?.role ?? ''}
+          lang={i18n.language as Lang}
+          live={live}
+          polling={polling}
+          onLang={setLanguage}
+          onPassword={() => setPasswordOpen(true)}
+          onHelp={() => setHelpOpen(true)}
+          onLogout={() => void logout()}
+        />
+      </header>
+      <div className="flex min-h-0 flex-1 flex-col-reverse md:flex-row">
+        {/* tablets and desktops: the side menu */}
+        <div
+          className={`hidden shrink-0 flex-col border-e border-slate-200 bg-slate-50 text-slate-700 transition-[width] duration-200 md:flex ${expanded ? 'w-56' : 'w-14'}`}
+        >
+          <nav
+            aria-label={t('shell.mainNav')}
+            className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2 py-3"
+          >
+            {groups.map((g, i) => (
+              <div key={g.label} className="space-y-0.5">
+                {expanded ? (
+                  <div className="px-2.5 pb-1.5 text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-500">
+                    {g.label}
+                  </div>
+                ) : (
+                  i > 0 && <div className="mx-1 mb-3 border-t border-slate-200" />
+                )}
+                {g.items.map((it) => sideItem(it))}
+              </div>
+            ))}
+          </nav>
+          <div className="space-y-0.5 border-t border-slate-200 p-2">
+            <button
+              type="button"
+              onClick={() => setHelpOpen(true)}
+              title={t('help.open')}
+              aria-label={t('help.open')}
+              className={`group flex min-h-9 w-full items-center gap-2.5 rounded-md text-[0.8125rem] font-medium text-slate-600 transition-colors hover:bg-slate-200/60 hover:text-slate-900 ${expanded ? 'px-2.5' : 'justify-center'}`}
+            >
+              <Icon name="info" size={18} className="text-slate-500 group-hover:text-slate-800" />
+              {expanded && t('help.open')}
+            </button>
+            <div
+              className={`flex min-h-8 items-center gap-2 text-xs font-medium text-slate-500 ${expanded ? 'px-2.5' : 'justify-center'}`}
+              title={
+                polling
+                  ? t('shell.pollingHint')
+                  : live
+                    ? t('shell.liveHint')
+                    : t('shell.offlineHint')
+              }
+            >
+              <span
+                aria-hidden="true"
+                className={`size-2 rounded-full ${live ? 'bg-emerald-500' : 'animate-pulse bg-amber-500'}`}
+              />
+              {expanded &&
+                (polling
+                  ? t('shell.autoRefresh')
+                  : live
+                    ? t('shell.live')
+                    : t('shell.reconnecting'))}
+            </div>
+          </div>
+        </div>
+
+        {/* phones: a bar at the bottom with the four main places and "More" */}
         <nav
           aria-label={t('shell.mainNav')}
-          className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2.5 py-4"
+          className="flex shrink-0 gap-1 border-t border-slate-200 bg-white p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden"
         >
-          {groups.map((g, i) => (
-            <div key={g.label} className="space-y-0.5">
-              {expanded ? (
-                <div className="px-3 pb-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                  {g.label}
-                </div>
-              ) : (
-                i > 0 && <div className="mx-2 mb-3 border-t border-slate-200" />
-              )}
-              {g.items.map((it) => sideItem(it))}
-            </div>
-          ))}
+          {primary.map((it) => tabItem(it))}
+          {more.length > 0 && (
+            <button
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={moreOpen}
+              onClick={() => setMoreOpen(true)}
+              className="relative flex min-h-[3.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[0.72rem] font-medium text-slate-500"
+            >
+              <Icon name="more" size={22} />
+              {t('shell.more')}
+            </button>
+          )}
         </nav>
-        <div className="space-y-1 border-t border-slate-200 p-2.5">
-          <button
-            type="button"
-            onClick={() => setHelpOpen(true)}
-            title={t('help.open')}
-            aria-label={t('help.open')}
-            className={`group flex min-h-10 w-full items-center gap-3 rounded-lg text-[0.875rem] font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 ${expanded ? 'px-3' : 'justify-center'}`}
-          >
-            <Icon name="info" size={19} className="text-slate-500 group-hover:text-slate-700" />
-            {expanded && t('help.open')}
-          </button>
+        {moreOpen && (
           <div
-            className={`flex min-h-8 items-center gap-2 text-xs font-medium text-slate-500 ${expanded ? 'px-3' : 'justify-center'}`}
-            title={
-              polling ? t('shell.pollingHint') : live ? t('shell.liveHint') : t('shell.offlineHint')
-            }
+            className="fixed inset-0 z-40 md:hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('shell.more')}
           >
-            <span
-              aria-hidden="true"
-              className={`size-2 rounded-full ${live ? 'bg-emerald-500' : 'animate-pulse bg-amber-500'}`}
+            <button
+              type="button"
+              aria-label={t('common.close')}
+              className="absolute inset-0 bg-black/50"
+              onClick={() => setMoreOpen(false)}
             />
-            {expanded &&
-              (polling ? t('shell.autoRefresh') : live ? t('shell.live') : t('shell.reconnecting'))}
-          </div>
-        </div>
-      </div>
-
-      {/* phones: a bar at the bottom with the four main places and "More" */}
-      <nav
-        aria-label={t('shell.mainNav')}
-        className="flex shrink-0 gap-1 border-t border-slate-200 bg-white p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden"
-      >
-        {primary.map((it) => tabItem(it))}
-        {more.length > 0 && (
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            aria-expanded={moreOpen}
-            onClick={() => setMoreOpen(true)}
-            className="relative flex min-h-[3.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[0.72rem] font-medium text-slate-500"
-          >
-            <Icon name="more" size={22} />
-            {t('shell.more')}
-          </button>
-        )}
-      </nav>
-      {moreOpen && (
-        <div
-          className="fixed inset-0 z-40 md:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t('shell.more')}
-        >
-          <button
-            type="button"
-            aria-label={t('common.close')}
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setMoreOpen(false)}
-          />
-          <div className="absolute inset-x-0 bottom-0 space-y-1 rounded-t-2xl bg-white p-3 pb-[max(1rem,env(safe-area-inset-bottom))] text-slate-800 shadow-sheet">
-            <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-slate-300" />
-            {more.map((it) => {
-              const inner = (
-                <>
-                  <Icon name={it.icon} size={22} />
-                  <span className="me-auto leading-tight">
-                    {it.label}
-                    {it.hint && (
-                      <span className="block text-sm font-normal text-slate-500">{it.hint}</span>
-                    )}
-                  </span>
-                  {it.badge && (
-                    <span className="rounded-full bg-amber-100 px-2 text-xs font-semibold text-amber-800">
-                      {it.badge.n}
+            <div className="absolute inset-x-0 bottom-0 space-y-1 rounded-t-2xl bg-white p-3 pb-[max(1rem,env(safe-area-inset-bottom))] text-slate-800 shadow-sheet">
+              <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-slate-300" />
+              {more.map((it) => {
+                const inner = (
+                  <>
+                    <Icon name={it.icon} size={22} />
+                    <span className="me-auto leading-tight">
+                      {it.label}
+                      {it.hint && (
+                        <span className="block text-sm font-normal text-slate-500">{it.hint}</span>
+                      )}
                     </span>
-                  )}
-                </>
-              );
-              const cls =
-                'flex min-h-touch w-full items-center gap-3 rounded-xl px-4 text-lg font-medium hover:bg-slate-100';
-              return it.to ? (
-                <Link key={it.label} to={it.to} className={cls} onClick={() => setMoreOpen(false)}>
-                  {inner}
-                </Link>
-              ) : (
-                <button
-                  key={it.label}
-                  type="button"
-                  className={cls}
-                  onClick={() => {
-                    setMoreOpen(false);
-                    it.onClick?.();
-                  }}
-                >
-                  {inner}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3 sm:gap-2.5 sm:px-4">
-          <div className="flex min-w-0 items-center gap-3 me-auto">
-            {wide && (
-              <button
-                type="button"
-                onClick={toggleRail}
-                aria-label={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
-                aria-expanded={!folded}
-                title={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
-                className="btn-quiet size-9 shrink-0 justify-center rounded-lg px-0 text-slate-600 hover:bg-slate-100"
-              >
-                <Icon name="sidebar" size={20} data-flip />
-              </button>
-            )}
-            <div className="flex min-w-0 items-center gap-2">
-              {restaurant && (
-                <>
-                  <span className="hidden max-w-[14rem] truncate text-sm font-medium text-slate-500 md:block">
-                    {restaurant}
-                  </span>
-                  <Icon
-                    name="chevronRight"
-                    size={14}
-                    data-flip
-                    className="hidden shrink-0 text-slate-300 md:block"
-                  />
-                </>
-              )}
-              <div className="truncate text-base font-semibold tracking-tight text-slate-900">
-                {current?.label || restaurant || t('app.title')}
-              </div>
+                    {it.badge && (
+                      <span className="rounded-full bg-amber-100 px-2 text-xs font-semibold text-amber-800">
+                        {it.badge.n}
+                      </span>
+                    )}
+                  </>
+                );
+                const cls =
+                  'flex min-h-touch w-full items-center gap-3 rounded-xl px-4 text-lg font-medium hover:bg-slate-100';
+                return it.to ? (
+                  <Link
+                    key={it.label}
+                    to={it.to}
+                    className={cls}
+                    onClick={() => setMoreOpen(false)}
+                  >
+                    {inner}
+                  </Link>
+                ) : (
+                  <button
+                    key={it.label}
+                    type="button"
+                    className={cls}
+                    onClick={() => {
+                      setMoreOpen(false);
+                      it.onClick?.();
+                    }}
+                  >
+                    {inner}
+                  </button>
+                );
+              })}
             </div>
           </div>
-          <ClockLive live={live} lang={i18n.language} />
-          <DayShiftControl
-            dayDate={day.data?.businessDate}
-            dayOpenedAt={day.data?.openedAt}
-            shiftOpen={!!shift.data}
-            shiftOpenedAt={shift.data?.openedAt}
-            floatPaisa={shift.data?.openingFloatPaisa}
-            cashier={me.data?.fullName ?? ''}
-            lang={i18n.language}
-            canOpenDay={can(me.data, 'day.open')}
-            canOpenShift={can(me.data, 'shift.open')}
-            canCloseDay={can(me.data, 'day.close')}
-            busy={openDay.isPending}
-            onOpenDay={() => openDay.mutate()}
-            onOpenShift={() => setFloatOpen(true)}
-            onDrawer={() => setDrawerShift(shift.data ?? null)}
-            onCloseDay={() => {
-              setClosingDate(day.data?.businessDate);
-              setClosingDay(true);
-            }}
-          />
-          <AccountMenu
-            name={me.data?.fullName ?? ''}
-            role={me.data?.role ?? ''}
-            lang={i18n.language as Lang}
-            live={live}
-            polling={polling}
-            onLang={setLanguage}
-            onPassword={() => setPasswordOpen(true)}
-            onHelp={() => setHelpOpen(true)}
-            onLogout={() => void logout()}
-          />
-        </header>
-
-        {offline.length > 0 && (
-          <div
-            role="alert"
-            className="flex items-center justify-center gap-2 bg-rose-600 px-3 py-2 text-sm font-semibold text-white"
-          >
-            <Icon name="printer" size={18} />
-            {t('shell.printerOffline', {
-              names: offline.map((p) => `${p.name} (${p.queued})`).join(', '),
-            })}
-          </div>
         )}
 
-        <main className="min-h-0 flex-1 overflow-auto">
-          <Outlet />
-        </main>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {offline.length > 0 && (
+            <div
+              role="alert"
+              className="flex items-center justify-center gap-2 bg-rose-600 px-3 py-2 text-sm font-semibold text-white"
+            >
+              <Icon name="printer" size={18} />
+              {t('shell.printerOffline', {
+                names: offline.map((p) => `${p.name} (${p.queued})`).join(', '),
+              })}
+            </div>
+          )}
+
+          <main className="min-h-0 flex-1 overflow-auto">
+            <Outlet />
+          </main>
+        </div>
       </div>
 
       {helpOpen && <HelpDialog page={helpPage} onClose={() => setHelpOpen(false)} />}
@@ -642,7 +635,7 @@ function ClockLive({ live, lang }: { live: boolean; lang: string }) {
       className="hidden items-center lg:flex"
       title={live ? t('shell.liveHint') : t('shell.offlineHint')}
     >
-      <span className="money text-sm font-medium text-slate-500">{ltr(time)}</span>
+      <span className="money text-sm font-medium text-slate-400">{ltr(time)}</span>
     </div>
   );
 }
@@ -684,7 +677,7 @@ function StatusCell({
     <span className={`flex items-center gap-1.5 py-1 ${first ? 'ps-3 pe-2.5' : 'px-2.5'}`}>
       <span
         aria-hidden="true"
-        className={`relative size-2.5 shrink-0 rounded-full ${on ? 'bg-emerald-600' : 'bg-amber-500'}`}
+        className={`relative size-2 shrink-0 rounded-full ${on ? 'bg-emerald-400' : 'bg-amber-400'}`}
       >
         {nudge && (
           <span className="absolute inset-0 animate-ping rounded-full bg-amber-400 motion-reduce:hidden" />
@@ -693,7 +686,7 @@ function StatusCell({
       <span className="flex items-baseline gap-1.5 leading-tight">
         <span className="sr-only">{caption}</span>
         <span className="whitespace-nowrap text-[0.8rem] font-semibold">{title}</span>
-        <span className="hidden max-w-[8rem] truncate whitespace-nowrap text-xs font-medium text-slate-500 xl:block">
+        <span className="hidden max-w-[8rem] truncate whitespace-nowrap text-xs font-medium text-slate-400 xl:block">
           {sub}
         </span>
       </span>
@@ -775,10 +768,10 @@ function DayShiftControl(p: {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`${dayTitle} · ${shiftTitle}`}
-        className={`flex min-h-9 items-stretch divide-x rounded-full border text-start transition-colors rtl:divide-x-reverse ${
+        className={`flex min-h-8 items-stretch divide-x rounded-md border text-start transition-colors rtl:divide-x-reverse ${
           needsAction
-            ? 'divide-amber-200 border-amber-400 bg-amber-50 text-amber-950 hover:bg-amber-100'
-            : 'divide-slate-200 border-slate-300 bg-white text-slate-900 hover:bg-slate-50'
+            ? 'divide-amber-400/30 border-amber-400/60 bg-amber-400/10 text-amber-100 hover:bg-amber-400/20'
+            : 'divide-white/15 border-white/20 text-slate-100 hover:bg-white/10'
         }`}
         onClick={() => setOpen(!open)}
       >
@@ -804,14 +797,14 @@ function DayShiftControl(p: {
           }
           nudge={dayOpen && !p.shiftOpen}
         />
-        <span className="flex items-center pe-2.5 ps-0.5 text-slate-400">
+        <span className="flex items-center pe-2 ps-0.5 text-slate-400">
           <Icon name="chevronDown" size={14} />
         </span>
       </button>
       {open && (
         <div
           role="menu"
-          className="absolute end-0 z-30 mt-1.5 w-[min(24rem,calc(100vw-1.5rem))] space-y-2 rounded-2xl border border-slate-300 bg-white p-3 shadow-sheet"
+          className="absolute end-0 z-30 mt-2 w-[min(24rem,calc(100vw-1.5rem))] space-y-2 rounded-xl border border-slate-300 bg-white p-3 text-slate-900 shadow-sheet"
         >
           <Step
             n={1}
@@ -930,7 +923,7 @@ function AccountMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t('shell.account')}
-        className="flex min-h-10 items-center gap-2 rounded-lg border border-transparent py-0.5 ps-0.5 pe-1.5 hover:border-slate-300 hover:bg-slate-50"
+        className="flex min-h-9 items-center gap-2 rounded-md py-0.5 ps-0.5 pe-1.5 transition-colors hover:bg-white/10"
         onClick={() => setOpen(!open)}
       >
         <span
@@ -939,15 +932,17 @@ function AccountMenu({
             polling ? t('shell.pollingHint') : live ? t('shell.liveHint') : t('shell.offlineHint')
           }
         >
-          <Avatar name={name} size={32} />
+          <Avatar name={name} size={28} />
           <span
             aria-hidden="true"
-            className={`absolute -bottom-0.5 -end-0.5 size-3 rounded-full ring-2 ring-white ${live ? 'bg-emerald-500' : 'animate-pulse bg-amber-500'}`}
+            className={`absolute -bottom-0.5 -end-0.5 size-3 rounded-full ring-2 ring-slate-900 ${live ? 'bg-emerald-400' : 'animate-pulse bg-amber-400'}`}
           />
         </span>
         <span className="hidden flex-col items-start leading-tight lg:flex">
-          <span className="max-w-[9rem] truncate text-[0.8rem] font-semibold">{name}</span>
-          <span className="text-[0.7rem] font-medium text-slate-500">
+          <span className="max-w-[9rem] truncate text-[0.8rem] font-semibold text-white">
+            {name}
+          </span>
+          <span className="text-[0.7rem] font-medium text-slate-400">
             {roleName} ·{' '}
             {polling ? t('shell.autoRefresh') : live ? t('shell.live') : t('shell.reconnecting')}
           </span>
@@ -957,7 +952,7 @@ function AccountMenu({
       {open && (
         <div
           role="menu"
-          className="absolute end-0 z-30 mt-1.5 w-72 rounded-xl border border-slate-300 bg-white p-2 shadow-sheet"
+          className="absolute end-0 z-30 mt-2 w-72 rounded-xl border border-slate-300 bg-white p-2 text-slate-900 shadow-sheet"
         >
           <div className="flex items-center gap-3 px-3 py-3">
             <Avatar name={name} size={44} />
