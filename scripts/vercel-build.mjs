@@ -52,6 +52,10 @@ await build({
   banner: {
     js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);",
   },
+  // smaller file = faster cold start. Names are kept (no identifier mangling) so error names and logs stay readable.
+  minifyWhitespace: true,
+  minifySyntax: true,
+  keepNames: true,
   legalComments: 'none',
   logLevel: 'warning',
 });
@@ -88,6 +92,9 @@ writeFileSync(
       launcherType: 'Nodejs',
       shouldAddHelpers: false,
       supportsResponseStreaming: true,
+      // next to the Neon database (Singapore). The default (Washington) made every query cross the
+      // Pacific: a plain request took ~0.9 s. Keep this equal to the Neon project's region.
+      regions: ['sin1'],
       // creating a restaurant (a new database + all migrations) takes up to half a minute
       maxDuration: 120,
     },
@@ -125,6 +132,12 @@ writeFileSync(
             'strict-transport-security': 'max-age=63072000; includeSubDomains',
             'content-security-policy': csp,
           },
+          continue: true,
+        },
+        // files under /assets carry a content hash in their name: cache them for a year
+        {
+          src: '/assets/(.*)',
+          headers: { 'cache-control': 'public, max-age=31536000, immutable' },
           continue: true,
         },
         // the API answers with its own caching rules; never cache it at the edge

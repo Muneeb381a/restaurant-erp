@@ -1,16 +1,22 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { StrictMode, type ReactNode } from 'react';
+import { lazy, StrictMode, Suspense, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { I18nextProvider } from 'react-i18next';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './app/App';
 import { initI18n } from './i18n';
 import './index.css';
-import { LandingPage } from './features/landing/LandingPage';
 import { TenantGate } from './features/landing/TenantGate';
-import { PlatformApp } from './features/platform/PlatformApp';
 import { ApiError } from './lib/api';
 import { mode, routerBasename } from './lib/tenant';
+
+// the platform admin and the landing page are separate downloads: restaurant staff never fetch them
+const PlatformApp = lazy(async () => ({
+  default: (await import('./features/platform/PlatformApp')).PlatformApp,
+}));
+const LandingPage = lazy(async () => ({
+  default: (await import('./features/landing/LandingPage')).LandingPage,
+}));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,9 +31,17 @@ const queryClient = new QueryClient({
 function Root(): ReactNode {
   switch (mode.kind) {
     case 'platform':
-      return <PlatformApp />;
+      return (
+        <Suspense fallback={null}>
+          <PlatformApp />
+        </Suspense>
+      );
     case 'landing':
-      return <LandingPage />;
+      return (
+        <Suspense fallback={null}>
+          <LandingPage />
+        </Suspense>
+      );
     case 'tenant':
       return (
         <TenantGate>

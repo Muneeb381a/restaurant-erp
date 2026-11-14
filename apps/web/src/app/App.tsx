@@ -1,61 +1,95 @@
+import { lazy, Suspense, type ComponentType, type ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { AdminIndex, AdminLayout } from '../features/admin/AdminLayout';
-import { FiscalAdmin } from '../features/admin/FiscalAdmin';
-import { MenuAdmin } from '../features/admin/MenuAdmin';
-import { PrintersAdmin } from '../features/admin/PrintersAdmin';
-import { QrMenuAdmin } from '../features/admin/QrMenuAdmin';
-import { SetupAdmin } from '../features/admin/SetupAdmin';
-import { RolesAdmin } from '../features/admin/RolesAdmin';
-import { SettingsAdmin } from '../features/admin/SettingsAdmin';
-import { CostsAdmin } from '../features/admin/CostsAdmin';
-import { PurchasesAdmin } from '../features/admin/PurchasesAdmin';
-import { RecipesAdmin } from '../features/admin/RecipesAdmin';
-import { StockAdmin } from '../features/admin/StockAdmin';
-import { TaxAdmin } from '../features/admin/TaxAdmin';
-import { TablesAdmin } from '../features/admin/TablesAdmin';
-import { UsersAdmin } from '../features/admin/UsersAdmin';
-import { BillsPage } from '../features/billing/BillsPage';
-import { PayPage } from '../features/billing/PayPage';
-import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { FloorPage } from '../features/floor/FloorPage';
-import { KhataDetail } from '../features/khata/KhataDetail';
-import { KhataPage } from '../features/khata/KhataPage';
-import { KitchenPage } from '../features/kitchen/KitchenPage';
 import { LoginPage } from '../features/login/LoginPage';
-import { OrderPage } from '../features/order/OrderPage';
-import { PublicMenuPage } from '../features/publicmenu/PublicMenuPage';
 import { Shell } from '../features/shell/Shell';
+
+/**
+ * Only the sign-in, the shell and the floor (what a cashier sees first) ship in the first download.
+ * Every other screen is fetched the first time it is opened, which keeps the start fast on a phone.
+ */
+function page<T extends object>(load: () => Promise<T>, name: keyof T): ReactElement {
+  const Page = lazy(async () => ({ default: (await load())[name] as unknown as ComponentType }));
+  return (
+    <Suspense fallback={<PageLoading />}>
+      <Page />
+    </Suspense>
+  );
+}
+
+function PageLoading() {
+  const { t } = useTranslation();
+  return (
+    <div className="flex h-40 items-center justify-center" role="status" aria-live="polite">
+      <span
+        aria-hidden="true"
+        className="size-6 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-600 motion-reduce:animate-none"
+      />
+      <span className="sr-only">{t('common.loading')}</span>
+    </div>
+  );
+}
+
+// created once at module load: a new lazy() on every render would reload the page each time
+const OrderPage = page(() => import('../features/order/OrderPage'), 'OrderPage');
+const PayPage = page(() => import('../features/billing/PayPage'), 'PayPage');
+const BillsPage = page(() => import('../features/billing/BillsPage'), 'BillsPage');
+const DashboardPage = page(() => import('../features/dashboard/DashboardPage'), 'DashboardPage');
+const KitchenPage = page(() => import('../features/kitchen/KitchenPage'), 'KitchenPage');
+const KhataPage = page(() => import('../features/khata/KhataPage'), 'KhataPage');
+const KhataDetail = page(() => import('../features/khata/KhataDetail'), 'KhataDetail');
+const PublicMenuPage = page(
+  () => import('../features/publicmenu/PublicMenuPage'),
+  'PublicMenuPage',
+);
+const AdminLayout = page(() => import('../features/admin/AdminLayout'), 'AdminLayout');
+const AdminIndex = page(() => import('../features/admin/AdminLayout'), 'AdminIndex');
+const MenuAdmin = page(() => import('../features/admin/MenuAdmin'), 'MenuAdmin');
+const PrintersAdmin = page(() => import('../features/admin/PrintersAdmin'), 'PrintersAdmin');
+const TablesAdmin = page(() => import('../features/admin/TablesAdmin'), 'TablesAdmin');
+const QrMenuAdmin = page(() => import('../features/admin/QrMenuAdmin'), 'QrMenuAdmin');
+const UsersAdmin = page(() => import('../features/admin/UsersAdmin'), 'UsersAdmin');
+const StockAdmin = page(() => import('../features/admin/StockAdmin'), 'StockAdmin');
+const PurchasesAdmin = page(() => import('../features/admin/PurchasesAdmin'), 'PurchasesAdmin');
+const RecipesAdmin = page(() => import('../features/admin/RecipesAdmin'), 'RecipesAdmin');
+const CostsAdmin = page(() => import('../features/admin/CostsAdmin'), 'CostsAdmin');
+const TaxAdmin = page(() => import('../features/admin/TaxAdmin'), 'TaxAdmin');
+const FiscalAdmin = page(() => import('../features/admin/FiscalAdmin'), 'FiscalAdmin');
+const RolesAdmin = page(() => import('../features/admin/RolesAdmin'), 'RolesAdmin');
+const SettingsAdmin = page(() => import('../features/admin/SettingsAdmin'), 'SettingsAdmin');
+const SetupAdmin = page(() => import('../features/admin/SetupAdmin'), 'SetupAdmin');
 
 export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/m" element={<PublicMenuPage />} />
+      <Route path="/m" element={PublicMenuPage} />
       <Route element={<Shell />}>
         <Route index element={<FloorPage />} />
-        <Route path="order/:id" element={<OrderPage />} />
-        <Route path="order/:id/pay" element={<PayPage />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="kitchen" element={<KitchenPage />} />
-        <Route path="bills" element={<BillsPage />} />
-        <Route path="khata" element={<KhataPage />} />
-        <Route path="khata/:id" element={<KhataDetail />} />
-        <Route path="admin" element={<AdminLayout />}>
-          <Route index element={<AdminIndex />} />
-          <Route path="menu" element={<MenuAdmin />} />
-          <Route path="printers" element={<PrintersAdmin />} />
-          <Route path="tables" element={<TablesAdmin />} />
-          <Route path="qr-menu" element={<QrMenuAdmin />} />
-          <Route path="users" element={<UsersAdmin />} />
-          <Route path="stock" element={<StockAdmin />} />
-          <Route path="purchases" element={<PurchasesAdmin />} />
-          <Route path="recipes" element={<RecipesAdmin />} />
-          <Route path="costs" element={<CostsAdmin />} />
-          <Route path="tax" element={<TaxAdmin />} />
-          <Route path="fiscal" element={<FiscalAdmin />} />
-          <Route path="roles" element={<RolesAdmin />} />
-          <Route path="settings" element={<SettingsAdmin />} />
-          <Route path="setup" element={<SetupAdmin />} />
+        <Route path="order/:id" element={OrderPage} />
+        <Route path="order/:id/pay" element={PayPage} />
+        <Route path="dashboard" element={DashboardPage} />
+        <Route path="kitchen" element={KitchenPage} />
+        <Route path="bills" element={BillsPage} />
+        <Route path="khata" element={KhataPage} />
+        <Route path="khata/:id" element={KhataDetail} />
+        <Route path="admin" element={AdminLayout}>
+          <Route index element={AdminIndex} />
+          <Route path="menu" element={MenuAdmin} />
+          <Route path="printers" element={PrintersAdmin} />
+          <Route path="tables" element={TablesAdmin} />
+          <Route path="qr-menu" element={QrMenuAdmin} />
+          <Route path="users" element={UsersAdmin} />
+          <Route path="stock" element={StockAdmin} />
+          <Route path="purchases" element={PurchasesAdmin} />
+          <Route path="recipes" element={RecipesAdmin} />
+          <Route path="costs" element={CostsAdmin} />
+          <Route path="tax" element={TaxAdmin} />
+          <Route path="fiscal" element={FiscalAdmin} />
+          <Route path="roles" element={RolesAdmin} />
+          <Route path="settings" element={SettingsAdmin} />
+          <Route path="setup" element={SetupAdmin} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -6,6 +6,18 @@ const apiUrl = `http://localhost:${process.env.PORT ?? 18080}`;
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        // libraries change rarely: separate files stay cached across deploys of the app code
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          query: ['@tanstack/react-query', 'zustand'],
+          i18n: ['i18next', 'react-i18next'],
+        },
+      },
+    },
+  },
   server: {
     port: Number(process.env.WEB_PORT ?? 15173),
     strictPort: true,
