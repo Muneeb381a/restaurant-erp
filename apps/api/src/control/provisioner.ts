@@ -80,10 +80,11 @@ export function createNeonProvisioner(o: NeonOptions): Provisioner {
           region_id: o.regionId,
           pg_version: o.pgVersion ?? 17,
           ...(o.orgId ? { org_id: o.orgId } : {}),
+          // Only what we need. The free plan refuses a custom suspend time (HTTP 412), so that is sent
+          // only when someone asks for it; 0.25 CU is Neon's own default minimum.
           default_endpoint_settings: {
-            autoscaling_limit_min_cu: 0.25,
             autoscaling_limit_max_cu: o.maxCu ?? 1,
-            suspend_timeout_seconds: o.suspendSeconds ?? 300,
+            ...(o.suspendSeconds ? { suspend_timeout_seconds: o.suspendSeconds } : {}),
           },
         },
       };

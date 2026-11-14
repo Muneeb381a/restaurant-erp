@@ -36,7 +36,7 @@ describe('Neon provisioner', () => {
     expect(sent).toMatchObject({
       name: 'erp-lahore-karahi',
       region_id: 'aws-us-east-2',
-      default_endpoint_settings: { autoscaling_limit_max_cu: 1, suspend_timeout_seconds: 300 },
+      default_endpoint_settings: { autoscaling_limit_max_cu: 1 },
     });
     expect(sent.org_id).toBeUndefined();
 
