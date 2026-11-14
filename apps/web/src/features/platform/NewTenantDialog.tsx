@@ -32,7 +32,8 @@ export function Credentials({
   password: string;
 }) {
   const { t } = useTranslation();
-  const url = `${window.location.origin}/r/${slug}`;
+  // opens the restaurant's sign-in already on the password form (the password itself is never in the link)
+  const url = `${window.location.origin}/r/${slug}?login=password&user=${encodeURIComponent(username)}`;
   const message = t('platform.shareText', { name, url, code: slug, username, password });
   return (
     <div className="space-y-3">

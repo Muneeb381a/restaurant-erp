@@ -50,6 +50,17 @@ describe('LoginPage', () => {
     expect(submit).toBeEnabled();
   });
 
+  it('opens on the password form with the username filled in when the platform link says so', () => {
+    window.history.pushState({}, '', '/?login=password&user=owner');
+    try {
+      renderLogin();
+      expect(screen.getByLabelText('Password')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('owner')).toBeInTheDocument();
+    } finally {
+      window.history.pushState({}, '', '/');
+    }
+  });
+
   it('signs in with username + PIN, stores the tokens and remembers the username', async () => {
     fetchMock.mockResolvedValueOnce(respond(200, { accessToken: 'a', refreshToken: 'r' }));
     renderLogin();

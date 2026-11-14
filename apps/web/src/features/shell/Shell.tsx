@@ -24,7 +24,9 @@ import { watchResponsiveTables } from '../../lib/responsive-tables';
 /** Auth guard + app frame: navigation by task, one Day/Shift control, account menu. */
 export function Shell() {
   const tokens = useAuth((s) => s.tokens);
-  if (!tokens) return <Navigate to="/login" replace />;
+  const { search } = useLocation();
+  // keep ?login=password&user=… from the platform link through the redirect
+  if (!tokens) return <Navigate to={{ pathname: '/login', search }} replace />;
   return (
     <PasswordGate>
       <SignedIn />

@@ -45,13 +45,15 @@ export function LoginPage() {
   const { t } = useTranslation();
   const nav = useNavigate();
   const { lastUsername, setLastUsername, setTokens } = useAuth();
-  const [username, setUsername] = useState(lastUsername);
+  // a link from the platform (…?login=password&user=owner) opens the password form, for a new owner
+  const link = new URLSearchParams(window.location.search);
+  const [username, setUsername] = useState(link.get('user') ?? lastUsername);
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [shake, setShake] = useState(false);
   // managers and owners may sign in with a password; staff use the PIN pad
-  const [usePassword, setUsePassword] = useState(false);
+  const [usePassword, setUsePassword] = useState(link.get('login') === 'password');
   const [password, setPassword] = useState('');
   const up = useServerUp();
   const tenant = useTenantInfo();
