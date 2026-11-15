@@ -16,6 +16,8 @@
     "db:migrate:phase2": "pnpm --filter @erp/api db:migrate:phase2",
     "db:reset": "pnpm db:up && pnpm --filter @erp/api db:reset",
     "platform:admin": "pnpm --filter @erp/api platform:admin",
+    "platform:backup": "pnpm --filter @erp/api platform:backup",
+    "platform:restore": "pnpm --filter @erp/api platform:restore",
     "platform:migrate": "pnpm --filter @erp/api platform:migrate",
     "db:codegen": "pnpm --filter @erp/api db:codegen",
     "test": "pnpm -r --workspace-concurrency=1 test",

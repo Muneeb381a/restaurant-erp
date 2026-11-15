@@ -97,7 +97,7 @@ To look at exactly what will be deployed before sending it: `pnpm vercel:build &
 | After every deploy | `pnpm platform:migrate` (control, then every restaurant; one failure does not stop the rest), or **Install updates** on one restaurant |
 | Who did what | Platform → **Activity** (append-only) |
 | A restaurant leaves | **Archive** (code stops working, data kept). Deleting its Neon project is manual, in the Neon console, and cannot be undone |
-| Backups | Neon keeps point-in-time history per project (a day on the free plan; longer on paid). For a financial system take a periodic `pg_dump` too |
+| Backups | `pnpm platform:backup` every night (a dump per restaurant + the control database, checked after writing), `pnpm platform:restore` for one restaurant. Neon's point-in-time history is a second net. Full guide: [BACKUP-RESTORE](BACKUP-RESTORE.md) |
 
 ## Limits you should know
 

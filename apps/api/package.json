@@ -10,6 +10,8 @@
     "db:migrate": "tsx --env-file-if-exists=../../.env scripts/db-migrate.ts",
     "db:migrate:phase2": "tsx --env-file-if-exists=../../.env scripts/db-migrate.ts phase2",
     "platform:admin": "tsx --env-file-if-exists=../../.env --env-file-if-exists=../../.env.cloud scripts/platform-admin.ts",
+    "platform:backup": "tsx --env-file-if-exists=../../.env --env-file-if-exists=../../.env.cloud scripts/platform-backup.ts",
+    "platform:restore": "tsx --env-file-if-exists=../../.env --env-file-if-exists=../../.env.cloud scripts/platform-restore.ts",
     "platform:migrate": "tsx --env-file-if-exists=../../.env --env-file-if-exists=../../.env.cloud scripts/platform-migrate.ts",
     "db:reset": "tsx --env-file-if-exists=../../.env scripts/db-reset.ts",
     "db:codegen": "kysely-codegen --env-file=../../.env --dialect=postgres --out-file=src/db/types.ts --camel-case=false && tsx scripts/patch-types.ts",
