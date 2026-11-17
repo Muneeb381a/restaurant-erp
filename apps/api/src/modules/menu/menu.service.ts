@@ -1,6 +1,7 @@
 import { dayBefore, validateDealDefinition, wouldCreateCycle, type Paisa } from '@erp/domain';
 import type { AppContext } from '../../http/context';
 import { AppError } from '../../http/errors';
+import { inUse, orInUse } from '../../shared/in-use';
 import { withTx, type Queryable } from '../../shared/tx';
 import { writeAudit } from '../audit/audit.service';
 import {
@@ -129,6 +130,43 @@ export function updateCategory(
       .executeTakeFirstOrThrow();
     await audit(trx, a, 'CATEGORY_UPDATE', 'category', id, before, row);
     return row;
+  });
+}
+
+/** Deletes a category nobody uses; one with dishes or sub-categories must be emptied first. */
+export function deleteCategory(ctx: AppContext, a: Actor, id: string) {
+  return command(ctx, a, async (trx) => {
+    const before = await requireCategory(trx, a.branchId, id, true);
+    const [items, children] = await Promise.all([
+      trx
+        .selectFrom('items')
+        .select((eb) => eb.fn.countAll<string>().as('n'))
+        .where('category_id', '=', id)
+        .executeTakeFirstOrThrow(),
+      trx
+        .selectFrom('categories')
+        .select((eb) => eb.fn.countAll<string>().as('n'))
+        .where('parent_id', '=', id)
+        .executeTakeFirstOrThrow(),
+    ]);
+    if (Number(items.n) > 0)
+      throw new AppError(
+        409,
+        'IN_USE',
+        `${items.n} dish(es) are in this category. Move them to another category first.`,
+        { items: Number(items.n) },
+      );
+    if (Number(children.n) > 0)
+      throw new AppError(
+        409,
+        'IN_USE',
+        `This category has ${children.n} sub-categor${Number(children.n) === 1 ? 'y' : 'ies'}. Move or delete them first.`,
+      );
+    await orInUse('This category', () =>
+      trx.deleteFrom('categories').where('id', '=', id).execute(),
+    );
+    await audit(trx, a, 'CATEGORY_DELETE', 'category', id, before, null);
+    return { id };
   });
 }
 
@@ -275,6 +313,25 @@ export function updateItem(ctx: AppContext, a: Actor, id: string, p: ItemPatch) 
   });
 }
 
+/**
+ * Deletes a dish that was never ordered (its variants, prices and links go with it). A dish that
+ * appears on any order or bill stays for the records and is switched off instead.
+ */
+export function deleteItem(ctx: AppContext, a: Actor, id: string) {
+  return command(ctx, a, async (trx) => {
+    const before = await requireItem(trx, a.branchId, id, true);
+    const sold = await trx
+      .selectFrom('order_items')
+      .select((eb) => eb.fn.countAll<string>().as('n'))
+      .where('item_id', '=', id)
+      .executeTakeFirstOrThrow();
+    if (Number(sold.n) > 0) throw inUse('This dish', `it is on ${sold.n} order line(s)`);
+    await orInUse('This dish', () => trx.deleteFrom('items').where('id', '=', id).execute());
+    await audit(trx, a, 'ITEM_DELETE', 'item', id, before, null);
+    return { id };
+  });
+}
+
 /** Sets (or replaces) the one photo of a dish. The bytes were checked by the route; the audit keeps only the size. */
 export function setItemImage(
   ctx: AppContext,
@@ -400,6 +457,41 @@ export function updateVariant(ctx: AppContext, a: Actor, id: string, p: VariantP
       .executeTakeFirstOrThrow();
     await audit(trx, a, 'VARIANT_UPDATE', 'item_variant', id, before, row);
     return row;
+  });
+}
+
+/** Deletes a size/variant that was never ordered. A dish keeps at least one variant. */
+export function deleteVariant(ctx: AppContext, a: Actor, id: string) {
+  return command(ctx, a, async (trx) => {
+    const before = await requireVariant(trx, a.branchId, id, true);
+    const siblings = await trx
+      .selectFrom('item_variants')
+      .select(['id', 'is_default'])
+      .where('item_id', '=', before.item_id)
+      .orderBy('sort')
+      .orderBy('name')
+      .execute();
+    if (siblings.length <= 1)
+      throw bad('A dish needs at least one variant. Delete the whole dish instead.');
+    const sold = await trx
+      .selectFrom('order_items')
+      .select((eb) => eb.fn.countAll<string>().as('n'))
+      .where('variant_id', '=', id)
+      .executeTakeFirstOrThrow();
+    if (Number(sold.n) > 0) throw inUse('This variant', `it is on ${sold.n} order line(s)`);
+    await orInUse('This variant', () =>
+      trx.deleteFrom('item_variants').where('id', '=', id).execute(),
+    );
+    if (before.is_default) {
+      const next = siblings.find((x) => x.id !== id)!;
+      await trx
+        .updateTable('item_variants')
+        .set({ is_default: true })
+        .where('id', '=', next.id)
+        .execute();
+    }
+    await audit(trx, a, 'VARIANT_DELETE', 'item_variant', id, before, null);
+    return { id };
   });
 }
 

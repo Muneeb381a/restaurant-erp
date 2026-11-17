@@ -7,7 +7,7 @@ import { can, useMe } from '../../lib/queries';
 import type { Ingredient, StocktakeView } from '../../lib/types';
 import { parseSignedRs } from './DealEditor';
 import { Icon } from '../../components/Icon';
-import { Dialog, EmptyRow, ErrorText, Field, PageHead } from './ui';
+import { Dialog, EmptyRow, ErrorText, Field, PageHead, Toggle } from './ui';
 
 const newKey = (): string => `ui-${crypto.randomUUID()}`;
 export const useIngredients = (search = '', low = false) =>
@@ -31,6 +31,7 @@ export function StockAdmin() {
   const [low, setLow] = useState(false);
   const list = useIngredients(search, low);
   const [dialog, setDialog] = useState<'new' | 'waste' | null>(null);
+  const [editing, setEditing] = useState<Ingredient | null>(null);
   const refresh = (): Promise<void> => qc.invalidateQueries({ queryKey: ['ingredients'] });
 
   return (
@@ -96,8 +97,17 @@ export function StockAdmin() {
                 </td>
                 <td className="num">{ltr(Number(i.avgCostPerBase).toFixed(2))}</td>
                 <td className="num">{ltr(formatRs(i.stockValuePaisa))}</td>
-                <td className="text-end">
-                  {i.needsReorder && <span className="chip-warn">{t('stockPage.low')}</span>}
+                <td className="whitespace-nowrap text-end">
+                  {i.needsReorder && <span className="chip-warn me-2">{t('stockPage.low')}</span>}
+                  {write && (
+                    <button
+                      className="btn-secondary"
+                      aria-label={`${t('admin.edit')} ${i.name}`}
+                      onClick={() => setEditing(i)}
+                    >
+                      {t('admin.edit')}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -111,6 +121,13 @@ export function StockAdmin() {
       {dialog === 'new' && (
         <NewIngredient onClose={() => setDialog(null)} onDone={() => void refresh()} />
       )}
+      {editing && (
+        <EditIngredient
+          ingredient={editing}
+          onClose={() => setEditing(null)}
+          onDone={() => void refresh()}
+        />
+      )}
       {dialog === 'waste' && (
         <WasteDialog
           ingredients={list.data ?? []}
@@ -119,6 +136,98 @@ export function StockAdmin() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Name, category, reorder level, and switching an ingredient off. Its unit and the stock already
+ * counted are not editable: every movement is on record, and changing them would rewrite history.
+ * An ingredient is never deleted for the same reason.
+ */
+function EditIngredient({
+  ingredient,
+  onClose,
+  onDone,
+}: {
+  ingredient: Ingredient;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const { t } = useTranslation();
+  const [name, setName] = useState(ingredient.name);
+  const [nameUr, setNameUr] = useState(ingredient.nameUr ?? '');
+  const [category, setCategory] = useState(ingredient.category ?? '');
+  const [reorder, setReorder] = useState(ingredient.reorderLevel ?? '');
+  const [active, setActive] = useState(ingredient.isActive);
+  const [error, setError] = useState<unknown>(null);
+  const save = useMutation({
+    mutationFn: () =>
+      api(`/inventory/ingredients/${ingredient.id}`, {
+        method: 'PATCH',
+        body: {
+          name: name.trim(),
+          nameUr: nameUr.trim() || null,
+          category: category.trim() || null,
+          reorderLevel: reorder.trim() === '' ? null : Number(reorder),
+          isActive: active,
+        },
+      }),
+    onSuccess: () => {
+      onDone();
+      onClose();
+    },
+    onError: setError,
+  });
+  return (
+    <Dialog title={`${t('admin.edit')}: ${ingredient.name}`} onClose={onClose}>
+      <div className="space-y-3">
+        <Field label={t('stockPage.name')}>
+          <input
+            className="input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+          />
+        </Field>
+        <Field label={t('admin.menuPage.nameUr')}>
+          <input
+            className="input"
+            dir="rtl"
+            value={nameUr}
+            onChange={(e) => setNameUr(e.target.value)}
+          />
+        </Field>
+        <Field label={t('stockPage.category')}>
+          <input className="input" value={category} onChange={(e) => setCategory(e.target.value)} />
+        </Field>
+        <Field label={`${t('stockPage.reorder')} (${ingredient.baseUom})`}>
+          <input
+            className="input"
+            inputMode="decimal"
+            value={reorder}
+            onChange={(e) => setReorder(e.target.value.replace(/[^\d.]/g, ''))}
+          />
+        </Field>
+        <label className="flex items-center gap-3">
+          <Toggle on={active} label={t('admin.active')} onChange={setActive} />
+          <span>{t('admin.active')}</span>
+        </label>
+        <p className="hint">{t('stockPage.editHint')}</p>
+        <ErrorText error={error} />
+        <div className="flex justify-end gap-2">
+          <button className="btn-secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button
+            className="btn-primary"
+            disabled={save.isPending || !name.trim()}
+            onClick={() => save.mutate()}
+          >
+            {t('admin.save')}
+          </button>
+        </div>
+      </div>
+    </Dialog>
   );
 }
 

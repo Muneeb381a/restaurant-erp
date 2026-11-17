@@ -19,6 +19,7 @@ export function UsersAdmin() {
     queryFn: async () => (await api<{ items: RoleRow[] }>('/roles')).items,
   });
   const [dialog, setDialog] = useState<'new' | UserRow | null>(null);
+  const [editing, setEditing] = useState<UserRow | null>(null);
   const [error, setError] = useState<unknown>(null);
   const refresh = (): Promise<void> => qc.invalidateQueries({ queryKey: ['admin-users'] });
 
@@ -89,6 +90,13 @@ export function UsersAdmin() {
                     </button>
                   )}
                   <button
+                    className="btn-secondary me-1"
+                    aria-label={`${t('admin.edit')} ${u.username}`}
+                    onClick={() => setEditing(u)}
+                  >
+                    {t('admin.edit')}
+                  </button>
+                  <button
                     className="btn-secondary"
                     onClick={() => setDialog(u)}
                     aria-label={`${t('admin.usersPage.resetPin')} ${u.username}`}
@@ -114,7 +122,86 @@ export function UsersAdmin() {
       {dialog && dialog !== 'new' && (
         <ResetPinDialog user={dialog} onClose={() => setDialog(null)} />
       )}
+      {editing && (
+        <EditUserDialog
+          user={editing}
+          roles={roles.data ?? []}
+          onClose={() => setEditing(null)}
+          onDone={() => void refresh()}
+        />
+      )}
     </div>
+  );
+}
+
+/** Name and role of an existing person. (A user is switched off with the toggle, never deleted: their sales stay on record.) */
+function EditUserDialog({
+  user,
+  roles,
+  onClose,
+  onDone,
+}: {
+  user: UserRow;
+  roles: RoleRow[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const { t } = useTranslation();
+  const [fullName, setFullName] = useState(user.full_name);
+  const [roleId, setRoleId] = useState(user.role_id);
+  const [error, setError] = useState<unknown>(null);
+  const save = useMutation({
+    mutationFn: () =>
+      api(`/users/${user.id}`, {
+        method: 'PATCH',
+        body: {
+          ...(fullName.trim() !== user.full_name && { fullName: fullName.trim() }),
+          ...(roleId !== user.role_id && { roleId }),
+        },
+      }),
+    onSuccess: () => {
+      onDone();
+      onClose();
+    },
+    onError: setError,
+  });
+  const changed = fullName.trim() !== user.full_name || roleId !== user.role_id;
+  return (
+    <Dialog title={`${t('admin.edit')}: ${user.username}`} onClose={onClose}>
+      <div className="space-y-3">
+        <Field label={t('admin.usersPage.fullName')}>
+          <input
+            className="input"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            autoFocus
+          />
+        </Field>
+        <Field label={t('admin.usersPage.role')}>
+          <select className="input" value={roleId} onChange={(e) => setRoleId(e.target.value)}>
+            {roles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <p className="hint">{t('admin.usersPage.editHint')}</p>
+        <ErrorText error={error} />
+        <div className="flex justify-end gap-2">
+          <button className="btn-secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button
+            className="btn-primary"
+            disabled={save.isPending || !fullName.trim() || !changed}
+            onClick={() => save.mutate()}
+          >
+            {t('admin.save')}
+          </button>
+        </div>
+      </div>
+    </Dialog>
   );
 }
 

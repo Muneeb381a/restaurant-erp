@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { asyncHandler } from '../../http/async-handler';
 import type { AppContext } from '../../http/context';
 import { AppError } from '../../http/errors';
+import { orInUse } from '../../shared/in-use';
 import { withTx } from '../../shared/tx';
 import { writeAudit } from '../audit/audit.service';
 import { authenticate, requirePermission, resolveBranch } from '../auth/middleware';
@@ -19,11 +20,14 @@ export interface CrudOptions {
   permission: string;
   create: z.ZodObject<z.ZodRawShape>;
   orderBy: string[];
+  /** Allow DELETE of a row that nothing refers to. A referenced row answers 409 IN_USE (switch it off). */
+  deletable?: boolean;
 }
 
 /**
- * Minimal branch-scoped CRUD with audit. Deliberately no DELETE: configuration rows are
- * referenced by history, so they are deactivated (`is_active`) instead (CLAUDE.md rule 2).
+ * Minimal branch-scoped CRUD with audit. DELETE exists only where `deletable` is set, and only
+ * succeeds for a row nothing refers to: configuration rows that history points at stay and are
+ * deactivated (`is_active`) instead (CLAUDE.md rule 2, ADR 0022).
  * Column names come only from the Zod schemas below, never from the request.
  */
 export function crudRouter(ctx: AppContext, o: CrudOptions): Router {
@@ -128,6 +132,41 @@ export function crudRouter(ctx: AppContext, o: CrudOptions): Router {
       res.json(row);
     }),
   );
+
+  if (o.deletable) {
+    r.delete(
+      '/:id',
+      ...write,
+      asyncHandler(async (req, res) => {
+        const { id } = idParam.parse(req.params);
+        await withTx(ctx.db, async (trx) => {
+          const t = trx as unknown as typeof db;
+          const before = await t
+            .selectFrom(o.table)
+            .selectAll()
+            .where('id', '=', id)
+            .where('branch_id', '=', req.branchId!)
+            .forUpdate()
+            .executeTakeFirst();
+          if (!before) throw new AppError(404, 'NOT_FOUND', `${o.entity} not found`);
+          await orInUse(`This ${o.entity.replace('_', ' ')}`, () =>
+            t.deleteFrom(o.table).where('id', '=', id).execute(),
+          );
+          await writeAudit(trx, {
+            branchId: req.branchId,
+            userId: req.principal!.userId,
+            deviceId: req.principal!.deviceId,
+            action: `${o.entity.toUpperCase()}_DELETE`,
+            entity: o.entity,
+            entityId: id,
+            before,
+            ip: req.ip,
+          });
+        });
+        res.status(204).end();
+      }),
+    );
+  }
 
   return r;
 }

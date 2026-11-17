@@ -196,6 +196,16 @@ export function menuRouter(ctx: AppContext): Router {
     }),
   );
 
+  r.delete(
+    '/categories/:id',
+    ...manage,
+    asyncHandler(async (req, res) => {
+      const { id } = idParam.parse(req.params);
+      await svc.deleteCategory(ctx, actorOf(req), id);
+      res.status(204).end();
+    }),
+  );
+
   // ───────── items
   r.get(
     '/items',
@@ -302,6 +312,16 @@ export function menuRouter(ctx: AppContext): Router {
     }),
   );
   /** One photo per dish. The browser shrinks it first; the server checks the bytes, not the declared type. */
+  r.delete(
+    '/items/:id',
+    ...manage,
+    asyncHandler(async (req, res) => {
+      const { id } = idParam.parse(req.params);
+      await svc.deleteItem(ctx, actorOf(req), id);
+      res.status(204).end();
+    }),
+  );
+
   r.put(
     '/items/:id/image',
     ...manage,
@@ -369,6 +389,16 @@ export function menuRouter(ctx: AppContext): Router {
         );
     }),
   );
+  r.delete(
+    '/variants/:id',
+    ...manage,
+    asyncHandler(async (req, res) => {
+      const { id } = idParam.parse(req.params);
+      await svc.deleteVariant(ctx, actorOf(req), id);
+      res.status(204).end();
+    }),
+  );
+
   r.patch(
     '/variants/:id',
     ...manage,

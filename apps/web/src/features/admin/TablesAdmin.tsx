@@ -4,12 +4,18 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api';
 import type { TableRow } from '../../lib/types';
 import { Icon } from '../../components/Icon';
-import { Dialog, EmptyRow, ErrorText, Field, PageHead, Toggle } from './ui';
+import { ConfirmDelete, Dialog, EmptyRow, ErrorText, Field, PageHead, Toggle } from './ui';
 
 interface AreaRow {
   id: string;
   name: string;
 }
+
+type Editing =
+  | { kind: 'area'; row: AreaRow | null }
+  | { kind: 'table'; row: TableRow | null }
+  | { kind: 'delete-area'; row: AreaRow }
+  | { kind: 'delete-table'; row: TableRow };
 
 export function TablesAdmin() {
   const { t } = useTranslation();
@@ -22,7 +28,7 @@ export function TablesAdmin() {
     queryKey: ['admin-tables'],
     queryFn: async () => (await api<{ items: TableRow[] }>('/tables')).items,
   });
-  const [dialog, setDialog] = useState<'area' | 'table' | null>(null);
+  const [editing, setEditing] = useState<Editing | null>(null);
   const [error, setError] = useState<unknown>(null);
   const refresh = (): Promise<unknown> =>
     Promise.all([
@@ -38,14 +44,15 @@ export function TablesAdmin() {
     onError: setError,
   });
   const areaName = (id: string | null): string => areas.data?.find((a) => a.id === id)?.name ?? '';
+  const close = (): void => setEditing(null);
 
   return (
     <div className="max-w-6xl space-y-4 p-4 md:p-6">
       <PageHead title={t('admin.tables')} hint={t('admin.tablesPage.hint')}>
-        <button className="btn-secondary" onClick={() => setDialog('area')}>
+        <button className="btn-secondary" onClick={() => setEditing({ kind: 'area', row: null })}>
           {t('admin.tablesPage.newArea')}
         </button>
-        <button className="btn-primary" onClick={() => setDialog('table')}>
+        <button className="btn-primary" onClick={() => setEditing({ kind: 'table', row: null })}>
           <Icon name="plus" size={18} />
           {t('admin.tablesPage.newTable')}
         </button>
@@ -55,20 +62,29 @@ export function TablesAdmin() {
         <div className="flex flex-wrap items-center gap-2">
           <span className="micro">{t('admin.tablesPage.areas')}</span>
           {(areas.data ?? []).map((a) => (
-            <span key={a.id} className="chip-mute">
+            <button
+              key={a.id}
+              type="button"
+              className="chip-mute hover:bg-slate-200"
+              title={t('admin.tablesPage.editArea')}
+              aria-label={`${t('admin.tablesPage.editArea')}: ${a.name}`}
+              onClick={() => setEditing({ kind: 'area', row: a })}
+            >
               {a.name}
-            </span>
+              <Icon name="more" size={14} />
+            </button>
           ))}
         </div>
       )}
       <div className="dt">
-        <table className="min-w-[32rem]">
+        <table className="min-w-[36rem]">
           <thead>
             <tr>
               <th>{t('admin.code')}</th>
               <th>{t('admin.tablesPage.area')}</th>
               <th className="num">{t('admin.tablesPage.seats')}</th>
               <th>{t('admin.active')}</th>
+              <th />
             </tr>
           </thead>
           <tbody>
@@ -84,34 +100,87 @@ export function TablesAdmin() {
                     onChange={(on) => toggle.mutate({ id: tb.id, on })}
                   />
                 </td>
+                <td className="whitespace-nowrap text-end">
+                  <button
+                    className="btn-secondary me-1"
+                    aria-label={`${t('admin.edit')} ${tb.code}`}
+                    onClick={() => setEditing({ kind: 'table', row: tb })}
+                  >
+                    {t('admin.edit')}
+                  </button>
+                  <button
+                    className="btn-danger-quiet"
+                    aria-label={`${t('admin.delete')} ${tb.code}`}
+                    onClick={() => setEditing({ kind: 'delete-table', row: tb })}
+                  >
+                    {t('admin.delete')}
+                  </button>
+                </td>
               </tr>
             ))}
             {tables.isSuccess && tables.data.length === 0 && (
-              <EmptyRow cols={4} icon="tables" text={t('admin.tablesPage.empty')} />
+              <EmptyRow cols={5} icon="tables" text={t('admin.tablesPage.empty')} />
             )}
           </tbody>
         </table>
       </div>
-      {dialog === 'area' && (
-        <AreaDialog onClose={() => setDialog(null)} onDone={() => void refresh()} />
-      )}
-      {dialog === 'table' && (
-        <TableDialog
-          areas={areas.data ?? []}
-          onClose={() => setDialog(null)}
+      {editing?.kind === 'area' && (
+        <AreaDialog
+          area={editing.row}
+          onClose={close}
           onDone={() => void refresh()}
+          onDelete={
+            editing.row ? () => setEditing({ kind: 'delete-area', row: editing.row! }) : undefined
+          }
+        />
+      )}
+      {editing?.kind === 'table' && (
+        <TableDialog
+          table={editing.row}
+          areas={areas.data ?? []}
+          onClose={close}
+          onDone={() => void refresh()}
+        />
+      )}
+      {editing?.kind === 'delete-table' && (
+        <ConfirmDelete
+          name={editing.row.code}
+          run={() => api(`/tables/${editing.row.id}`, { method: 'DELETE' })}
+          onDone={() => void refresh()}
+          onClose={close}
+        />
+      )}
+      {editing?.kind === 'delete-area' && (
+        <ConfirmDelete
+          name={editing.row.name}
+          run={() => api(`/areas/${editing.row.id}`, { method: 'DELETE' })}
+          onDone={() => void refresh()}
+          onClose={close}
         />
       )}
     </div>
   );
 }
 
-function AreaDialog({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+function AreaDialog({
+  area,
+  onClose,
+  onDone,
+  onDelete,
+}: {
+  area: AreaRow | null;
+  onClose: () => void;
+  onDone: () => void;
+  onDelete?: (() => void) | undefined;
+}) {
   const { t } = useTranslation();
-  const [name, setName] = useState('');
+  const [name, setName] = useState(area?.name ?? '');
   const [error, setError] = useState<unknown>(null);
   const save = useMutation({
-    mutationFn: () => api('/areas', { method: 'POST', body: { name: name.trim() } }),
+    mutationFn: () =>
+      area
+        ? api(`/areas/${area.id}`, { method: 'PATCH', body: { name: name.trim() } })
+        : api('/areas', { method: 'POST', body: { name: name.trim() } }),
     onSuccess: () => {
       onDone();
       onClose();
@@ -119,7 +188,10 @@ function AreaDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
     onError: setError,
   });
   return (
-    <Dialog title={t('admin.tablesPage.newArea')} onClose={onClose}>
+    <Dialog
+      title={area ? t('admin.tablesPage.editArea') : t('admin.tablesPage.newArea')}
+      onClose={onClose}
+    >
       <div className="space-y-3">
         <Field label={t('admin.name')}>
           <input
@@ -130,7 +202,12 @@ function AreaDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
           />
         </Field>
         <ErrorText error={error} />
-        <div className="flex justify-end gap-2">
+        <div className="flex items-center justify-end gap-2">
+          {onDelete && (
+            <button className="btn-danger-quiet me-auto" onClick={onDelete}>
+              {t('admin.delete')}
+            </button>
+          )}
           <button className="btn-secondary" onClick={onClose}>
             {t('common.cancel')}
           </button>
@@ -139,7 +216,7 @@ function AreaDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
             disabled={save.isPending || !name.trim()}
             onClick={() => save.mutate()}
           >
-            {t('admin.create')}
+            {area ? t('admin.save') : t('admin.create')}
           </button>
         </div>
       </div>
@@ -148,25 +225,28 @@ function AreaDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
 }
 
 function TableDialog({
+  table,
   areas,
   onClose,
   onDone,
 }: {
+  table: TableRow | null;
   areas: AreaRow[];
   onClose: () => void;
   onDone: () => void;
 }) {
   const { t } = useTranslation();
-  const [code, setCode] = useState('');
-  const [seats, setSeats] = useState('4');
-  const [areaId, setAreaId] = useState('');
+  const [code, setCode] = useState(table?.code ?? '');
+  const [seats, setSeats] = useState(String(table?.seats ?? 4));
+  const [areaId, setAreaId] = useState(table?.area_id ?? '');
   const [error, setError] = useState<unknown>(null);
   const save = useMutation({
-    mutationFn: () =>
-      api('/tables', {
-        method: 'POST',
-        body: { code: code.trim(), seats: Number(seats) || 4, area_id: areaId || null },
-      }),
+    mutationFn: () => {
+      const body = { code: code.trim(), seats: Number(seats) || 4, area_id: areaId || null };
+      return table
+        ? api(`/tables/${table.id}`, { method: 'PATCH', body })
+        : api('/tables', { method: 'POST', body });
+    },
     onSuccess: () => {
       onDone();
       onClose();
@@ -174,7 +254,10 @@ function TableDialog({
     onError: setError,
   });
   return (
-    <Dialog title={t('admin.tablesPage.newTable')} onClose={onClose}>
+    <Dialog
+      title={table ? t('admin.tablesPage.editTable') : t('admin.tablesPage.newTable')}
+      onClose={onClose}
+    >
       <div className="space-y-3">
         <Field label={t('admin.code')}>
           <input
@@ -212,7 +295,7 @@ function TableDialog({
             disabled={save.isPending || !code.trim()}
             onClick={() => save.mutate()}
           >
-            {t('admin.create')}
+            {table ? t('admin.save') : t('admin.create')}
           </button>
         </div>
       </div>

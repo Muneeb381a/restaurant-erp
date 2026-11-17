@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon, type IconName } from '../../components/Icon';
 import { Modal } from '../../components/Modal';
@@ -120,5 +121,48 @@ export function EmptyRow({
         </div>
       </td>
     </tr>
+  );
+}
+
+/**
+ * "Delete X?" with a plain warning. The server only deletes what nothing refers to; for anything
+ * that was used before it answers IN_USE and the message (shown here) says to switch it off instead.
+ */
+export function ConfirmDelete({
+  name,
+  run,
+  onDone,
+  onClose,
+}: {
+  name: string;
+  run: () => Promise<unknown>;
+  onDone: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const [error, setError] = useState<unknown>(null);
+  const del = useMutation({
+    mutationFn: run,
+    onSuccess: () => {
+      onDone();
+      onClose();
+    },
+    onError: setError,
+  });
+  return (
+    <Dialog title={t('admin.deleteTitle', { name })} onClose={onClose}>
+      <div className="space-y-3">
+        <p className="text-slate-700">{t('admin.deleteBody')}</p>
+        <ErrorText error={error} />
+        <div className="flex justify-end gap-2">
+          <button className="btn-secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button className="btn-danger" disabled={del.isPending} onClick={() => del.mutate()}>
+            {t('admin.delete')}
+          </button>
+        </div>
+      </div>
+    </Dialog>
   );
 }

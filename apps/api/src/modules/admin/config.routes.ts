@@ -19,6 +19,7 @@ export function configRouters(ctx: AppContext): Record<string, Router> {
       table: 'areas',
       entity: 'area',
       permission: perm,
+      deletable: true,
       orderBy: ['sort', 'name'],
       create: z.object({ name: text(), sort: z.number().int().min(0).max(10_000).optional() }),
     }),
@@ -26,6 +27,7 @@ export function configRouters(ctx: AppContext): Record<string, Router> {
       table: 'dining_tables',
       entity: 'dining_table',
       permission: perm,
+      deletable: true,
       orderBy: ['code'],
       create: z.object({
         area_id: z.string().uuid().nullable().optional(),
@@ -40,6 +42,7 @@ export function configRouters(ctx: AppContext): Record<string, Router> {
       table: 'stations',
       entity: 'station',
       permission: perm,
+      deletable: true,
       orderBy: ['code'],
       create: z.object({ code, name: text() }),
     }),
@@ -47,6 +50,7 @@ export function configRouters(ctx: AppContext): Record<string, Router> {
       table: 'printers',
       entity: 'printer',
       permission: perm,
+      deletable: true,
       orderBy: ['name'],
       create: z.object({
         name: text(),

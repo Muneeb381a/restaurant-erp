@@ -183,7 +183,21 @@
         "DINE_IN": "Dine-in",
         "TAKEAWAY": "Takeaway",
         "DELIVERY": "Delivery"
-      }
+      },
+      "categories": "Categories",
+      "stations": "Stations",
+      "setupTitle": "Categories and stations",
+      "categoriesHint": "Categories group your dishes on the menu (Karahi, BBQ, Drinks).",
+      "stationsHint": "A station is the kitchen section that cooks a dish (Karahi, Tandoor, Drinks). Its printer prints the order.",
+      "categoriesEmpty": "No categories yet. Create the first one.",
+      "stationsEmpty": "No stations yet. Create the first one.",
+      "newCategory": "New category",
+      "newStation": "New station",
+      "noCategoriesYet": "No categories yet: create one",
+      "noStationsYet": "No stations yet: create one",
+      "nameUr": "Name (Urdu)",
+      "dishesN_one": "{{count}} dish",
+      "dishesN_other": "{{count}} dishes"
     },
     "importer": {
       "title": "Import menu from CSV",
@@ -226,7 +240,9 @@
       "seats": "Seats",
       "area": "Area",
       "hint": "The tables on your floor. They appear on the Tables screen straight away.",
-      "empty": "No tables yet. Add an area (Main Hall, Terrace) and then its tables."
+      "empty": "No tables yet. Add an area (Main Hall, Terrace) and then its tables.",
+      "editTable": "Edit table",
+      "editArea": "Edit area"
     },
     "usersPage": {
       "newUser": "New user",
@@ -240,7 +256,8 @@
       "locked": "Locked",
       "unlock": "Unlock",
       "hint": "Everyone who signs in. Deactivate people who leave; their past work stays on record.",
-      "empty": "No users yet. Add the first person with “New user”."
+      "empty": "No users yet. Add the first person with “New user”.",
+      "editHint": "The username and PIN stay the same. To stop someone signing in, switch them off; their sales stay on record."
     },
     "settings": "Settings",
     "dealEditor": {
@@ -269,7 +286,10 @@
     "groupPeople": "People & access",
     "groupBusiness": "Business",
     "qrMenu": "QR menu",
-    "setup": "Setup"
+    "setup": "Setup",
+    "delete": "Delete",
+    "deleteTitle": "Delete {{name}}?",
+    "deleteBody": "This cannot be undone. Something that was already used in orders (a table, a dish, a category) cannot be deleted: switch it off instead."
   },
   "order": {
     "title": "Order",
@@ -750,7 +770,9 @@
       "ml": "millilitres",
       "pcs": "pieces"
     },
-    "hint": "What is on the shelf, what it cost you and what it is worth. Sales reduce it automatically through recipes."
+    "hint": "What is on the shelf, what it cost you and what it is worth. Sales reduce it automatically through recipes.",
+    "category": "Category",
+    "editHint": "The unit and the stock already counted do not change: every movement is on record. To stop using an ingredient, switch it off."
   },
   "purchasePage": {
     "title": "Purchases",

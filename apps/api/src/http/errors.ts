@@ -30,6 +30,7 @@ export type ErrorCode =
   | 'RATE_LIMITED'
   | 'CONFLICT'
   | 'REFERENCE_VIOLATION'
+  | 'IN_USE'
   | 'CONSTRAINT_VIOLATION'
   | 'ROLE_PROTECTED'
   | 'LAST_OWNER'

@@ -5,7 +5,7 @@ import { api } from '../../lib/api';
 import { usePrinterHealth } from '../../lib/queries';
 import type { PrinterRow, PrintJobRow } from '../../lib/types';
 import { Icon } from '../../components/Icon';
-import { Dialog, EmptyRow, ErrorText, Field, PageHead, Toggle } from './ui';
+import { ConfirmDelete, Dialog, EmptyRow, ErrorText, Field, PageHead, Toggle } from './ui';
 
 interface StationRow {
   id: string;
@@ -51,6 +51,7 @@ export function PrintersAdmin() {
     refetchInterval: 5000,
   });
   const [editing, setEditing] = useState<PrinterRow | 'new' | null>(null);
+  const [deleting, setDeleting] = useState<PrinterRow | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
 
@@ -178,8 +179,15 @@ export function PrintersAdmin() {
                     >
                       {t('admin.printersPage.test')}
                     </button>
-                    <button className="btn-secondary" onClick={() => setEditing(p)}>
+                    <button className="btn-secondary me-1" onClick={() => setEditing(p)}>
                       {t('admin.edit')}
+                    </button>
+                    <button
+                      className="btn-danger-quiet"
+                      aria-label={`${t('admin.delete')} ${p.name}`}
+                      onClick={() => setDeleting(p)}
+                    >
+                      {t('admin.delete')}
                     </button>
                   </td>
                 </tr>
@@ -274,6 +282,14 @@ export function PrintersAdmin() {
           printer={editing === 'new' ? null : editing}
           onClose={() => setEditing(null)}
           onDone={() => void refresh()}
+        />
+      )}
+      {deleting && (
+        <ConfirmDelete
+          name={deleting.name}
+          run={() => api(`/printers/${deleting.id}`, { method: 'DELETE' })}
+          onDone={() => void refresh()}
+          onClose={() => setDeleting(null)}
         />
       )}
     </div>

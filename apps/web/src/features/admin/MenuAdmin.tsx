@@ -8,7 +8,7 @@ import type { AdminItem, AdminMenu, AdminVariant, ImportResult } from '../../lib
 import { DealEditor } from './DealEditor';
 import { Icon } from '../../components/Icon';
 import { emptyGuestInfo, GuestInfoFields, guestPayload, type GuestInfo } from './GuestInfo';
-import { Dialog, EmptyRow, ErrorText, Field, PageHead, Toggle } from './ui';
+import { ConfirmDelete, Dialog, EmptyRow, ErrorText, Field, PageHead, Toggle } from './ui';
 
 const ADMIN_MENU_KEY = ['admin-menu'];
 const CHANNEL_ORDER = ['DINE_IN', 'TAKEAWAY', 'DELIVERY'];
@@ -21,6 +21,8 @@ const channelRank = (code: string): number => {
   return i === -1 ? CHANNEL_ORDER.length : i;
 };
 
+import { MenuSetupDialog } from './MenuSetup';
+
 export function MenuAdmin() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
@@ -32,6 +34,16 @@ export function MenuAdmin() {
   const [addingVariantTo, setAddingVariantTo] = useState<AdminItem | null>(null);
   const [editingDeal, setEditingDeal] = useState<AdminItem | null>(null);
   const [importing, setImporting] = useState(false);
+  const [setup, setSetup] = useState<'categories' | 'stations' | null>(null);
+  const [deletingItem, setDeletingItem] = useState<AdminItem | null>(null);
+  const [editingVariant, setEditingVariant] = useState<{
+    item: AdminItem;
+    variant: AdminItem['variants'][number];
+  } | null>(null);
+  const [deletingVariant, setDeletingVariant] = useState<{
+    item: AdminItem;
+    variant: AdminItem['variants'][number];
+  } | null>(null);
   const [error, setError] = useState<unknown>(null);
 
   const refresh = (): Promise<unknown> =>
@@ -90,6 +102,12 @@ export function MenuAdmin() {
   return (
     <div className="space-y-3 p-4 md:p-6">
       <PageHead title={t('admin.menu')} hint={t('admin.menuPage.priceHint')}>
+        <button className="btn-secondary" onClick={() => setSetup('categories')}>
+          {t('admin.menuPage.categories')}
+        </button>
+        <button className="btn-secondary" onClick={() => setSetup('stations')}>
+          {t('admin.menuPage.stations')}
+        </button>
         <button className="btn-secondary" onClick={() => void exportCsv()}>
           {t('admin.menuPage.export')}
         </button>
@@ -188,9 +206,24 @@ export function MenuAdmin() {
                   ) : null}
                   {hasVariantCol && (
                     <td>
-                      {item.kind === 'STANDARD' && item.variants.length === 1
-                        ? ''
-                        : localName(lang, v.name, v.nameUr)}
+                      {item.kind === 'STANDARD' && item.variants.length === 1 ? (
+                        ''
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          {localName(lang, v.name, v.nameUr)}
+                          {item.kind === 'STANDARD' && (
+                            <>
+                              <button
+                                className="btn-quiet px-1.5 text-xs"
+                                aria-label={`${t('admin.edit')} ${v.name}`}
+                                onClick={() => setEditingVariant({ item, variant: v })}
+                              >
+                                {t('admin.edit')}
+                              </button>
+                            </>
+                          )}
+                        </span>
+                      )}
                     </td>
                   )}
                   {lists.map((l) => (
@@ -266,6 +299,15 @@ export function MenuAdmin() {
           item={editing === 'new' ? null : editing}
           onClose={() => setEditing(null)}
           onDone={() => void refresh()}
+          onSetup={setSetup}
+          onDelete={
+            editing === 'new'
+              ? undefined
+              : () => {
+                  setDeletingItem(editing);
+                  setEditing(null);
+                }
+          }
         />
       )}
       {editingDeal && (
@@ -286,6 +328,42 @@ export function MenuAdmin() {
       )}
       {importing && (
         <ImportDialog onClose={() => setImporting(false)} onDone={() => void refresh()} />
+      )}
+      {setup && (
+        <MenuSetupDialog
+          data={data}
+          tab={setup}
+          onClose={() => setSetup(null)}
+          onDone={() => void refresh()}
+        />
+      )}
+      {deletingItem && (
+        <ConfirmDelete
+          name={deletingItem.name}
+          run={() => api(`/items/${deletingItem.id}`, { method: 'DELETE' })}
+          onDone={() => void refresh()}
+          onClose={() => setDeletingItem(null)}
+        />
+      )}
+      {editingVariant && (
+        <VariantEditDialog
+          item={editingVariant.item}
+          variant={editingVariant.variant}
+          onClose={() => setEditingVariant(null)}
+          onDone={() => void refresh()}
+          onDelete={() => {
+            setDeletingVariant(editingVariant);
+            setEditingVariant(null);
+          }}
+        />
+      )}
+      {deletingVariant && (
+        <ConfirmDelete
+          name={`${deletingVariant.item.name} · ${deletingVariant.variant.name}`}
+          run={() => api(`/variants/${deletingVariant.variant.id}`, { method: 'DELETE' })}
+          onDone={() => void refresh()}
+          onClose={() => setDeletingVariant(null)}
+        />
       )}
     </div>
   );
@@ -393,11 +471,15 @@ function ItemDialog({
   item,
   onClose,
   onDone,
+  onSetup,
+  onDelete,
 }: {
   data: AdminMenu;
   item: AdminItem | null;
   onClose: () => void;
   onDone: () => void;
+  onSetup: (tab: 'categories' | 'stations') => void;
+  onDelete?: (() => void) | undefined;
 }) {
   const { t, i18n } = useTranslation();
   const [name, setName] = useState(item?.name ?? '');
@@ -525,6 +607,15 @@ function ItemDialog({
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              className="mt-1 text-sm font-medium text-emerald-700 underline-offset-2 hover:underline"
+              onClick={() => onSetup('categories')}
+            >
+              {data.categories.length === 0
+                ? t('admin.menuPage.noCategoriesYet')
+                : t('admin.menuPage.newCategory')}
+            </button>
           </Field>
           <Field label={t('admin.station')}>
             <select
@@ -539,6 +630,15 @@ function ItemDialog({
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              className="mt-1 text-sm font-medium text-emerald-700 underline-offset-2 hover:underline"
+              onClick={() => onSetup('stations')}
+            >
+              {data.stations.length === 0
+                ? t('admin.menuPage.noStationsYet')
+                : t('admin.menuPage.newStation')}
+            </button>
           </Field>
           <Field label={t('admin.menuPage.searchWords')}>
             <input
@@ -611,7 +711,12 @@ function ItemDialog({
         />
 
         <ErrorText error={error} />
-        <div className="flex justify-end gap-2">
+        <div className="flex items-center justify-end gap-2">
+          {onDelete && (
+            <button className="btn-danger-quiet me-auto" onClick={onDelete}>
+              {t('admin.delete')}
+            </button>
+          )}
           <button className="btn-secondary" onClick={onClose}>
             {t('common.cancel')}
           </button>
@@ -680,6 +785,76 @@ function VariantDialog({
             onClick={() => save.mutate()}
           >
             {t('admin.create')}
+          </button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+/** Renames a size/variant (the prices are edited in the table). */
+function VariantEditDialog({
+  item,
+  variant,
+  onClose,
+  onDone,
+  onDelete,
+}: {
+  item: AdminItem;
+  variant: AdminItem['variants'][number];
+  onClose: () => void;
+  onDone: () => void;
+  onDelete: () => void;
+}) {
+  const { t } = useTranslation();
+  const [name, setName] = useState(variant.name);
+  const [nameUr, setNameUr] = useState(variant.nameUr ?? '');
+  const [error, setError] = useState<unknown>(null);
+  const save = useMutation({
+    mutationFn: () =>
+      api(`/variants/${variant.id}`, {
+        method: 'PATCH',
+        body: { name: name.trim(), nameUr: nameUr.trim() || null },
+      }),
+    onSuccess: () => {
+      onDone();
+      onClose();
+    },
+    onError: setError,
+  });
+  return (
+    <Dialog title={`${t('admin.edit')}: ${item.name}`} onClose={onClose}>
+      <div className="space-y-3">
+        <Field label={t('admin.menuPage.variant')}>
+          <input
+            className="input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+          />
+        </Field>
+        <Field label={t('admin.menuPage.nameUr')}>
+          <input
+            className="input"
+            dir="rtl"
+            value={nameUr}
+            onChange={(e) => setNameUr(e.target.value)}
+          />
+        </Field>
+        <ErrorText error={error} />
+        <div className="flex items-center justify-end gap-2">
+          <button className="btn-danger-quiet me-auto" onClick={onDelete}>
+            {t('admin.delete')}
+          </button>
+          <button className="btn-secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button
+            className="btn-primary"
+            disabled={save.isPending || !name.trim()}
+            onClick={() => save.mutate()}
+          >
+            {t('admin.save')}
           </button>
         </div>
       </div>

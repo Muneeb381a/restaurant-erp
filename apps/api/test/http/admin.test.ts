@@ -161,9 +161,22 @@ describe('floor / kitchen / billing configuration CRUD', () => {
     expect(bad.status).toBe(400);
   });
 
-  it('DELETE is not exposed on configuration resources', async () => {
-    const id = (await t.as(owner).post('/areas', { name: 'Keep' })).body.id;
-    expect((await t.as(owner).delete(`/areas/${id}`)).status).toBe(404);
+  it('DELETE is not exposed where money points at the rows (payment methods, price lists)', async () => {
+    const pm = (
+      await t.as(owner).post('/payment-methods', {
+        code: 'KEEPPM',
+        name: 'Keep',
+        tender_class: 'CASH_OTHER',
+      })
+    ).body.id;
+    expect((await t.as(owner).delete(`/payment-methods/${pm}`)).status).toBe(404);
+    const pl = (await t.as(owner).post('/price-lists', { code: 'KEEPPL', name: 'Keep' })).body.id;
+    expect((await t.as(owner).delete(`/price-lists/${pl}`)).status).toBe(404);
+  });
+
+  it('an unused area can be deleted (ADR 0022); the full rules are in delete-config.test.ts', async () => {
+    const id = (await t.as(owner).post('/areas', { name: 'Temporary' })).body.id;
+    expect((await t.as(owner).delete(`/areas/${id}`)).status).toBe(204);
   });
 });
 

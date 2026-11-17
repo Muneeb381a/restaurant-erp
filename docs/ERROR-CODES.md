@@ -16,6 +16,7 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | `NOT_FOUND`           | 404  | No such route, or the resource does not exist **in your branch**                                                                            |
 | `CONFLICT`            | 409  | Unique value already exists, or an action on yourself that is not allowed (e.g. deactivating your own account)                              |
 | `REFERENCE_VIOLATION` | 409  | Foreign-key conflict (referenced row missing, or still in use)                                                                              |
+| `IN_USE` | 409 | A table, area, station, printer, category, dish or variant that earlier records point at cannot be deleted. The message says what uses it; switch it off instead |
 | `CONSTRAINT_VIOLATION`| 400/409 | A database CHECK failed (400) or an immutability/append-only guard blocked the operation (409)                                           |
 | `ROLE_PROTECTED`      | 409  | The OWNER role's permissions cannot be edited                                                                                               |
 | `LAST_OWNER`          | 409  | The last active owner cannot be deactivated or demoted                                                                                      |
