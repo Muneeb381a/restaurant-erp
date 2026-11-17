@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Icon } from '../../components/Icon';
 import { api } from '../../lib/api';
 import type { RoleRow, UserRow } from '../../lib/types';
-import { Avatar } from '../shell/Shell';
+import { Avatar } from '../../components/Avatar';
 import { Dialog, EmptyRow, ErrorText, Field, PageHead, Toggle } from './ui';
 
 export function UsersAdmin() {
@@ -61,7 +61,7 @@ export function UsersAdmin() {
               <tr key={u.id} className={u.is_active ? '' : 'opacity-60'}>
                 <td>
                   <span className="flex items-center gap-3">
-                    <Avatar name={u.full_name} size={36} />
+                    <Avatar name={u.full_name} size={36} userId={u.id} version={u.avatar_version} />
                     <span className="name">
                       {u.full_name}
                       <span className="sub">{u.username}</span>

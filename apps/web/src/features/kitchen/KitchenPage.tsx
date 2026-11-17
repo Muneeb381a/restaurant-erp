@@ -60,6 +60,20 @@ const COLUMNS: { status: Exclude<KotStatus, 'DONE'>; tone: string; head: string 
   { status: 'READY', tone: 'border-emerald-600', head: 'bg-emerald-700 text-white' },
 ];
 
+/** A ticket's background follows its column, so a glance down the screen says where things stand. */
+const CARD: Record<Exclude<KotStatus, 'DONE'>, string> = {
+  NEW: 'bg-amber-50',
+  PREPARING: 'bg-sky-50',
+  READY: 'bg-emerald-50',
+};
+
+/** The button is the colour of the column the ticket moves to: tap blue and it turns up under the blue heading. */
+const GO: Record<'PREPARING' | 'READY' | 'DONE', string> = {
+  PREPARING: 'bg-sky-700 text-white hover:bg-sky-800',
+  READY: 'bg-emerald-600 text-white hover:bg-emerald-700',
+  DONE: 'bg-slate-800 text-white hover:bg-slate-900',
+};
+
 /** A short two-tone beep; browsers allow it once the person has tapped anything on the page. */
 function beep(kind: 'new' | 'ready'): void {
   try {
@@ -320,27 +334,49 @@ function TicketCard({
   const back: KotStatus | null =
     x.status === 'PREPARING' ? 'NEW' : x.status === 'READY' ? 'PREPARING' : null;
   const backAllowed = x.status === 'READY' ? canCook : canCook;
+  const dineIn = x.orderType === 'DINE_IN';
   return (
     <article
-      className={`card overflow-hidden border-2 ${tone} ${x.rush ? 'ring-2 ring-rose-500' : ''}`}
+      className={`card overflow-hidden border-2 ${tone} ${x.status === 'DONE' ? '' : CARD[x.status as Exclude<KotStatus, 'DONE'>]} ${x.rush ? 'ring-2 ring-rose-500' : ''}`}
     >
-      <header className="flex items-start gap-2 border-b border-slate-200 p-3">
+      {/* how long it has been waiting: green, then amber, then red and blinking */}
+      <div
+        aria-hidden="true"
+        className={`h-1.5 ${x.status === 'READY' ? 'bg-emerald-600' : late ? 'animate-pulse bg-rose-600' : slow ? 'bg-amber-500' : 'bg-emerald-600'}`}
+      />
+      <header className="flex items-start gap-2 border-b border-slate-200/80 p-3">
         <div className="me-auto min-w-0">
-          <div className="truncate text-xl font-semibold">{where(x, t)}</div>
-          <div className="text-sm text-slate-600">
-            {ltr(`#${x.kotNo}`)} · {x.stationName}
-            {x.waiter ? ` · ${x.waiter}` : ''}
+          <div className="truncate text-3xl font-bold leading-none tracking-tight">
+            {dineIn ? ltr(x.tableCode ?? '') : ltr(`#${x.orderNo}`)}
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-700">
+            <span
+              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide ${dineIn ? 'border border-slate-400 bg-white text-slate-800' : 'bg-slate-900 text-white'}`}
+            >
+              <Icon name={dineIn ? 'tables' : 'bag'} size={12} />
+              {t(
+                dineIn
+                  ? 'order.table'
+                  : x.orderType === 'TAKEAWAY'
+                    ? 'order.takeaway'
+                    : 'order.delivery',
+              )}
+            </span>
+            <span>
+              {ltr(`#${x.kotNo}`)} · {x.stationName}
+              {x.waiter ? ` · ${x.waiter}` : ''}
+            </span>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
           <span
-            className={`money inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-sm font-bold ${late ? 'animate-pulse bg-rose-600 text-white' : slow ? 'bg-amber-200 text-amber-900' : 'bg-slate-200 text-slate-800'}`}
+            className={`money inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-base font-bold ${late ? 'animate-pulse bg-rose-600 text-white' : slow ? 'bg-amber-300 text-amber-950' : 'bg-white text-slate-800 ring-1 ring-slate-300'}`}
           >
             <Icon name="clock" size={14} />
             {formatAge(age, t)}
           </span>
           {x.rush && (
-            <span className="chip-bad">
+            <span className="inline-flex items-center gap-1 rounded-md bg-rose-600 px-2 py-0.5 text-xs font-bold uppercase text-white">
               <Icon name="flame" size={12} /> {t('order.rush')}
             </span>
           )}
@@ -349,13 +385,19 @@ function TicketCard({
       <ul className="space-y-2 p-3">
         {x.lines.map((l) => (
           <li key={l.id} className={l.voided ? 'opacity-60' : ''}>
-            <div className={`text-lg font-semibold leading-snug ${l.voided ? 'line-through' : ''}`}>
-              <span className="money me-2">{ltr(`${l.qty}×`)}</span>
-              {l.name}
-              {l.weightG ? ` · ${ltr(`${l.weightG} g`)}` : ''}
-              {l.voided && (
-                <span className="chip-bad ms-2 no-underline">{t('kitchen.cancelled')}</span>
-              )}
+            <div
+              className={`flex items-baseline gap-2 text-xl font-bold leading-snug ${l.voided ? 'line-through' : ''}`}
+            >
+              <span className="money inline-flex min-w-10 shrink-0 justify-center rounded-md bg-slate-900 px-1.5 text-lg text-white">
+                {ltr(`${l.qty}×`)}
+              </span>
+              <span>
+                {l.name}
+                {l.weightG ? ` · ${ltr(`${l.weightG} g`)}` : ''}
+                {l.voided && (
+                  <span className="chip-bad ms-2 no-underline">{t('kitchen.cancelled')}</span>
+                )}
+              </span>
             </div>
             {l.modifiers.length > 0 && (
               <div className="text-sm text-slate-700">{l.modifiers.join(', ')}</div>
@@ -373,7 +415,7 @@ function TicketCard({
           </li>
         ))}
       </ul>
-      <footer className="flex gap-2 border-t border-slate-200 p-3">
+      <footer className="flex gap-2 border-t border-slate-200/80 p-3">
         {back && backAllowed && (
           <button
             className="btn-secondary px-3"
@@ -386,7 +428,7 @@ function TicketCard({
         )}
         {next.allowed ? (
           <button
-            className="btn-primary btn-lg flex-1"
+            className={`btn btn-lg flex-1 ${GO[next.to as 'PREPARING' | 'READY' | 'DONE']}`}
             disabled={busy}
             onClick={() => onMove(next.to)}
           >

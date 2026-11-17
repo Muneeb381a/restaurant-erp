@@ -328,15 +328,26 @@ export function OrderPage() {
 
       {/* ── cart */}
       <aside
-        className={`${cartOpen ? 'fixed inset-0 z-30 flex' : 'hidden'} min-h-0 w-full flex-col bg-white md:static md:z-auto md:flex md:w-[24rem]`}
+        className={`${cartOpen ? 'fixed inset-0 z-30 flex' : 'hidden'} min-h-0 w-full flex-col border-t-4 bg-white md:static md:z-auto md:flex md:w-[24rem] ${o.status === 'BILLED' ? 'border-sky-700' : o.status === 'SETTLED' ? 'border-emerald-600' : 'border-amber-500'}`}
       >
         <div className="flex items-center gap-2 border-b border-slate-300 px-4 py-3">
           <div className="me-auto min-w-0">
             <h1 className="truncate text-lg font-semibold">
               {title} <span className="font-normal text-slate-600">{ltr(`#${o.orderNo}`)}</span>
             </h1>
+            <span
+              className={`mt-0.5 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold ${o.status === 'BILLED' ? 'bg-sky-700 text-white' : o.status === 'SETTLED' ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-slate-900'}`}
+            >
+              {t(
+                o.status === 'BILLED'
+                  ? 'order.stateBilled'
+                  : o.status === 'SETTLED'
+                    ? 'order.stateSettled'
+                    : 'order.stateOpen',
+              )}
+            </span>
             {o.held && (
-              <span className="chip-warn">
+              <span className="chip-warn ms-1">
                 <Icon name="pause" size={14} /> {t('order.held')}
               </span>
             )}
@@ -507,7 +518,7 @@ export function OrderPage() {
                 {t('order.rush')}
               </button>
               <button
-                className="btn-primary btn-lg flex-1"
+                className="btn-send btn-lg flex-1"
                 disabled={send.isPending}
                 onClick={() => send.mutate()}
               >
@@ -521,7 +532,7 @@ export function OrderPage() {
             liveLines.length > 0 &&
             can(me.data, 'bill.create') && (
               <button
-                className="btn-primary btn-lg w-full"
+                className="btn-bill btn-lg w-full"
                 disabled={makeBill.isPending}
                 onClick={() => makeBill.mutate()}
               >

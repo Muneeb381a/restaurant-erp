@@ -148,6 +148,33 @@ export class BitmapDoc {
     return this;
   }
 
+  /**
+   * A 1-bit picture (the logo), centred. `data` is `widthBytes * height` packed bytes, MSB = leftmost
+   * dot, 1 = black; a picture narrower than the paper is centred, a wider one is cut at the edges.
+   */
+  raster(widthBytes: number, height: number, data: Uint8Array): this {
+    const w = widthBytes * 8;
+    this.ops.push({
+      height,
+      draw: (ctx, y) => {
+        const img = ctx.createImageData(w, height);
+        for (let row = 0; row < height; row++) {
+          for (let x = 0; x < w; x++) {
+            const black = ((data[row * widthBytes + (x >> 3)] as number) & (0x80 >> (x & 7))) !== 0;
+            const i = (row * w + x) * 4;
+            const v = black ? 0 : 255;
+            img.data[i] = v;
+            img.data[i + 1] = v;
+            img.data[i + 2] = v;
+            img.data[i + 3] = 255;
+          }
+        }
+        ctx.putImageData(img, Math.round((this.width - w) / 2), y);
+      },
+    });
+    return this;
+  }
+
   /** Renders to a canvas (white background, black ink). */
   toCanvas(): Canvas {
     const height = Math.max(

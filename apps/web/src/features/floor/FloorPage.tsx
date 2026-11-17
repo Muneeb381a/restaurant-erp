@@ -19,21 +19,34 @@ const minutesSince = (iso: string): number =>
  * A table says its state three ways: a coloured band with the word, the tile's border and fill, and
  * what it shows inside (a free table is empty and dashed; a busy one carries amount, time, captain).
  */
-const TILE: Record<FloorTable['status'], { box: string; band: string; dot: string }> = {
+const TILE: Record<
+  FloorTable['status'],
+  { box: string; band: string; dot: string; ink: string; soft: string }
+> = {
+  // nobody is seated: an empty outline, nothing to read
   FREE: {
     box: 'border-2 border-dashed border-slate-400 bg-transparent hover:border-emerald-600 hover:bg-white',
     band: 'bg-slate-200 text-slate-800',
     dot: 'bg-emerald-600',
+    ink: 'text-slate-900',
+    soft: 'text-slate-600',
   },
+  // seated and ordering: saffron, the colour of "Send to kitchen"
   OCCUPIED: {
-    box: 'border-2 border-amber-500 bg-amber-50 hover:bg-amber-100',
+    box: 'border-2 border-amber-500 bg-amber-100 hover:bg-amber-200/70',
     band: 'bg-amber-500 text-slate-900',
     dot: 'bg-amber-500',
+    ink: 'text-slate-900',
+    soft: 'text-amber-950/80',
   },
+  // the guest asked for the bill: a solid blue block, the only one on the floor. The cashier looks
+  // for blue, and blue is also the colour of the "Bill" button that put it there
   BILLED: {
-    box: 'border-2 border-sky-700 bg-sky-50 hover:bg-sky-100',
-    band: 'bg-sky-700 text-white',
+    box: 'border-2 border-sky-900 bg-sky-700 hover:bg-sky-800',
+    band: 'bg-sky-900 text-white',
     dot: 'bg-sky-700',
+    ink: 'text-white',
+    soft: 'text-sky-100',
   },
 };
 
@@ -222,7 +235,7 @@ export function FloorPage() {
                 disabled={dayClosed || create.isPending || !floor.isFetchedAfterMount}
                 onClick={() => open(table)}
                 aria-label={`${table.code} ${statusLabel(table.status)}`}
-                className={`flex min-h-32 flex-col overflow-hidden rounded-xl p-0 text-start transition-colors disabled:opacity-50 ${TILE[table.status].box} ${flash.has(table.id) ? 'animate-flash' : ''}`}
+                className={`flex min-h-32 flex-col overflow-hidden rounded-xl p-0 text-start transition-colors disabled:opacity-50 ${TILE[table.status].box} ${table.order?.ticketsReady ? 'ring-4 ring-emerald-500/70' : ''} ${flash.has(table.id) ? 'animate-flash' : ''}`}
               >
                 <span
                   className={`flex w-full items-center gap-1.5 px-3 py-1 text-xs font-bold uppercase tracking-wide ${TILE[table.status].band}`}
@@ -244,7 +257,9 @@ export function FloorPage() {
                     </span>
                   )}
                 </span>
-                <span className="flex flex-1 flex-col justify-between gap-1 p-3 text-slate-900">
+                <span
+                  className={`flex flex-1 flex-col justify-between gap-1 p-3 ${TILE[table.status].ink}`}
+                >
                   <span className="text-2xl font-semibold">{ltr(table.code)}</span>
                   {table.order ? (
                     <span className="text-sm">
@@ -252,24 +267,24 @@ export function FloorPage() {
                         {ltr(formatRs(table.order.subtotalPaisa))}
                       </span>
                       <span
-                        className={`flex items-center gap-1 whitespace-nowrap ${minutesSince(table.order.openedAt) > 90 ? 'font-semibold text-rose-700' : 'text-slate-700'}`}
+                        className={`flex items-center gap-1 whitespace-nowrap ${minutesSince(table.order.openedAt) > 90 ? (table.status === 'BILLED' ? 'font-bold text-amber-200' : 'font-semibold text-rose-700') : TILE[table.status].soft}`}
                       >
                         <Icon name="clock" size={14} />
                         {formatAge(minutesSince(table.order.openedAt), t)}
                       </span>
                       {table.order.ticketsReady > 0 && (
-                        <span className="chip-ok mt-1">
+                        <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-md bg-emerald-600 px-2 py-0.5 text-xs font-bold text-white">
                           <Icon name="check" size={12} /> {t('floor.foodReady')}
                         </span>
                       )}
                       {table.order.waiterName && (
-                        <span className="block truncate text-xs text-slate-600">
+                        <span className={`block truncate text-xs ${TILE[table.status].soft}`}>
                           {table.order.waiterName}
                         </span>
                       )}
                     </span>
                   ) : (
-                    <span className="text-sm text-slate-600">
+                    <span className={`text-sm ${TILE[table.status].soft}`}>
                       {t('floor.seats', { count: table.seats })}
                     </span>
                   )}

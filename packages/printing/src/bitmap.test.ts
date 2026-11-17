@@ -18,6 +18,17 @@ describe('BitmapDoc', () => {
     expect(inkOf(urdu)).toBeGreaterThan(200); // real glyphs were shaped and drawn
   });
 
+  it('draws a 1-bit picture centred and unchanged (the logo)', () => {
+    // 16 dots wide (2 bytes), 3 rows: a solid bar. On 576-dot paper it sits in the middle.
+    const bar = new Uint8Array([0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
+    const b = new BitmapDoc(DOTS[80]).raster(2, 3, bar).toBits();
+    expect(b.height).toBe(3);
+    expect(inkOf(b)).toBe(16 * 3);
+    // nothing in the first or last byte of the row: the picture is centred, not pushed left
+    expect(b.data[0]).toBe(0);
+    expect(b.data[b.widthBytes - 1]).toBe(0);
+  });
+
   it('right-to-left rows put the label on the right and the amount on the left', () => {
     const half = (b: BitmapDoc, side: 'left' | 'right'): number => {
       const { widthBytes, height, data } = b.toBits();

@@ -10,7 +10,7 @@ import { formatRs, ltr, parseRs } from '../../lib/money';
 import { can, useKhataAccount, useMe, usePaymentMethods } from '../../lib/queries';
 import type { KhataAccount, KhataEntry } from '../../lib/types';
 import { whatsappLink } from '../../lib/whatsapp';
-import { Avatar } from '../shell/Shell';
+import { Avatar } from '../../components/Avatar';
 import { AgeChip, rs, shortDate, UsageBar, useExplain } from './parts';
 
 type Dialog = 'receive' | 'adjust' | 'limit' | null;

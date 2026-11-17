@@ -2,6 +2,7 @@ import { parseRupees } from '@erp/domain';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Avatar } from '../../components/Avatar';
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Mark } from '../../components/Brand';
 import { Icon, type IconName } from '../../components/Icon';
@@ -17,6 +18,7 @@ import { ADMIN_SECTIONS } from '../admin/AdminLayout';
 import { useKitchenBoard } from '../kitchen/KitchenPage';
 import { localName, setLanguage, type Lang } from '../../i18n';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
+import { PhotoDialog } from './PhotoDialog';
 import { HelpDialog, helpKeyFor } from './HelpDialog';
 import { DayCloseDialog, ShiftDialog } from './ShiftDialogs';
 import { watchResponsiveTables } from '../../lib/responsive-tables';
@@ -86,7 +88,8 @@ function SignedIn() {
 
   const branch = useQuery({
     queryKey: ['branch'],
-    queryFn: () => api<{ name: string; name_ur: string | null }>('/branch'),
+    queryFn: () =>
+      api<{ name: string; name_ur: string | null; logoVersion: number | null }>('/branch'),
     staleTime: 5 * 60_000,
   });
   const restaurant = branch.data
@@ -113,6 +116,7 @@ function SignedIn() {
   };
   const [moreOpen, setMoreOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const { pathname } = useLocation();
   const helpPage = helpKeyFor(pathname);
@@ -346,9 +350,7 @@ function SignedIn() {
             aria-label={t('app.title')}
             className="flex min-w-0 items-center gap-2.5 rounded-md"
           >
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-emerald-600 text-white">
-              <Mark size={18} />
-            </span>
+            <BrandMark version={branch.data?.logoVersion ?? null} />
             <span className="hidden max-w-[16rem] truncate text-sm font-semibold tracking-tight text-white sm:block">
               {restaurant || t('app.title')}
             </span>
@@ -385,6 +387,9 @@ function SignedIn() {
           lang={i18n.language as Lang}
           live={live}
           polling={polling}
+          userId={me.data?.id}
+          avatarVersion={me.data?.avatarVersion ?? null}
+          onPhoto={() => setPhotoOpen(true)}
           onLang={setLanguage}
           onPassword={() => setPasswordOpen(true)}
           onHelp={() => setHelpOpen(true)}
@@ -548,6 +553,14 @@ function SignedIn() {
       </div>
 
       {helpOpen && <HelpDialog page={helpPage} onClose={() => setHelpOpen(false)} />}
+      {photoOpen && me.data && (
+        <PhotoDialog
+          name={me.data.fullName}
+          userId={me.data.id}
+          version={me.data.avatarVersion ?? null}
+          onClose={() => setPhotoOpen(false)}
+        />
+      )}
       {passwordOpen && (
         <ChangePasswordDialog forced={false} onClose={() => setPasswordOpen(false)} />
       )}
@@ -619,6 +632,30 @@ function MenuItem({
 }
 
 /** "21:42" style clock with the live-connection dot: the till shows the time staff actually read. */
+/** The top-bar badge: the restaurant's own logo when it has uploaded one, else the app mark. */
+function BrandMark({ version }: { version: number | null }) {
+  const logo = useQuery({
+    queryKey: ['logo', version],
+    enabled: version != null,
+    staleTime: Infinity,
+    gcTime: 30 * 60_000,
+    retry: false,
+    queryFn: async () =>
+      URL.createObjectURL(await api<Blob>('/branch/logo', { responseType: 'blob' })),
+  });
+  if (logo.data)
+    return (
+      <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white">
+        <img src={logo.data} alt="" aria-hidden="true" className="size-full object-contain" />
+      </span>
+    );
+  return (
+    <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-emerald-600 text-white">
+      <Mark size={18} />
+    </span>
+  );
+}
+
 function ClockLive({ live, lang }: { live: boolean; lang: string }) {
   const { t } = useTranslation();
   const [now, setNow] = useState(() => new Date());
@@ -871,32 +908,15 @@ function DayShiftControl(p: {
   );
 }
 
-const initials = (name: string): string =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w.charAt(0).toUpperCase())
-    .join('') || '?';
-
-export function Avatar({ name, size = 36 }: { name: string; size?: number }) {
-  return (
-    <span
-      aria-hidden="true"
-      style={{ width: size, height: size, fontSize: size * 0.38 }}
-      className="inline-flex shrink-0 items-center justify-center rounded-full bg-emerald-700 font-semibold text-white"
-    >
-      {initials(name)}
-    </span>
-  );
-}
-
 function AccountMenu({
   name,
   role,
   lang,
   live,
   polling,
+  userId,
+  avatarVersion,
+  onPhoto,
   onLang,
   onPassword,
   onHelp,
@@ -907,6 +927,9 @@ function AccountMenu({
   lang: Lang;
   live: boolean;
   polling: boolean;
+  userId: string | undefined;
+  avatarVersion: number | null;
+  onPhoto: () => void;
   onLang: (l: Lang) => void;
   onPassword: () => void;
   onHelp: () => void;
@@ -932,7 +955,7 @@ function AccountMenu({
             polling ? t('shell.pollingHint') : live ? t('shell.liveHint') : t('shell.offlineHint')
           }
         >
-          <Avatar name={name} size={28} />
+          <Avatar name={name} size={28} userId={userId} version={avatarVersion} />
           <span
             aria-hidden="true"
             className={`absolute -bottom-0.5 -end-0.5 size-3 rounded-full ring-2 ring-slate-900 ${live ? 'bg-emerald-400' : 'animate-pulse bg-amber-400'}`}
@@ -955,13 +978,22 @@ function AccountMenu({
           className="absolute end-0 z-30 mt-2 w-72 rounded-xl border border-slate-300 bg-white p-2 text-slate-900 shadow-sheet"
         >
           <div className="flex items-center gap-3 px-3 py-3">
-            <Avatar name={name} size={44} />
+            <Avatar name={name} size={44} userId={userId} version={avatarVersion} />
             <div className="min-w-0">
               <div className="truncate font-semibold">{name}</div>
               <div className="text-sm text-slate-600">{roleName}</div>
             </div>
           </div>
           <div className="my-1 border-t border-slate-200" />
+          <MenuItem
+            onClick={() => {
+              setOpen(false);
+              onPhoto();
+            }}
+          >
+            <Icon name="user" size={20} />
+            {t('shell.changePhoto')}
+          </MenuItem>
           <MenuItem
             onClick={() => {
               setOpen(false);

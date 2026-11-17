@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Icon, type IconName } from '../../components/Icon';
 import { api } from '../../lib/api';
 import { parseRs } from '../../lib/money';
+import { LogoControls } from './LogoControls';
 import { ErrorText, Field, PageHead, Toggle } from './ui';
 
 interface Branch {
@@ -11,6 +12,7 @@ interface Branch {
   name_ur: string | null;
   address: string | null;
   phone: string | null;
+  logoVersion: number | null;
 }
 type Settings = Record<string, unknown>;
 
@@ -125,6 +127,10 @@ export function SettingsAdmin() {
         </p>
       )}
       <ErrorText error={saveBranch.error ?? setSetting.error} />
+
+      <Section icon="receipt" title={t('logo.title')} hint={t('logo.sectionHint')}>
+        <LogoControls version={branch.data?.logoVersion ?? null} />
+      </Section>
 
       <Section
         icon="bag"

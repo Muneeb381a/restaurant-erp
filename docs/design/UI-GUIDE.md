@@ -43,6 +43,24 @@ Admin has its own sidebar grouped by job: *Menu & tables · Stock & costs · Peo
 - **Targets**: 48 px minimum (`min-h-touch`), 56 px for the primary action (`btn-lg`).
 - **Focus**: 3 px saffron ring for keyboard users.
 
+### Colour roles (one meaning, everywhere)
+
+The same colour always means the same step, so a cashier or a cook can read the screen from across
+the room. A button has the colour of the state it leads to.
+
+| Colour | Meaning | Where |
+|---|---|---|
+| neutral, dashed outline | free table | floor tile |
+| saffron (`amber`) | an order is being taken / waiting for the kitchen | occupied tile; the **Send to kitchen** button (`btn-send`); "NEW" tickets |
+| solid blue (`sky`) | the bill is made: **collect payment** | the one solid blue block on the floor; the **Bill** button (`btn-bill`); "cooking" tickets |
+| green (`emerald`) | money in, food ready, go | **Pay**, the "Food ready" badge and ring on a tile, "READY" tickets |
+| dark ink | finished / served | **Served** button (`btn-serve`) |
+| red (`rose`) | late, danger | tickets waiting 20+ minutes (blinking), orders older than 90 minutes, destructive buttons |
+
+A kitchen ticket also has a thin bar on top that shows how long it has waited: green, amber after 10
+minutes, red and blinking after 20. The order panel carries its state colour along its top edge and
+says it in words ("Taking the order", "Bill ready: collect payment", "Paid").
+
 ## 4. Components (`apps/web/src/components`, classes in `index.css`)
 
 | Piece | Use |

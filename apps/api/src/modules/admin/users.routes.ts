@@ -139,10 +139,12 @@ export function usersRouter(ctx: AppContext): Router {
       let q = ctx.db
         .selectFrom('users')
         .innerJoin('roles', 'roles.id', 'users.role_id')
+        .leftJoin('user_avatars', 'user_avatars.user_id', 'users.id')
         .select([
           ...SAFE_COLUMNS,
           'users.pin_hash as pin_hash',
           'users.password_hash as password_hash',
+          'user_avatars.updated_at as avatar_at',
         ])
         .orderBy('users.username');
       q =
@@ -151,7 +153,12 @@ export function usersRouter(ctx: AppContext): Router {
               eb.or([eb('users.branch_id', '=', req.branchId!), eb('users.branch_id', 'is', null)]),
             )
           : q.where('users.branch_id', '=', req.branchId!);
-      res.json({ items: (await q.execute()).map(present) });
+      res.json({
+        items: (await q.execute()).map(({ avatar_at, ...u }) => ({
+          ...present(u),
+          avatar_version: avatar_at ? avatar_at.getTime() : null,
+        })),
+      });
     }),
   );
 

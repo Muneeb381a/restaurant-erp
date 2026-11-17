@@ -113,7 +113,11 @@
     "passwordMismatch": "The two passwords are different.",
     "passwordChanged": "Password changed",
     "currentWrong": "The current password is wrong.",
-    "mustChange": "You are using a temporary password. Choose your own before you continue."
+    "mustChange": "You are using a temporary password. Choose your own before you continue.",
+    "changePhoto": "Change photo",
+    "choosePhoto": "Choose or take a photo",
+    "removePhoto": "Remove photo",
+    "photoHint": "Your photo shows next to your name on every screen. It is cropped to a square."
   },
   "floor": {
     "title": "Tables",
@@ -345,7 +349,10 @@
       "add": "Add items",
       "send": "Send to kitchen",
       "bill": "Bill & pay"
-    }
+    },
+    "stateOpen": "Taking the order",
+    "stateBilled": "Bill ready: collect payment",
+    "stateSettled": "Paid"
   },
   "bill": {
     "bill": "Bill",
@@ -1436,5 +1443,17 @@
     "offText": "It cannot be used right now. Please contact the person who set it up.",
     "offReason": "Reason: {{reason}}",
     "again": "Enter another code"
+  },
+  "logo": {
+    "title": "Logo",
+    "sectionHint": "Shown at the top of the screen and printed above the restaurant name on every bill.",
+    "current": "Your logo",
+    "none": "No logo yet",
+    "upload": "Upload logo",
+    "change": "Change logo",
+    "remove": "Remove logo",
+    "save": "Save logo",
+    "howItPrints": "How it prints",
+    "hint": "A simple picture with strong contrast works best: a thermal printer prints only black and white dots, so shading becomes fine dots."
   }
 }

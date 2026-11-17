@@ -38,6 +38,8 @@ export function renderReceiptBitmap(doc: ReceiptDoc, paperMm: PaperMm = 80): Uin
   const R = { rtl: true } as const;
   const big = { size: 44, bold: true, rtl: true } as const;
 
+  const logo = doc.logo?.[paperMm];
+  if (logo) b.raster(logo.widthBytes, logo.height, logo.data).space(6);
   b.text(doc.restaurantUr || doc.restaurant, big, 'center');
   if (doc.address) b.text(doc.address, { size: 22, rtl: true }, 'center');
   if (doc.phone) b.text(`${UR.tel}: ${lri(doc.phone)}`, { size: 22, rtl: true }, 'center');

@@ -213,3 +213,41 @@ describe('fiscal invoice on the receipt', () => {
     expect(noQr).not.toContain('<QR');
   });
 });
+
+describe('logo', () => {
+  /** 8 dots wide, 2 rows: a black bar on the left, so we can find it in the output. */
+  const raster = { widthBytes: 48, height: 2, data: new Uint8Array(96).fill(0x0f) };
+  const find = (bytes: Uint8Array, seq: number[]): number => {
+    for (let i = 0; i <= bytes.length - seq.length; i++)
+      if (seq.every((b, k) => bytes[i + k] === b)) return i;
+    return -1;
+  };
+  const GS_V_0 = [0x1d, 0x76, 0x30, 0x00];
+
+  it('prints the logo for the paper width, before the restaurant name', () => {
+    const bytes = renderReceipt({ ...base, logo: { 58: raster } }, 58);
+    const at = find(bytes, GS_V_0);
+    expect(at).toBeGreaterThan(-1);
+    // width 48 bytes, 2 rows
+    expect(Array.from(bytes.slice(at + 4, at + 8))).toEqual([48, 0, 2, 0]);
+    const name = find(bytes, Array.from(new TextEncoder().encode('Desi')));
+    expect(at).toBeLessThan(name);
+  });
+
+  it('prints no picture when there is none, or only one for the other paper width', () => {
+    expect(find(renderReceipt(base, 80), GS_V_0)).toBe(-1);
+    expect(find(renderReceipt({ ...base, logo: { 58: raster } }, 80), GS_V_0)).toBe(-1);
+    expect(find(renderReceipt({ ...base, logo: null }, 80), GS_V_0)).toBe(-1);
+  });
+
+  it('still prints the restaurant name and the whole bill under the logo', () => {
+    const t = describeBytes(
+      renderReceipt(
+        { ...base, logo: { 80: { ...raster, widthBytes: 72, data: new Uint8Array(144) } } },
+        80,
+      ),
+    );
+    expect(t).toContain('Desi Dera');
+    expect(t).toContain('TOTAL');
+  });
+});

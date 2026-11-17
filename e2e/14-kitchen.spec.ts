@@ -30,7 +30,9 @@ test('an order sent from the table shows on the kitchen screen, moves to ready, 
   const cook = await (await browser.newContext()).newPage();
   await login(cook, 'kitchen', 'Kitchen');
   const ticket = cook.getByRole('article').filter({ hasText: 'Plain Naan' }).first();
-  await expect(ticket).toContainText(/Table\W*L2/);
+  // the table code is the big thing on the ticket, with a small "Table" label
+  await expect(ticket).toContainText('L2');
+  await expect(ticket).toContainText('Table');
   await ticket.getByRole('button', { name: 'Start cooking' }).click();
   await expect(cook.getByRole('region', { name: 'Cooking' }).getByRole('article')).toContainText(
     'Plain Naan',

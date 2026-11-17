@@ -18,7 +18,16 @@ export interface ReceiptPayment {
   changePaisa: number;
 }
 
+/** A 1-bit picture for the printer: `widthBytes * height` bytes, MSB = leftmost dot, 1 = black. */
+export interface Raster {
+  widthBytes: number;
+  height: number;
+  data: Uint8Array;
+}
+
 export interface ReceiptDoc {
+  /** The restaurant's logo, prepared for each paper width (58 mm = 384 dots, 80 mm = 576). Printed above the name. */
+  logo?: { 58?: Raster; 80?: Raster } | null;
   restaurant: string;
   restaurantUr?: string | null;
   address?: string | null;
@@ -79,6 +88,9 @@ export function renderReceipt(doc: ReceiptDoc, paperMm: PaperMm = 80): Uint8Arra
   const cols = COLUMNS[paperMm];
   const p = new EscPos().init();
   if (doc.openDrawer) p.drawerKick();
+
+  const logo = doc.logo?.[paperMm];
+  if (logo) p.align('center').raster(logo.widthBytes, logo.height, logo.data).feed(1);
 
   p.align('center').bold(true).size(2, 2);
   for (const l of wrap(doc.restaurant, Math.floor(cols / 2))) p.line(l);

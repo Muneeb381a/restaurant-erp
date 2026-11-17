@@ -25,10 +25,13 @@ function Row({ left, right, strong }: { left: string; right: string; strong?: bo
 export function ReceiptSheet({
   doc,
   language,
+  logoUrl,
   onDone,
 }: {
   doc: ReceiptDocView;
   language: 'en' | 'ur';
+  /** The restaurant's logo, printed above its name. */
+  logoUrl?: string | null;
   onDone: () => void;
 }) {
   const ur = language === 'ur';
@@ -55,6 +58,7 @@ export function ReceiptSheet({
           {ur ? `نقل نمبر ${doc.duplicate}` : `DUPLICATE #${doc.duplicate}`}
         </div>
       ) : null}
+      {logoUrl && <img src={logoUrl} alt="" className="rc-logo" />}
       <div className="rc-center rc-title">
         {ur && doc.restaurantUr ? doc.restaurantUr : doc.restaurant}
       </div>

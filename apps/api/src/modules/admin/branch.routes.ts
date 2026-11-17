@@ -68,7 +68,12 @@ export function branchRouter(ctx: AppContext): Router {
         .selectAll()
         .where('id', '=', req.branchId!)
         .executeTakeFirstOrThrow();
-      res.json(row);
+      const logo = await ctx.db
+        .selectFrom('branch_logo')
+        .select('updated_at')
+        .where('branch_id', '=', req.branchId!)
+        .executeTakeFirst();
+      res.json({ ...row, logoVersion: logo ? logo.updated_at.getTime() : null });
     }),
   );
 

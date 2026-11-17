@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import express, { Router, type Express } from 'express';
 import { sql } from 'kysely';
+import { avatarRouter, logoRouter } from '../modules/admin/branding.routes';
 import { branchRouter } from '../modules/admin/branch.routes';
 import { configRouters, stationPrintersRouter } from '../modules/admin/config.routes';
 import { devicesRouter } from '../modules/admin/devices.routes';
@@ -71,6 +72,7 @@ export function createApp(ctx: AppContext, opts: AppOptions = {}): Express {
   v1.use('/public', publicRouter(ctx)); // unauthenticated, read-only customer menu (QR code)
   v1.use('/auth', authRouter(ctx));
   v1.use('/audit-log', auditRouter(ctx));
+  v1.use('/users', avatarRouter(ctx)); // /users/me/avatar and /users/:id/avatar before the user CRUD
   v1.use('/users', usersRouter(ctx));
   v1.use('/devices', devicesRouter(ctx));
   v1.use('/', kitchenRouter(ctx)); // before the CRUD routers: owns /printers/health
@@ -87,6 +89,7 @@ export function createApp(ctx: AppContext, opts: AppOptions = {}): Express {
   v1.use('/', billingRouter(ctx)); // /orders/:id/bill /bills/…
   v1.use('/', menuRouter(ctx)); // /categories /items /variants /modifier-groups /menu …
   v1.use('/', rolesRouter(ctx)); // /roles, /permissions
+  v1.use('/', logoRouter(ctx)); // /branch/logo before /branch
   v1.use('/', branchRouter(ctx)); // /branch, /settings
   app.use('/api/v1', v1);
 

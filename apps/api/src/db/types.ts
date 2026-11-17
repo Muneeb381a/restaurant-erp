@@ -344,6 +344,24 @@ export interface Items {
   tax_category_id: string;
 }
 
+export interface BranchLogo {
+  branch_id: string;
+  content_type: string;
+  display: Buffer;
+  raster_58: Buffer;
+  raster_58_height: number;
+  raster_80: Buffer;
+  raster_80_height: number;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface UserAvatars {
+  content_type: string;
+  data: Buffer;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
 export interface ItemImages {
   content_type: string;
   data: Buffer;
@@ -810,6 +828,8 @@ export interface DB {
   item_modifier_groups: ItemModifierGroups;
   item_prices: ItemPrices;
   item_images: ItemImages;
+  branch_logo: BranchLogo;
+  user_avatars: UserAvatars;
   item_variants: ItemVariants;
   items: Items;
   khata_accounts: KhataAccounts;

@@ -738,8 +738,27 @@ async function receiptDoc(
         )
         .execute()
     : [];
+  const logoRow = await q
+    .selectFrom('branch_logo')
+    .select(['raster_58', 'raster_58_height', 'raster_80', 'raster_80_height'])
+    .where('branch_id', '=', branchId)
+    .executeTakeFirst();
   const at = bill.settledAt ?? new Date();
   const doc: ReceiptDoc = {
+    logo: logoRow
+      ? {
+          58: {
+            widthBytes: 48,
+            height: logoRow.raster_58_height,
+            data: new Uint8Array(logoRow.raster_58),
+          },
+          80: {
+            widthBytes: 72,
+            height: logoRow.raster_80_height,
+            data: new Uint8Array(logoRow.raster_80),
+          },
+        }
+      : null,
     restaurant: branch.name,
     restaurantUr: branch.name_ur,
     address: branch.address,
@@ -1125,7 +1144,23 @@ export function browserReceipt(ctx: AppContext, a: Actor, billId: string, reason
       { printCount: bill.print_count + 1, duplicate, via: 'browser' },
       original ? undefined : reason,
     );
-    return { doc, language: lang?.value === 'ur' ? ('ur' as const) : ('en' as const), duplicate };
+    // the printer rasters are for thermal printers; a browser gets the picture itself
+    const { logo, ...plain } = doc;
+    const shown = logo
+      ? await trx
+          .selectFrom('branch_logo')
+          .select(['content_type', 'display'])
+          .where('branch_id', '=', a.branchId)
+          .executeTakeFirst()
+      : undefined;
+    return {
+      doc: plain,
+      logoUrl: shown
+        ? `data:${shown.content_type};base64,${shown.display.toString('base64')}`
+        : null,
+      language: lang?.value === 'ur' ? ('ur' as const) : ('en' as const),
+      duplicate,
+    };
   });
 }
 

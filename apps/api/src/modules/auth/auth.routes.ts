@@ -90,6 +90,11 @@ export function authRouter(ctx: AppContext): Router {
     asyncHandler(async (req, res) => {
       const p = req.principal!;
       const perms = [...(await ctx.permissions.get(p.roleId))].sort();
+      const avatar = await ctx.db
+        .selectFrom('user_avatars')
+        .select('updated_at')
+        .where('user_id', '=', p.userId)
+        .executeTakeFirst();
       res.json({
         id: p.userId,
         username: p.username,
@@ -98,6 +103,7 @@ export function authRouter(ctx: AppContext): Router {
         branchId: p.userBranchId,
         discountLimitBps: p.discountLimitBps,
         mustChangePassword: p.mustChangePassword,
+        avatarVersion: avatar ? avatar.updated_at.getTime() : null,
         permissions: perms,
       });
     }),

@@ -125,6 +125,17 @@ html[lang='ur'] body {
   .btn-quiet {
     @apply btn px-3 font-medium text-slate-700 hover:bg-slate-200;
   }
+  /* The three steps of an order, each in the colour of the state it leads to (floor tiles use the same):
+     send to kitchen = saffron (occupied), bill = blue (bill ready), pay = green. */
+  .btn-send {
+    @apply btn bg-amber-500 text-slate-900 hover:bg-amber-400;
+  }
+  .btn-bill {
+    @apply btn bg-sky-700 text-white hover:bg-sky-800;
+  }
+  .btn-serve {
+    @apply btn bg-slate-800 text-white hover:bg-slate-900;
+  }
   .btn-danger {
     @apply btn bg-rose-600 text-white hover:bg-rose-700;
   }
@@ -553,4 +564,14 @@ html[lang='ur'] body {
 }
 .rc-mod {
   padding-inline-start: 12px;
+}
+
+/* the restaurant's logo at the top of a browser-printed receipt: black and white, not too tall */
+.receipt-print .rc-logo {
+  display: block;
+  margin: 0 auto 2mm;
+  max-width: 60%;
+  max-height: 26mm;
+  object-fit: contain;
+  filter: grayscale(1) contrast(1.25);
 }

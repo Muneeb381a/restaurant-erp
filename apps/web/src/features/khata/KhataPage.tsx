@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { Modal as SharedModal } from '../../components/Modal';
 import { api } from '../../lib/api';
-import { Avatar } from '../shell/Shell';
+import { Avatar } from '../../components/Avatar';
 import { formatRs, ltr, parseRs } from '../../lib/money';
 import { can, useKhataAccounts, useKhataSummary, useMe } from '../../lib/queries';
 import { AgeChip, rs, UsageBar, useExplain } from './parts';

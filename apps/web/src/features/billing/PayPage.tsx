@@ -142,15 +142,22 @@ export function PayPage() {
     },
   });
   // a receipt for the browser's print dialog: used when no receipt printer is set up (cloud)
-  const [sheet, setSheet] = useState<{ doc: ReceiptDocView; language: 'en' | 'ur' } | null>(null);
+  const [sheet, setSheet] = useState<{
+    doc: ReceiptDocView;
+    language: 'en' | 'ur';
+    logoUrl: string | null;
+  } | null>(null);
   const browserPrint = useMutation({
     mutationFn: (reason?: string) =>
-      api<{ doc: ReceiptDocView; language: 'en' | 'ur' }>(`/bills/${b!.id}/browser-print`, {
-        method: 'POST',
-        body: reason ? { reason } : {},
-      }),
+      api<{ doc: ReceiptDocView; language: 'en' | 'ur'; logoUrl: string | null }>(
+        `/bills/${b!.id}/browser-print`,
+        {
+          method: 'POST',
+          body: reason ? { reason } : {},
+        },
+      ),
     onSuccess: async (out) => {
-      setSheet({ doc: out.doc, language: out.language });
+      setSheet({ doc: out.doc, language: out.language, logoUrl: out.logoUrl });
       await qc.invalidateQueries({ queryKey: ['bill'] });
     },
     onError: fail,
@@ -329,7 +336,12 @@ export function PayPage() {
         </div>
         {refunding && <RefundDialog bill={b} onClose={() => setRefunding(false)} />}
         {sheet && (
-          <ReceiptSheet doc={sheet.doc} language={sheet.language} onDone={() => setSheet(null)} />
+          <ReceiptSheet
+            doc={sheet.doc}
+            language={sheet.language}
+            logoUrl={sheet.logoUrl}
+            onDone={() => setSheet(null)}
+          />
         )}
       </div>
     );

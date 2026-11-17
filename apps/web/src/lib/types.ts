@@ -9,6 +9,8 @@ export interface Me {
   discountLimitBps: number;
   /** A temporary password is still in use: the server serves nothing else until it is changed. */
   mustChangePassword?: boolean;
+  /** When their photo was last set (changes with every new photo), or null when they have none. */
+  avatarVersion?: number | null;
   permissions: string[];
 }
 
@@ -309,6 +311,7 @@ export interface UserRow {
   locked_until: string | null;
   has_pin: boolean;
   has_password: boolean;
+  avatar_version: number | null;
 }
 
 export interface RoleRow {
