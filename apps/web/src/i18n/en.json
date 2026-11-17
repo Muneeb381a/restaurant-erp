@@ -352,7 +352,17 @@
     },
     "stateOpen": "Taking the order",
     "stateBilled": "Bill ready: collect payment",
-    "stateSettled": "Paid"
+    "stateSettled": "Paid",
+    "again": "One more",
+    "quickNotes": "Quick notes",
+    "qn": {
+      "lessSpicy": "Less spicy",
+      "extraSpicy": "Extra spicy",
+      "noOnion": "No onion",
+      "wellDone": "Well done",
+      "serveHot": "Serve hot",
+      "pack": "Pack it"
+    }
   },
   "bill": {
     "bill": "Bill",

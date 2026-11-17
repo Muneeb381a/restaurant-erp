@@ -6,6 +6,9 @@ import { localName } from '../../i18n';
 import { formatRs, ltr } from '../../lib/money';
 import type { MenuItem } from '../../lib/types';
 
+/** Keys of the one-tap notes (wording in i18n `order.qn.*`). */
+const QUICK_NOTES = ['lessSpicy', 'extraSpicy', 'noOnion', 'wellDone', 'serveHot', 'pack'] as const;
+
 export interface AddBody {
   itemId: string;
   variantId: string;
@@ -243,13 +246,44 @@ export function ItemSheet({
           </div>
         )}
 
-        <input
-          className="input"
-          placeholder={t('order.note')}
-          aria-label={t('order.note')}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-        />
+        <div className="space-y-2">
+          <input
+            className="input"
+            placeholder={t('order.note')}
+            aria-label={t('order.note')}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+          {/* the notes cooks hear all day: one tap instead of typing (tap again to take it off) */}
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('order.quickNotes')}>
+            {QUICK_NOTES.map((k) => {
+              const label = t(`order.qn.${k}`);
+              const on = note.split(', ').includes(label);
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={on}
+                  className={`min-h-touch rounded-full border px-3 text-sm font-medium ${on ? 'border-amber-500 bg-amber-100 text-amber-950' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'}`}
+                  onClick={() =>
+                    setNote(
+                      on
+                        ? note
+                            .split(', ')
+                            .filter((x) => x !== label)
+                            .join(', ')
+                        : note.trim()
+                          ? `${note.trim()}, ${label}`
+                          : label,
+                    )
+                  }
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         {error && (
           <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
             {error}

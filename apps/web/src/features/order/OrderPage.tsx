@@ -6,6 +6,7 @@ import { Icon } from '../../components/Icon';
 import { Modal } from '../../components/Modal';
 import { toast } from '../../components/Toast';
 import { localName } from '../../i18n';
+import { matchesQuery } from '../../lib/search';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
 import { can, useMe, useMenu, useOrder } from '../../lib/queries';
@@ -156,15 +157,13 @@ export function OrderPage() {
       }
       return false;
     };
-    const q = search.trim().toLowerCase();
     if (category === POPULAR) {
       const rank = new Map(popularIds.map((id, k) => [id, k]));
       return items.filter((i) => rank.has(i.id)).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
     }
     return items.filter(
       (i) =>
-        inCategory(i.categoryId) &&
-        (!q || [i.name, i.nameUr, i.searchTerms, i.code].some((s) => s?.toLowerCase().includes(q))),
+        inCategory(i.categoryId) && matchesQuery([i.name, i.nameUr, i.searchTerms, i.code], search),
     );
   }, [menu.data, category, search, popularIds]);
 
@@ -196,6 +195,34 @@ export function OrderPage() {
     );
     if (same) changeQty.mutate({ line: same, qty: same.qty + 1 });
     else add.mutate({ itemId: item.id, variantId, qty: 1 });
+  }
+
+  /** "One more": the same dish, same size and extras, as a new line (or one more on the unsent plain line). */
+  function again(line: OrderLine): void {
+    if (!editable) return;
+    setMessage(null);
+    const modifierIds = line.modifiers.map((m) => m.id);
+    if (modifierIds.length === 0 && !line.note) {
+      const same = unsent.find(
+        (l) =>
+          l.itemId === line.itemId &&
+          l.variantId === line.variantId &&
+          !l.weightG &&
+          l.modifiers.length === 0 &&
+          !l.note,
+      );
+      if (same) {
+        changeQty.mutate({ line: same, qty: same.qty + 1 });
+        return;
+      }
+    }
+    add.mutate({
+      itemId: line.itemId,
+      variantId: line.variantId,
+      qty: 1,
+      ...(modifierIds.length ? { modifierIds } : {}),
+      ...(line.note ? { note: line.note } : {}),
+    });
   }
 
   const title =
@@ -479,6 +506,17 @@ export function OrderPage() {
                       <span className="chip-ok">
                         <Icon name="check" size={14} /> {t('order.inKitchen')}
                       </span>
+                    )}
+                    {editable && !stepper && !line.weightG && kids.length === 0 && (
+                      <button
+                        className="btn-secondary px-3"
+                        disabled={add.isPending || changeQty.isPending}
+                        aria-label={`${t('order.again')} ${line.name}`}
+                        onClick={() => again(line)}
+                      >
+                        <Icon name="plus" size={16} />
+                        {t('order.again')}
+                      </button>
                     )}
                     {editable && (
                       <button

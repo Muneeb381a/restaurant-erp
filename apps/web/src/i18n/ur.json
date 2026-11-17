@@ -352,7 +352,17 @@
     },
     "stateOpen": "آرڈر لیا جا رہا ہے",
     "stateBilled": "بل تیار: رقم وصول کریں",
-    "stateSettled": "ادا ہو گیا"
+    "stateSettled": "ادا ہو گیا",
+    "again": "ایک اور",
+    "quickNotes": "فوری نوٹ",
+    "qn": {
+      "lessSpicy": "کم مرچ",
+      "extraSpicy": "تیز مرچ",
+      "noOnion": "پیاز نہیں",
+      "wellDone": "اچھی طرح پکی",
+      "serveHot": "گرم گرم",
+      "pack": "پیک کر دیں"
+    }
   },
   "bill": {
     "bill": "بل",
