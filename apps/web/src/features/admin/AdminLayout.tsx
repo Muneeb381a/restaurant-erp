@@ -46,6 +46,12 @@ export const ADMIN_SECTIONS = [
     permission: 'settings.manage',
     group: 'admin.groupBusiness',
   },
+  {
+    path: 'payments',
+    label: 'admin.payments',
+    permission: 'settings.manage',
+    group: 'admin.groupBusiness',
+  },
   { path: 'tax', label: 'admin.tax', permission: 'tax.manage', group: 'admin.groupBusiness' },
   {
     path: 'fiscal',

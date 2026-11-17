@@ -293,7 +293,8 @@
     "setup": "Setup",
     "delete": "Delete",
     "deleteTitle": "Delete {{name}}?",
-    "deleteBody": "This cannot be undone. Something that was already used in orders (a table, a dish, a category) cannot be deleted: switch it off instead."
+    "deleteBody": "This cannot be undone. Something that was already used in orders (a table, a dish, a category) cannot be deleted: switch it off instead.",
+    "payments": "Payments"
   },
   "order": {
     "title": "Order",
@@ -420,7 +421,26 @@
     "discountHint": "A discount above your limit needs a manager’s approval.",
     "approverHint": "Ask a manager to enter their username and PIN to approve this.",
     "extra": "Extra",
-    "printReceipt": "Print receipt"
+    "printReceipt": "Print receipt",
+    "discountPercent": "Percent",
+    "discountRupees": "Rupees",
+    "otherPercent": "Other percent (1-100)",
+    "otherAmount": "Other amount in rupees",
+    "reasons": {
+      "regular": "Regular customer",
+      "complaint": "Complaint",
+      "staff": "Staff",
+      "owner": "Owner’s guest",
+      "roundOff": "Round off"
+    },
+    "split": "Split between people",
+    "splitTitle": "Split the bill",
+    "splitPeople": "How many people pay",
+    "splitPerson": "Person",
+    "splitApply": "Make the payments",
+    "splitHint": "Each person pays an equal share; the shares add up to the bill exactly. Change a person’s method or amount afterwards if they pay differently.",
+    "addMethods": "Add payment methods",
+    "askOwnerMethods": "Ask the owner to add payment methods (Admin, Payments)."
   },
   "cash": {
     "drawer": "Cash drawer",
@@ -1465,5 +1485,19 @@
     "save": "Save logo",
     "howItPrints": "How it prints",
     "hint": "A simple picture with strong contrast works best: a thermal printer prints only black and white dots, so shading becomes fine dots."
+  },
+  "paymentsPage": {
+    "hint": "The ways your guests pay. Cashiers choose from these on the bill.",
+    "new": "New payment method",
+    "quickAdd": "Add the usual ways",
+    "type": "Type",
+    "cash": "Cash / other",
+    "digital": "Digital",
+    "typeHint": "Digital (cards, JazzCash, Easypaisa, bank apps) may use a different tax rate once tax is switched on. Your accountant decides; it does not change anything while tax is off.",
+    "asksRef": "Asks for a reference",
+    "refHint": "The cashier must type the transaction number or card approval code.",
+    "opensDrawer": "Opens the cash drawer",
+    "empty": "No payment methods yet. Add Cash first, then the other ways your guests pay.",
+    "noDelete": "A payment method that was used is never deleted (it is on past bills). Switch it off to stop using it."
   }
 }

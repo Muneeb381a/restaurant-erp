@@ -54,6 +54,7 @@ const StockAdmin = page(() => import('../features/admin/StockAdmin'), 'StockAdmi
 const PurchasesAdmin = page(() => import('../features/admin/PurchasesAdmin'), 'PurchasesAdmin');
 const RecipesAdmin = page(() => import('../features/admin/RecipesAdmin'), 'RecipesAdmin');
 const CostsAdmin = page(() => import('../features/admin/CostsAdmin'), 'CostsAdmin');
+const PaymentsAdmin = page(() => import('../features/admin/PaymentsAdmin'), 'PaymentsAdmin');
 const TaxAdmin = page(() => import('../features/admin/TaxAdmin'), 'TaxAdmin');
 const FiscalAdmin = page(() => import('../features/admin/FiscalAdmin'), 'FiscalAdmin');
 const RolesAdmin = page(() => import('../features/admin/RolesAdmin'), 'RolesAdmin');
@@ -85,6 +86,7 @@ export function App() {
           <Route path="purchases" element={PurchasesAdmin} />
           <Route path="recipes" element={RecipesAdmin} />
           <Route path="costs" element={CostsAdmin} />
+          <Route path="payments" element={PaymentsAdmin} />
           <Route path="tax" element={TaxAdmin} />
           <Route path="fiscal" element={FiscalAdmin} />
           <Route path="roles" element={RolesAdmin} />

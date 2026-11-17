@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
+import { splitEqually } from '../../lib/split';
 import { Modal } from '../../components/Modal';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr, parseRs } from '../../lib/money';
@@ -50,12 +51,15 @@ export function PayPage() {
   const [rows, setRows] = useState<TenderRow[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [result, setResult] = useState<SettleResult | null>(null);
-  const [needApprover, setNeedApprover] = useState<{ percentBps: number; reason: string } | null>(
-    null,
-  );
+  const [needApprover, setNeedApprover] = useState<{
+    percentBps?: number;
+    amountPaisa?: number;
+    reason: string;
+  } | null>(null);
   const [approverWrong, setApproverWrong] = useState(false);
   const [voiding, setVoiding] = useState(false);
   const [discounting, setDiscounting] = useState(false);
+  const [splitting, setSplitting] = useState(false);
   const [refunding, setRefunding] = useState(false);
   const seq = useRef(0);
   // One key per payment attempt: a retry after a network drop can never charge twice.
@@ -82,7 +86,8 @@ export function PayPage() {
 
   const discount = useMutation({
     mutationFn: (v: {
-      percentBps: number;
+      percentBps?: number;
+      amountPaisa?: number;
       reason?: string;
       approver?: { username: string; pin: string };
     }) => api<Bill>(`/bills/${b!.id}/discount`, { method: 'POST', body: v }),
@@ -94,7 +99,11 @@ export function PayPage() {
     },
     onError: (e, v) => {
       if (e instanceof ApiError && e.code === 'DISCOUNT_APPROVAL_REQUIRED') {
-        setNeedApprover({ percentBps: v.percentBps, reason: v.reason ?? '' });
+        setNeedApprover({
+          ...(v.percentBps !== undefined ? { percentBps: v.percentBps } : {}),
+          ...(v.amountPaisa !== undefined ? { amountPaisa: v.amountPaisa } : {}),
+          reason: v.reason ?? '',
+        });
         setApproverWrong(false);
         setMessage(null);
       } else if (e instanceof ApiError && e.code === 'APPROVER_INVALID') {
@@ -210,6 +219,10 @@ export function PayPage() {
     totalPaisa: quoted?.totalPaisa ?? b.totalPaisa,
   };
   const remaining = shown.totalPaisa - enteredPaisa; // display hint only; the server re-validates
+  const totalFor = (cls: 'CASH_OTHER' | 'DIGITAL'): number =>
+    quotes.data?.taxEnabled && b.status === 'PRE_BILLED'
+      ? quotes.data[cls].totalPaisa
+      : b.totalPaisa;
   const methodOf = (mid: string): PaymentMethod | undefined =>
     methods.data?.find((m) => m.id === mid);
 
@@ -441,12 +454,29 @@ export function PayPage() {
           </p>
         )}
         {(methods.data ?? []).length === 0 && (
-          <p className="text-slate-600">{t('bill.noMethods')}</p>
+          <div className="space-y-2 rounded-lg bg-amber-50 p-3 text-amber-950">
+            <p className="font-medium">{t('bill.noMethods')}</p>
+            {can(me.data, 'settings.manage') ? (
+              <Link to="/admin/payments" className="btn-secondary">
+                {t('bill.addMethods')}
+              </Link>
+            ) : (
+              <p className="text-sm">{t('bill.askOwnerMethods')}</p>
+            )}
+          </div>
         )}
 
         <div>
-          <div className="label mb-1.5">
-            {rows.length === 0 ? t('bill.method') : t('bill.addAnother')}
+          <div className="mb-1.5 flex items-center gap-2">
+            <div className="label me-auto">
+              {rows.length === 0 ? t('bill.method') : t('bill.addAnother')}
+            </div>
+            {payable && (methods.data ?? []).filter((m) => m.code !== 'KHATA').length > 0 && (
+              <button className="btn-quiet px-2 text-sm" onClick={() => setSplitting(true)}>
+                <Icon name="merge" size={16} />
+                {t('bill.split')}
+              </button>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {(methods.data ?? [])
@@ -479,7 +509,26 @@ export function PayPage() {
               data-testid={`tender-${m.code}`}
             >
               <div className="flex items-center gap-2">
-                <span className="me-auto font-semibold">{m.name}</span>
+                {m.code === 'KHATA' ? (
+                  <span className="me-auto font-semibold">{m.name}</span>
+                ) : (
+                  <select
+                    className="input me-auto max-w-[14rem] py-1 font-semibold"
+                    aria-label={`${t('bill.method')} ${m.name}`}
+                    value={r.methodId}
+                    onChange={(e) =>
+                      patch(r.key, { methodId: e.target.value, tendered: '', reference: '' })
+                    }
+                  >
+                    {(methods.data ?? [])
+                      .filter((x) => x.code !== 'KHATA')
+                      .map((x) => (
+                        <option key={x.id} value={x.id}>
+                          {x.name}
+                        </option>
+                      ))}
+                  </select>
+                )}
                 <button
                   className="btn-quiet px-2 text-slate-700"
                   aria-label={`${t('bill.remove')} ${m.name}`}
@@ -592,13 +641,33 @@ export function PayPage() {
           busy={discount.isPending}
           hasDiscount={b.discountPaisa > 0}
           onClose={() => setDiscounting(false)}
-          onApply={(pct, reason) => {
-            discount.mutate({ percentBps: pct, reason });
+          onApply={(d, reason) => {
+            discount.mutate({ ...d, reason });
             setDiscounting(false);
           }}
           onRemove={() => {
             discount.mutate({ percentBps: 0 });
             setDiscounting(false);
+          }}
+        />
+      )}
+      {splitting && (
+        <SplitDialog
+          totalFor={totalFor}
+          methods={methods.data ?? []}
+          onClose={() => setSplitting(false)}
+          onApply={(shares, method) => {
+            setRows(
+              shares.map((paisa) => ({
+                key: ++seq.current,
+                methodId: method.id,
+                amount: (paisa / 100).toFixed(2),
+                tendered: '',
+                reference: '',
+                khata: null,
+              })),
+            );
+            setSplitting(false);
           }}
         />
       )}
@@ -609,7 +678,12 @@ export function PayPage() {
           onClose={() => setNeedApprover(null)}
           onSubmit={(username, pin) =>
             discount.mutate({
-              percentBps: needApprover.percentBps,
+              ...(needApprover.percentBps !== undefined
+                ? { percentBps: needApprover.percentBps }
+                : {}),
+              ...(needApprover.amountPaisa !== undefined
+                ? { amountPaisa: needApprover.amountPaisa }
+                : {}),
               reason: needApprover.reason,
               approver: { username, pin },
             })
@@ -662,6 +736,9 @@ function Row({ label, paisa }: { label: string; paisa: number }) {
   );
 }
 
+/** The reasons a cashier gives most often: one tap instead of typing (the reason is kept in the audit log). */
+const DISCOUNT_REASONS = ['regular', 'complaint', 'staff', 'owner', 'roundOff'] as const;
+
 function DiscountDialog({
   busy,
   hasDiscount,
@@ -672,12 +749,20 @@ function DiscountDialog({
   busy: boolean;
   hasDiscount: boolean;
   onClose: () => void;
-  onApply: (percentBps: number, reason: string) => void;
+  onApply: (d: { percentBps: number } | { amountPaisa: number }, reason: string) => void;
   onRemove: () => void;
 }) {
   const { t } = useTranslation();
-  const [pct, setPct] = useState<number | null>(null);
+  const [mode, setMode] = useState<'pct' | 'rs'>('pct');
+  const [value, setValue] = useState('');
   const [reason, setReason] = useState('');
+  const presets = mode === 'pct' ? [5, 10, 15, 20] : [50, 100, 200, 500];
+  const amount = parseRs(value);
+  const pct = Number(value);
+  const valid =
+    mode === 'pct'
+      ? value !== '' && Number.isFinite(pct) && pct > 0 && pct <= 100
+      : amount !== null && amount > 0;
   return (
     <Modal
       title={t('bill.addDiscount')}
@@ -695,8 +780,13 @@ function DiscountDialog({
           </button>
           <button
             className="btn-primary"
-            disabled={busy || pct === null || reason.trim().length < 3}
-            onClick={() => onApply(pct! * 100, reason.trim())}
+            disabled={busy || !valid || reason.trim().length < 3}
+            onClick={() =>
+              onApply(
+                mode === 'pct' ? { percentBps: Math.round(pct * 100) } : { amountPaisa: amount! },
+                reason.trim(),
+              )
+            }
           >
             {t('bill.apply')}
           </button>
@@ -704,17 +794,56 @@ function DiscountDialog({
       }
     >
       <div className="space-y-3">
-        <div className="flex flex-wrap gap-2">
-          {[5, 10, 15, 20].map((p) => (
+        <div className="seg w-full" role="group" aria-label={t('bill.addDiscount')}>
+          {(['pct', 'rs'] as const).map((k) => (
             <button
-              key={p}
-              aria-pressed={pct === p}
-              className={`btn border ${pct === p ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-400 bg-white hover:bg-slate-100'}`}
-              onClick={() => setPct(p)}
+              key={k}
+              className="seg-item flex-1"
+              aria-pressed={mode === k}
+              onClick={() => {
+                setMode(k);
+                setValue('');
+              }}
             >
-              {ltr(`${p}%`)}
+              {k === 'pct' ? t('bill.discountPercent') : t('bill.discountRupees')}
             </button>
           ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {presets.map((p) => (
+            <button
+              key={p}
+              aria-pressed={value === String(p)}
+              className={`btn border ${value === String(p) ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-400 bg-white hover:bg-slate-100'}`}
+              onClick={() => setValue(String(p))}
+            >
+              {ltr(mode === 'pct' ? `${p}%` : `Rs ${p}`)}
+            </button>
+          ))}
+        </div>
+        <input
+          className="input money"
+          inputMode="decimal"
+          placeholder={mode === 'pct' ? t('bill.otherPercent') : t('bill.otherAmount')}
+          aria-label={mode === 'pct' ? t('bill.otherPercent') : t('bill.otherAmount')}
+          value={value}
+          onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, ''))}
+        />
+        <div className="flex flex-wrap gap-1.5">
+          {DISCOUNT_REASONS.map((k) => {
+            const label = t(`bill.reasons.${k}`);
+            return (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={reason === label}
+                className={`min-h-touch rounded-full border px-3 text-sm font-medium ${reason === label ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'}`}
+                onClick={() => setReason(label)}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
         <input
           className="input"
@@ -724,6 +853,94 @@ function DiscountDialog({
           onChange={(e) => setReason(e.target.value)}
         />
         <p className="hint">{t('bill.discountHint')}</p>
+      </div>
+    </Modal>
+  );
+}
+
+/** "Split between N people": N payment rows with equal shares that add up to the bill exactly. */
+function SplitDialog({
+  totalFor,
+  methods,
+  onClose,
+  onApply,
+}: {
+  totalFor: (cls: 'CASH_OTHER' | 'DIGITAL') => number;
+  methods: PaymentMethod[];
+  onClose: () => void;
+  onApply: (shares: number[], method: PaymentMethod) => void;
+}) {
+  const { t } = useTranslation();
+  const usable = methods.filter((m) => m.code !== 'KHATA' && m.is_active);
+  const [people, setPeople] = useState(2);
+  const [methodId, setMethodId] = useState(
+    (usable.find((m) => m.code === 'CASH') ?? usable[0])?.id ?? '',
+  );
+  const method = usable.find((m) => m.id === methodId);
+  if (!method) return null;
+  const shares = splitEqually(totalFor(method.tender_class), people);
+  return (
+    <Modal
+      title={t('bill.splitTitle')}
+      size="sm"
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn-secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button className="btn-primary" onClick={() => onApply(shares, method)}>
+            {t('bill.splitApply')}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="label me-auto">{t('bill.splitPeople')}</span>
+          <div className="inline-flex items-center rounded-lg border border-slate-400">
+            <button
+              className="btn-quiet min-w-touch px-0"
+              aria-label="minus"
+              disabled={people <= 2}
+              onClick={() => setPeople(people - 1)}
+            >
+              <Icon name="minus" size={18} />
+            </button>
+            <span className="money w-10 text-center text-lg font-semibold" data-testid="split-n">
+              {people}
+            </span>
+            <button
+              className="btn-quiet min-w-touch px-0"
+              aria-label="plus"
+              disabled={people >= 12}
+              onClick={() => setPeople(people + 1)}
+            >
+              <Icon name="plus" size={18} />
+            </button>
+          </div>
+        </div>
+        <label className="block space-y-1">
+          <span className="label">{t('bill.method')}</span>
+          <select className="input" value={methodId} onChange={(e) => setMethodId(e.target.value)}>
+            {usable.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <ul className="divide-y divide-slate-200 rounded-lg border border-slate-300 bg-slate-50">
+          {shares.map((paisa, i) => (
+            <li key={i} className="flex items-center justify-between px-3 py-2">
+              <span>
+                {t('bill.splitPerson')} {ltr(String(i + 1))}
+              </span>
+              <span className="money font-semibold">{ltr(formatRs(paisa))}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="hint">{t('bill.splitHint')}</p>
       </div>
     </Modal>
   );
