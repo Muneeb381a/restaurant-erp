@@ -36,6 +36,7 @@ const PATHS = {
   swap: 'M7 7h12l-3-3M17 17H5l3 3',
   merge: 'M6 4v4a4 4 0 0 0 4 4h4a4 4 0 0 1 4 4v4M18 4v4a4 4 0 0 1-4 4',
   trash: 'M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5',
+  edit: 'M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4',
   box: 'M4 8l8-4 8 4v8l-8 4-8-4V8ZM4 8l8 4 8-4M12 12v8',
   chart: 'M4 20V10M10 20V4M16 20v-8M22 20H2',
   settings:

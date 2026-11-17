@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
@@ -11,7 +11,7 @@ import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
 import { can, useMe, useMenu, useOrder } from '../../lib/queries';
 import type { MenuItem, Order, OrderLine, SendResult } from '../../lib/types';
-import { ItemSheet, type AddBody } from './ItemSheet';
+import { ItemSheet, QUICK_NOTES, type AddBody } from './ItemSheet';
 import { OrderActions } from './OrderActions';
 
 const PRICE_LIST: Record<Order['type'], string> = {
@@ -44,6 +44,7 @@ export function OrderPage() {
   const [search, setSearch] = useState('');
   const [sheet, setSheet] = useState<MenuItem | null>(null);
   const [voiding, setVoiding] = useState<OrderLine | null>(null);
+  const [noting, setNoting] = useState<OrderLine | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false); // phones: the cart is a full-screen sheet
 
@@ -86,9 +87,37 @@ export function OrderPage() {
         method: 'POST',
         body: v.reason ? { reason: v.reason } : {},
       }),
-    onSuccess: (o) => {
+    onSuccess: (o, v) => {
       apply(o);
       setVoiding(null);
+      // a dish taken out of the cart before it was sent can be put back with one tap (no confirm dialog)
+      const l = v.line;
+      if (l.status === 'NEW' && !o.items.some((k) => k.parentId === l.id)) {
+        toast(t('order.removedLine', { name: l.name }), 'ok', {
+          label: t('order.undo'),
+          run: () =>
+            add.mutate({
+              itemId: l.itemId,
+              variantId: l.variantId,
+              qty: l.qty,
+              ...(l.weightG ? { weightG: l.weightG } : {}),
+              ...(l.modifiers.length ? { modifierIds: l.modifiers.map((m) => m.id) } : {}),
+              ...(l.note ? { note: l.note } : {}),
+            }),
+        });
+      }
+    },
+    onError,
+  });
+  const saveNote = useMutation({
+    mutationFn: (v: { line: OrderLine; note: string }) =>
+      api<Order>(`/orders/${id}/items/${v.line.id}`, {
+        method: 'PATCH',
+        body: { note: v.note.trim() || null },
+      }),
+    onSuccess: (o) => {
+      apply(o);
+      setNoting(null);
     },
     onError,
   });
@@ -175,6 +204,14 @@ export function OrderPage() {
   const liveLines = lines.filter((l) => l.status !== 'VOID');
   const unsent = lines.filter((l) => l.status === 'NEW');
   const unsentCount = unsent.reduce((n, l) => n + l.qty, 0);
+  // like a shopping cart: what is still to be sent on top, what the kitchen already has below
+  const sentLines = lines.filter((l) => l.status !== 'NEW');
+  const sumOf = (ls: OrderLine[]): number =>
+    ls.filter((l) => l.status !== 'VOID').reduce((n, l) => n + l.lineTotalPaisa, 0);
+  const groups = [
+    { key: 'new', label: t('order.toSend'), lines: unsent, total: sumOf(unsent) },
+    { key: 'sent', label: t('order.inKitchenGroup'), lines: sentLines, total: sumOf(sentLines) },
+  ].filter((g) => g.lines.length > 0);
 
   function pick(item: MenuItem): void {
     if (!item.available || !editable) return;
@@ -309,32 +346,71 @@ export function OrderPage() {
             const inCart = unsent
               .filter((l) => l.itemId === item.id)
               .reduce((n, l) => n + l.qty, 0);
+            // a plain dish already in the cart gets a − 2 + stepper right on its tile, like a shopping app
+            const plainLine = needsSheet(item)
+              ? undefined
+              : unsent.find(
+                  (l) =>
+                    l.itemId === item.id &&
+                    l.variantId === item.variants[0]!.id &&
+                    !l.weightG &&
+                    l.modifiers.length === 0 &&
+                    !l.note,
+                );
             return (
-              <button
-                key={item.id}
-                disabled={!item.available || !editable}
-                onClick={() => pick(item)}
-                className="card relative flex min-h-24 flex-col items-start justify-between p-3 text-start transition-colors hover:border-slate-500 active:bg-slate-100 disabled:opacity-40"
-              >
-                <span className="font-semibold leading-snug">
-                  {localName(lang, item.name, item.nameUr)}
-                </span>
-                <span className="money text-sm text-slate-700">
-                  {item.available
-                    ? item.variants.length > 1
-                      ? ltr(`${formatRs(Math.min(...item.variants.map((v) => v.pricePaisa)))}+`)
-                      : ltr(
-                          formatRs(item.variants[0]!.pricePaisa) +
-                            (item.kind === 'WEIGHT' ? '/kg' : ''),
-                        )
-                    : t('order.soldOut')}
-                </span>
-                {inCart > 0 && (
-                  <span className="absolute end-2 top-2 flex size-6 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">
-                    {inCart}
+              <div key={item.id} className="relative flex">
+                <button
+                  disabled={!item.available || !editable}
+                  onClick={() => pick(item)}
+                  className={`card relative flex min-h-24 w-full flex-col items-start justify-between p-3 text-start transition-colors hover:border-slate-500 active:bg-slate-100 disabled:opacity-40 ${plainLine && editable ? 'pb-16' : ''}`}
+                >
+                  <span className="font-semibold leading-snug">
+                    {localName(lang, item.name, item.nameUr)}
                   </span>
+                  <span className="money text-sm text-slate-700">
+                    {item.available
+                      ? item.variants.length > 1
+                        ? ltr(`${formatRs(Math.min(...item.variants.map((v) => v.pricePaisa)))}+`)
+                        : ltr(
+                            formatRs(item.variants[0]!.pricePaisa) +
+                              (item.kind === 'WEIGHT' ? '/kg' : ''),
+                          )
+                      : t('order.soldOut')}
+                  </span>
+                  {inCart > 0 && !plainLine && (
+                    <span className="absolute end-2 top-2 flex size-6 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">
+                      {inCart}
+                    </span>
+                  )}
+                </button>
+                {plainLine && editable && (
+                  <div className="absolute bottom-1.5 end-1.5 inline-flex items-center rounded-lg border border-emerald-600 bg-white shadow-sm">
+                    <button
+                      className="btn-quiet min-w-touch px-0 text-emerald-800"
+                      aria-label={`${t('order.removeOne')} ${item.name}`}
+                      disabled={changeQty.isPending || voidLine.isPending}
+                      onClick={() =>
+                        plainLine.qty <= 1
+                          ? voidLine.mutate({ line: plainLine })
+                          : changeQty.mutate({ line: plainLine, qty: plainLine.qty - 1 })
+                      }
+                    >
+                      <Icon name="minus" size={18} />
+                    </button>
+                    <span className="money w-7 text-center font-bold text-emerald-900">
+                      {plainLine.qty}
+                    </span>
+                    <button
+                      className="btn-quiet min-w-touch px-0 text-emerald-800"
+                      aria-label={`${t('order.addOne')} ${item.name}`}
+                      disabled={changeQty.isPending}
+                      onClick={() => changeQty.mutate({ line: plainLine, qty: plainLine.qty + 1 })}
+                    >
+                      <Icon name="plus" size={18} />
+                    </button>
+                  </div>
                 )}
-              </button>
+              </div>
             );
           })}
         </div>
@@ -448,93 +524,120 @@ export function OrderPage() {
               {t('order.empty')}
             </li>
           )}
-          {lines.map((line) => {
-            const kids = o.items.filter((k) => k.parentId === line.id);
-            const dead = line.status === 'VOID';
-            const stepper = line.status === 'NEW' && !line.weightG && editable;
-            return (
-              <li key={line.id} className={`space-y-1.5 px-4 py-3 ${dead ? 'opacity-50' : ''}`}>
-                <div className="flex items-start gap-2">
-                  <span className={`me-auto font-medium ${dead ? 'line-through' : ''}`}>
-                    {!stepper && <span className="text-slate-600">{ltr(`${line.qty}×`)} </span>}
-                    {localName(lang, line.name, line.nameUr)}
-                    {line.weightG ? ` · ${ltr(`${line.weightG} g`)}` : ''}
-                  </span>
-                  <span className={`money whitespace-nowrap ${dead ? 'line-through' : ''}`}>
-                    {ltr(formatRs(line.lineTotalPaisa))}
-                  </span>
-                </div>
-                {line.modifiers.length > 0 && (
-                  <div className="text-sm text-slate-600">
-                    {line.modifiers.map((m) => m.name).join(', ')}
-                  </div>
-                )}
-                {kids.length > 0 && (
-                  <div className="text-sm text-slate-600">
-                    {kids.map((k) => `${k.qty}× ${k.name}`).join(' · ')}
-                  </div>
-                )}
-                {line.note && <div className="text-sm italic text-slate-600">“{line.note}”</div>}
-                {dead ? (
-                  <span className="chip-mute">{t('order.voided')}</span>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    {stepper ? (
-                      <div className="inline-flex items-center rounded-lg border border-slate-400">
-                        <button
-                          className="btn-quiet min-w-touch px-0"
-                          aria-label="minus"
-                          disabled={line.qty <= 1 || changeQty.isPending}
-                          onClick={() => changeQty.mutate({ line, qty: line.qty - 1 })}
-                        >
-                          <Icon name="minus" size={18} />
-                        </button>
-                        <span className="money w-8 text-center font-semibold">{line.qty}</span>
-                        <button
-                          className="btn-quiet min-w-touch px-0"
-                          aria-label="plus"
-                          disabled={changeQty.isPending}
-                          onClick={() => changeQty.mutate({ line, qty: line.qty + 1 })}
-                        >
-                          <Icon name="plus" size={18} />
-                        </button>
-                      </div>
-                    ) : null}
-                    {line.status === 'NEW' ? (
-                      <span className="chip-warn">{t('order.notSent')}</span>
-                    ) : (
-                      <span className="chip-ok">
-                        <Icon name="check" size={14} /> {t('order.inKitchen')}
+          {groups.map((g) => (
+            <Fragment key={g.key}>
+              {groups.length > 1 && (
+                <li className="sticky top-0 z-10 flex items-center justify-between bg-slate-100 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-600">
+                  <span>{g.label}</span>
+                  <span className="money">{ltr(formatRs(g.total))}</span>
+                </li>
+              )}
+              {g.lines.map((line) => {
+                const kids = o.items.filter((k) => k.parentId === line.id);
+                const dead = line.status === 'VOID';
+                const stepper = line.status === 'NEW' && !line.weightG && editable;
+                return (
+                  <li key={line.id} className={`space-y-1.5 px-4 py-3 ${dead ? 'opacity-50' : ''}`}>
+                    <div className="flex items-start gap-2">
+                      <span className={`me-auto font-medium ${dead ? 'line-through' : ''}`}>
+                        {!stepper && <span className="text-slate-600">{ltr(`${line.qty}×`)} </span>}
+                        {localName(lang, line.name, line.nameUr)}
+                        {line.weightG ? ` · ${ltr(`${line.weightG} g`)}` : ''}
                       </span>
+                      <span className={`money whitespace-nowrap ${dead ? 'line-through' : ''}`}>
+                        {ltr(formatRs(line.lineTotalPaisa))}
+                      </span>
+                    </div>
+                    {line.qty > 1 && !line.weightG && line.lineTotalPaisa % line.qty === 0 && (
+                      <div className="text-sm text-slate-600">
+                        {ltr(`${line.qty} × ${formatRs(line.lineTotalPaisa / line.qty)}`)}
+                      </div>
                     )}
-                    {editable && !stepper && !line.weightG && kids.length === 0 && (
-                      <button
-                        className="btn-secondary px-3"
-                        disabled={add.isPending || changeQty.isPending}
-                        aria-label={`${t('order.again')} ${line.name}`}
-                        onClick={() => again(line)}
-                      >
-                        <Icon name="plus" size={16} />
-                        {t('order.again')}
-                      </button>
+                    {line.modifiers.length > 0 && (
+                      <div className="text-sm text-slate-600">
+                        {line.modifiers.map((m) => m.name).join(', ')}
+                      </div>
                     )}
-                    {editable && (
-                      <button
-                        className="btn-quiet ms-auto px-2 text-rose-700"
-                        aria-label={`${t('order.void')} ${line.name}`}
-                        onClick={() =>
-                          line.status === 'NEW' ? voidLine.mutate({ line }) : setVoiding(line)
-                        }
-                      >
-                        <Icon name="trash" size={18} />
-                        {t('order.void')}
-                      </button>
+                    {kids.length > 0 && (
+                      <div className="text-sm text-slate-600">
+                        {kids.map((k) => `${k.qty}× ${k.name}`).join(' · ')}
+                      </div>
                     )}
-                  </div>
-                )}
-              </li>
-            );
-          })}
+                    {line.note && (
+                      <div className="text-sm italic text-slate-600">“{line.note}”</div>
+                    )}
+                    {dead ? (
+                      <span className="chip-mute">{t('order.voided')}</span>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        {stepper ? (
+                          <div className="inline-flex items-center rounded-lg border border-slate-400">
+                            <button
+                              className="btn-quiet min-w-touch px-0"
+                              aria-label="minus"
+                              disabled={line.qty <= 1 || changeQty.isPending}
+                              onClick={() => changeQty.mutate({ line, qty: line.qty - 1 })}
+                            >
+                              <Icon name="minus" size={18} />
+                            </button>
+                            <span className="money w-8 text-center font-semibold">{line.qty}</span>
+                            <button
+                              className="btn-quiet min-w-touch px-0"
+                              aria-label="plus"
+                              disabled={changeQty.isPending}
+                              onClick={() => changeQty.mutate({ line, qty: line.qty + 1 })}
+                            >
+                              <Icon name="plus" size={18} />
+                            </button>
+                          </div>
+                        ) : null}
+                        {line.status === 'NEW' ? (
+                          <span className="chip-warn">{t('order.notSent')}</span>
+                        ) : (
+                          <span className="chip-ok">
+                            <Icon name="check" size={14} /> {t('order.inKitchen')}
+                          </span>
+                        )}
+                        {editable && line.status === 'NEW' && kids.length === 0 && (
+                          <button
+                            className="btn-quiet px-2"
+                            aria-label={`${line.note ? t('order.editNote') : t('order.addNote')} ${line.name}`}
+                            onClick={() => setNoting(line)}
+                          >
+                            <Icon name="edit" size={16} />
+                            {line.note ? t('order.editNote') : t('order.addNote')}
+                          </button>
+                        )}
+                        {editable && !stepper && !line.weightG && kids.length === 0 && (
+                          <button
+                            className="btn-secondary px-3"
+                            disabled={add.isPending || changeQty.isPending}
+                            aria-label={`${t('order.again')} ${line.name}`}
+                            onClick={() => again(line)}
+                          >
+                            <Icon name="plus" size={16} />
+                            {t('order.again')}
+                          </button>
+                        )}
+                        {editable && (
+                          <button
+                            className="btn-quiet ms-auto px-2 text-rose-700"
+                            aria-label={`${t('order.void')} ${line.name}`}
+                            onClick={() =>
+                              line.status === 'NEW' ? voidLine.mutate({ line }) : setVoiding(line)
+                            }
+                          >
+                            <Icon name="trash" size={18} />
+                            {t('order.void')}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </Fragment>
+          ))}
         </ul>
 
         <div className="space-y-2 border-t border-slate-300 bg-slate-50 p-4">
@@ -594,6 +697,14 @@ export function OrderPage() {
           onAdd={(b) => add.mutate(b)}
         />
       )}
+      {noting && (
+        <NoteDialog
+          line={noting}
+          busy={saveNote.isPending}
+          onClose={() => setNoting(null)}
+          onSave={(note) => saveNote.mutate({ line: noting, note })}
+        />
+      )}
       {voiding && (
         <VoidDialog
           line={voiding}
@@ -603,6 +714,69 @@ export function OrderPage() {
         />
       )}
     </div>
+  );
+}
+
+/** Change the note on a dish that is still in the cart (not yet sent): one-tap chips or free text. */
+function NoteDialog({
+  line,
+  busy,
+  onClose,
+  onSave,
+}: {
+  line: OrderLine;
+  busy: boolean;
+  onClose: () => void;
+  onSave: (note: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [note, setNote] = useState(line.note ?? '');
+  const parts = note ? note.split(', ') : [];
+  return (
+    <Modal
+      title={`${t('order.editNote')}: ${line.name}`}
+      size="sm"
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn-secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button className="btn-primary" disabled={busy} onClick={() => onSave(note)}>
+            {t('admin.save')}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('order.quickNotes')}>
+          {QUICK_NOTES.map((k) => {
+            const label = t(`order.qn.${k}`);
+            const on = parts.includes(label);
+            return (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={on}
+                className={`min-h-touch rounded-full border px-3 text-sm font-medium ${on ? 'border-amber-500 bg-amber-100 text-amber-950' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'}`}
+                onClick={() =>
+                  setNote((on ? parts.filter((p) => p !== label) : [...parts, label]).join(', '))
+                }
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <textarea
+          className="input min-h-20"
+          aria-label={t('order.note')}
+          maxLength={300}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </div>
+    </Modal>
   );
 }
 

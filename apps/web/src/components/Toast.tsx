@@ -7,10 +7,11 @@ interface ToastItem {
   id: number;
   text: string;
   tone: Tone;
+  action?: { label: string; run: () => void };
 }
 interface Store {
   items: ToastItem[];
-  push: (text: string, tone?: Tone) => void;
+  push: (text: string, tone?: Tone, action?: ToastItem['action']) => void;
   dismiss: (id: number) => void;
 }
 let seq = 0;
@@ -18,12 +19,14 @@ let seq = 0;
 /** Short confirmations ("Sent to kitchen", "Saved") appear here and fade; they never block the screen. */
 export const useToasts = create<Store>((set) => ({
   items: [],
-  push: (text, tone = 'ok') =>
-    set((s) => ({ items: [...s.items.slice(-2), { id: ++seq, text, tone }] })),
+  push: (text, tone = 'ok', action) =>
+    set((s) => ({
+      items: [...s.items.slice(-2), { id: ++seq, text, tone, ...(action ? { action } : {}) }],
+    })),
   dismiss: (id) => set((s) => ({ items: s.items.filter((i) => i.id !== id) })),
 }));
-export const toast = (text: string, tone: Tone = 'ok'): void =>
-  useToasts.getState().push(text, tone);
+export const toast = (text: string, tone: Tone = 'ok', action?: ToastItem['action']): void =>
+  useToasts.getState().push(text, tone, action);
 
 const TONE: Record<Tone, string> = {
   ok: 'bg-slate-900 text-white',
@@ -34,7 +37,10 @@ const TONE: Record<Tone, string> = {
 function Item({ item }: { item: ToastItem }) {
   const dismiss = useToasts((s) => s.dismiss);
   useEffect(() => {
-    const t = setTimeout(() => dismiss(item.id), item.tone === 'bad' ? 6000 : 3200);
+    const t = setTimeout(
+      () => dismiss(item.id),
+      item.action ? 6000 : item.tone === 'bad' ? 6000 : 3200,
+    );
     return () => clearTimeout(t);
   }, [item, dismiss]);
   return (
@@ -44,6 +50,17 @@ function Item({ item }: { item: ToastItem }) {
     >
       <Icon name={item.tone === 'ok' ? 'check' : 'alert'} size={18} />
       {item.text}
+      {item.action && (
+        <button
+          className="ms-2 min-h-touch rounded-md px-3 font-bold underline"
+          onClick={() => {
+            item.action?.run();
+            dismiss(item.id);
+          }}
+        >
+          {item.action.label}
+        </button>
+      )}
     </div>
   );
 }

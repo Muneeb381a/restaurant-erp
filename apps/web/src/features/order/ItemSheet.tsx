@@ -7,7 +7,14 @@ import { formatRs, ltr } from '../../lib/money';
 import type { MenuItem } from '../../lib/types';
 
 /** Keys of the one-tap notes (wording in i18n `order.qn.*`). */
-const QUICK_NOTES = ['lessSpicy', 'extraSpicy', 'noOnion', 'wellDone', 'serveHot', 'pack'] as const;
+export const QUICK_NOTES = [
+  'lessSpicy',
+  'extraSpicy',
+  'noOnion',
+  'wellDone',
+  'serveHot',
+  'pack',
+] as const;
 
 export interface AddBody {
   itemId: string;
