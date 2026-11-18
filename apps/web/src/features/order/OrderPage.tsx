@@ -3,6 +3,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
+import { ItemPhoto } from '../../components/ItemPhoto';
 import { Modal } from '../../components/Modal';
 import { toast } from '../../components/Toast';
 import { localName } from '../../i18n';
@@ -437,8 +438,15 @@ export function OrderPage() {
                 <button
                   disabled={!item.available || !editable}
                   onClick={() => pick(item)}
-                  className={`card relative flex min-h-24 w-full flex-col items-start justify-between p-3 text-start transition-colors border-s-4 ${hueAt(hueIndex.get(topOf(item.categoryId) ?? '') ?? 0).edge} hover:shadow-md active:bg-slate-50 disabled:opacity-40 ${plainLine && editable ? 'pb-16' : ''}`}
+                  className={`card relative flex min-h-24 w-full flex-col items-start justify-between overflow-hidden p-3 text-start transition-colors border-s-4 ${hueAt(hueIndex.get(topOf(item.categoryId) ?? '') ?? 0).edge} hover:shadow-md active:bg-slate-50 disabled:opacity-40 ${plainLine && editable ? 'pb-16' : ''}`}
                 >
+                  {item.imageVer ? (
+                    <ItemPhoto
+                      itemId={item.id}
+                      version={item.imageVer}
+                      className="-mx-3 -mt-3 mb-2 h-24 w-[calc(100%+1.5rem)] shrink-0"
+                    />
+                  ) : null}
                   <span className="font-semibold leading-snug">
                     {localName(lang, item.name, item.nameUr)}
                   </span>

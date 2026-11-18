@@ -182,6 +182,8 @@ export interface MenuItem {
   station: string | null;
   available: boolean;
   searchTerms: string | null;
+  /** changes when the dish photo is replaced; null = no photo */
+  imageVer?: number | null;
   variants: {
     id: string;
     name: string;

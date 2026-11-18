@@ -1,6 +1,6 @@
 import { asPaisa, formatPaisa, parseRupees } from '@erp/domain';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { localName } from '../../i18n';
 import { api } from '../../lib/api';
@@ -387,6 +387,11 @@ function PriceCell({
   const current = variant.prices[listCode] ?? null;
   const [text, setText] = useState(current === null ? '' : formatPaisa(asPaisa(current)));
   const [invalid, setInvalid] = useState(false);
+  // a price changed somewhere else (the Edit dialog, another till) must show here too
+  useEffect(() => {
+    setText(current === null ? '' : formatPaisa(asPaisa(current)));
+    setInvalid(false);
+  }, [current]);
   const save = useMutation({
     mutationFn: (pricePaisa: number) =>
       api(`/variants/${variant.id}/prices/${listId}`, { method: 'PUT', body: { pricePaisa } }),
@@ -504,6 +509,18 @@ function ItemDialog({
   const [variants, setVariants] = useState<{ name: string; prices: PriceInputs }[]>([
     { name: 'Regular', prices: {} },
   ]);
+  // editing an existing item: its prices are shown here too (they can also be edited in the table)
+  const priceText = (v: AdminItem['variants'][number]): PriceInputs =>
+    Object.fromEntries(
+      data.priceLists.map((l) => {
+        const paisa = v.prices[l.code];
+        return [l.code, paisa === null || paisa === undefined ? '' : formatPaisa(asPaisa(paisa))];
+      }),
+    );
+  const liveVariants = (item?.variants ?? []).filter((v) => v.isActive);
+  const [priceEdits, setPriceEdits] = useState<Record<string, PriceInputs>>(() =>
+    Object.fromEntries(liveVariants.map((v) => [v.id, priceText(v)])),
+  );
   const [error, setError] = useState<unknown>(null);
 
   const save = useMutation({
@@ -526,6 +543,16 @@ function ItemDialog({
       };
       if (item) {
         await api(`/items/${item.id}`, { method: 'PATCH', body: common });
+        // only the prices that were changed are sent
+        for (const v of liveVariants) {
+          const before = priceText(v);
+          const now = priceEdits[v.id] ?? before;
+          const changed: PriceInputs = {};
+          for (const l of data.priceLists)
+            if ((now[l.code] ?? '').trim() !== (before[l.code] ?? ''))
+              changed[l.code] = now[l.code]!;
+          await savePrices(data, v.id, changed);
+        }
         await savePhoto(item.id);
         return;
       }
@@ -648,6 +675,23 @@ function ItemDialog({
             />
           </Field>
         </div>
+
+        {item && liveVariants.length > 0 && (
+          <fieldset className="space-y-2">
+            <legend className="font-semibold">{t('admin.menuPage.prices')}</legend>
+            <p className="text-sm text-slate-500">{t('admin.menuPage.priceHint')}</p>
+            {liveVariants.map((v) => (
+              <div key={v.id} className="space-y-2 rounded-lg border border-slate-200 p-3">
+                {liveVariants.length > 1 && <div className="font-medium">{v.name}</div>}
+                <PriceInputs
+                  lists={sortLists(data.priceLists)}
+                  value={priceEdits[v.id] ?? {}}
+                  onChange={(prices) => setPriceEdits({ ...priceEdits, [v.id]: prices })}
+                />
+              </div>
+            ))}
+          </fieldset>
+        )}
 
         {!item && (
           <fieldset className="space-y-2">

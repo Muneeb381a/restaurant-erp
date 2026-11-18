@@ -199,6 +199,7 @@
       "searchWords": "Search words",
       "editItem": "Edit item",
       "variants": "Variants",
+      "prices": "Prices",
       "priceHint": "Prices in Rs. Empty = not sold on that channel.",
       "addVariant": "Add variant",
       "dealNote": "Deal contents are edited through the API for now.",
