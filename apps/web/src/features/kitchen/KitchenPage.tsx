@@ -173,129 +173,131 @@ export function KitchenPage() {
   const label = (s: KotStatus): string => t(`kitchen.col${s}`);
 
   return (
-    <div className="mx-auto max-w-[110rem] space-y-4 p-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="me-auto">
-          <h1 className="page-title">{t('kitchen.title')}</h1>
-          <p className="hint">{t('kitchen.hint')}</p>
-        </div>
-        {(board.data?.stations.length ?? 0) > 1 && (
-          <div
-            className="seg max-w-full overflow-x-auto"
-            role="group"
-            aria-label={t('kitchen.station')}
-          >
-            <button
-              className="seg-item shrink-0"
-              aria-pressed={station === ''}
-              onClick={() => setStation('')}
-            >
-              {t('common.all')}
-            </button>
-            {board.data?.stations.map((s) => (
-              <button
-                key={s.code}
-                className="seg-item shrink-0 whitespace-nowrap"
-                aria-pressed={station === s.code}
-                onClick={() => setStation(s.code)}
-              >
-                {s.name}
-              </button>
-            ))}
+    <div className="min-h-full bg-slate-900">
+      <div className="mx-auto max-w-[110rem] space-y-4 p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="me-auto">
+            <h1 className="page-title text-white">{t('kitchen.title')}</h1>
+            <p className="hint text-slate-400">{t('kitchen.hint')}</p>
           </div>
-        )}
-        <button className="btn-secondary" aria-pressed={sound} onClick={toggleSound}>
-          <Icon name={sound ? 'bell' : 'bellOff'} size={20} />
-          {sound ? t('kitchen.soundOn') : t('kitchen.soundOff')}
-        </button>
-      </div>
-
-      {/* phones and small tablets show one column at a time */}
-      <div className="seg w-full lg:hidden" role="group" aria-label={t('kitchen.title')}>
-        {COLUMNS.map((c) => (
-          <button
-            key={c.status}
-            className="seg-item flex-1 gap-2"
-            aria-pressed={view === c.status}
-            onClick={() => setView(c.status)}
-          >
-            {label(c.status)}
-            <span className="money opacity-70">{counts[c.status]}</span>
+          {(board.data?.stations.length ?? 0) > 1 && (
+            <div
+              className="seg max-w-full overflow-x-auto"
+              role="group"
+              aria-label={t('kitchen.station')}
+            >
+              <button
+                className="seg-item shrink-0"
+                aria-pressed={station === ''}
+                onClick={() => setStation('')}
+              >
+                {t('common.all')}
+              </button>
+              {board.data?.stations.map((s) => (
+                <button
+                  key={s.code}
+                  className="seg-item shrink-0 whitespace-nowrap"
+                  aria-pressed={station === s.code}
+                  onClick={() => setStation(s.code)}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          )}
+          <button className="btn-secondary" aria-pressed={sound} onClick={toggleSound}>
+            <Icon name={sound ? 'bell' : 'bellOff'} size={20} />
+            {sound ? t('kitchen.soundOn') : t('kitchen.soundOff')}
           </button>
-        ))}
-      </div>
+        </div>
 
-      {board.isError && (
-        <p role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-700">
-          {t('common.error')}
-        </p>
-      )}
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        {COLUMNS.map((c) => (
-          <section
-            key={c.status}
-            className={`min-w-0 space-y-3 ${view === c.status ? '' : 'hidden lg:block'}`}
-            aria-label={label(c.status)}
-          >
-            <h2
-              className={`flex items-center justify-between rounded-lg px-4 py-2 text-base font-bold uppercase tracking-wide ${c.head}`}
+        {/* phones and small tablets show one column at a time */}
+        <div className="seg w-full lg:hidden" role="group" aria-label={t('kitchen.title')}>
+          {COLUMNS.map((c) => (
+            <button
+              key={c.status}
+              className="seg-item flex-1 gap-2"
+              aria-pressed={view === c.status}
+              onClick={() => setView(c.status)}
             >
               {label(c.status)}
-              <span className="money">{counts[c.status]}</span>
-            </h2>
-            {by(c.status).length === 0 && (
-              <p className="rounded-xl border border-dashed border-slate-400 p-6 text-center text-slate-600">
-                {t(`kitchen.empty${c.status}`)}
-              </p>
-            )}
-            {by(c.status).map((x) => (
-              <TicketCard
-                key={x.id}
-                x={x}
-                tone={c.tone}
-                age={ageMin(x)}
-                canCook={canCook}
-                canServe={canServe}
-                busy={move.isPending}
-                onMove={(status) => move.mutate({ id: x.id, status })}
-              />
-            ))}
-          </section>
-        ))}
-      </div>
+              <span className="money opacity-70">{counts[c.status]}</span>
+            </button>
+          ))}
+        </div>
 
-      {served.length > 0 && (
-        <details className="card p-4">
-          <summary className="cursor-pointer font-semibold">
-            {t('kitchen.recent', { count: served.length })}
-          </summary>
-          <ul className="mt-2 divide-y divide-slate-200">
-            {served.map((x) => (
-              <li key={x.id} className="flex items-center gap-3 py-2 text-sm">
-                <span className="me-auto font-medium">
-                  {where(x, t)} · <span className="text-slate-600">{x.stationName}</span>
-                </span>
-                <span className="text-slate-600">
-                  {x.lines
-                    .filter((l) => !l.voided)
-                    .map((l) => `${ltr(`${l.qty}×`)} ${l.name}`)
-                    .join(', ')}
-                </span>
-                {canServe && (
-                  <button
-                    className="btn-quiet px-2"
-                    disabled={move.isPending}
-                    onClick={() => move.mutate({ id: x.id, status: 'READY' })}
-                  >
-                    {t('kitchen.undo')}
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+        {board.isError && (
+          <p role="alert" className="rounded-lg bg-rose-50 p-3 text-rose-700">
+            {t('common.error')}
+          </p>
+        )}
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          {COLUMNS.map((c) => (
+            <section
+              key={c.status}
+              className={`min-w-0 space-y-3 ${view === c.status ? '' : 'hidden lg:block'}`}
+              aria-label={label(c.status)}
+            >
+              <h2
+                className={`flex items-center justify-between rounded-lg px-4 py-2 text-base font-bold uppercase tracking-wide ${c.head}`}
+              >
+                {label(c.status)}
+                <span className="money">{counts[c.status]}</span>
+              </h2>
+              {by(c.status).length === 0 && (
+                <p className="rounded-xl border border-dashed border-slate-600 p-6 text-center text-slate-400">
+                  {t(`kitchen.empty${c.status}`)}
+                </p>
+              )}
+              {by(c.status).map((x) => (
+                <TicketCard
+                  key={x.id}
+                  x={x}
+                  tone={c.tone}
+                  age={ageMin(x)}
+                  canCook={canCook}
+                  canServe={canServe}
+                  busy={move.isPending}
+                  onMove={(status) => move.mutate({ id: x.id, status })}
+                />
+              ))}
+            </section>
+          ))}
+        </div>
+
+        {served.length > 0 && (
+          <details className="card p-4">
+            <summary className="cursor-pointer font-semibold">
+              {t('kitchen.recent', { count: served.length })}
+            </summary>
+            <ul className="mt-2 divide-y divide-slate-200">
+              {served.map((x) => (
+                <li key={x.id} className="flex items-center gap-3 py-2 text-sm">
+                  <span className="me-auto font-medium">
+                    {where(x, t)} · <span className="text-slate-600">{x.stationName}</span>
+                  </span>
+                  <span className="text-slate-600">
+                    {x.lines
+                      .filter((l) => !l.voided)
+                      .map((l) => `${ltr(`${l.qty}×`)} ${l.name}`)
+                      .join(', ')}
+                  </span>
+                  {canServe && (
+                    <button
+                      className="btn-quiet px-2"
+                      disabled={move.isPending}
+                      onClick={() => move.mutate({ id: x.id, status: 'READY' })}
+                    >
+                      {t('kitchen.undo')}
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </div>
     </div>
   );
 }

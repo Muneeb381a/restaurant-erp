@@ -91,7 +91,7 @@ body,
 }
 
 body {
-  @apply bg-slate-100 text-slate-900 antialiased;
+  @apply bg-slate-50 text-slate-900 antialiased;
   font-feature-settings:
     'tnum' 1,
     'lnum' 1; /* money lines up: tabular, lining figures */
@@ -107,7 +107,7 @@ html[lang='ur'] body {
 }
 
 :focus-visible {
-  outline: 3px solid theme('colors.amber.400');
+  outline: 3px solid theme('colors.sky.400');
   outline-offset: 2px;
 }
 
@@ -117,13 +117,13 @@ html[lang='ur'] body {
     @apply inline-flex min-h-touch min-w-touch select-none items-center justify-center gap-2 rounded-lg px-4 text-base font-semibold transition-colors active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40;
   }
   .btn-primary {
-    @apply btn bg-emerald-600 text-white hover:bg-emerald-700;
+    @apply btn bg-emerald-600 text-white shadow-sm hover:bg-emerald-700;
   }
   .btn-secondary {
-    @apply btn border border-slate-400 bg-white text-slate-900 hover:bg-slate-100;
+    @apply btn border border-slate-300 bg-white text-slate-800 shadow-sm hover:bg-slate-50;
   }
   .btn-quiet {
-    @apply btn px-3 font-medium text-slate-700 hover:bg-slate-200;
+    @apply btn px-3 font-medium text-slate-700 hover:bg-slate-100;
   }
   /* The three steps of an order, each in the colour of the state it leads to (floor tiles use the same):
      send to kitchen = saffron (occupied), bill = blue (bill ready), pay = green. */
@@ -148,15 +148,15 @@ html[lang='ur'] body {
 
   /* ── surfaces: flat, hairline-bordered, like a printed form */
   .card {
-    @apply rounded-xl border border-slate-300 bg-white;
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm;
   }
   .panel {
-    @apply rounded-xl border border-slate-300 bg-slate-50;
+    @apply rounded-xl border border-slate-200 bg-slate-100;
   }
 
   /* ── form controls */
   .input {
-    @apply min-h-touch w-full rounded-lg border border-slate-400 bg-white px-3 text-base text-slate-900 outline-none placeholder:text-slate-500 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200;
+    @apply min-h-touch w-full rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none shadow-sm placeholder:text-slate-500 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100;
   }
   .label {
     @apply text-sm font-medium text-slate-700;
@@ -167,13 +167,13 @@ html[lang='ur'] body {
 
   /* ── data tables: quiet header, roomy rows, numbers on the right, row highlight */
   .dt {
-    @apply overflow-x-auto rounded-xl border border-slate-300 bg-white;
+    @apply overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm;
   }
   .dt table {
     @apply w-full border-collapse text-sm;
   }
   .dt thead th {
-    @apply sticky top-0 border-b border-slate-300 bg-slate-100 px-4 py-2.5 text-start text-xs font-semibold uppercase tracking-wide text-slate-600;
+    @apply sticky top-0 border-b border-slate-200 bg-slate-50 px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-slate-600;
   }
   .dt tbody td {
     @apply border-b border-slate-200 px-4 py-3 align-middle;
@@ -208,7 +208,7 @@ html[lang='ur'] body {
 
   /* ── PIN pad key */
   .key {
-    @apply inline-flex h-14 select-none items-center justify-center rounded-xl border border-slate-300 bg-white text-2xl font-medium text-slate-900 transition-colors hover:bg-slate-100 active:translate-y-px active:bg-slate-200;
+    @apply inline-flex h-14 select-none items-center justify-center rounded-xl border border-slate-200 bg-white text-2xl font-medium text-slate-900 shadow-sm transition-colors hover:bg-slate-50 active:translate-y-px active:bg-slate-100;
   }
 
   /* ── small status label (text + colour, never colour alone) */
@@ -233,14 +233,14 @@ html[lang='ur'] body {
 
   /* ── segmented control (filters, either/or choices) */
   .seg {
-    @apply inline-flex rounded-lg border border-slate-400 bg-white p-0.5;
+    @apply inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5;
   }
   .seg-item {
-    @apply inline-flex min-h-[2.5rem] min-w-touch items-center justify-center rounded-md px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100;
+    @apply inline-flex min-h-[2.5rem] min-w-touch items-center justify-center rounded-md px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-white;
   }
   .seg-item[aria-pressed='true'],
   .seg-item[aria-selected='true'] {
-    @apply bg-slate-900 text-white hover:bg-slate-900;
+    @apply bg-white text-slate-900 shadow-sm hover:bg-white;
   }
 
   /* ── page furniture */
@@ -421,14 +421,14 @@ html[lang='ur'] body {
     gap: 0.1rem 0.5rem;
     margin-bottom: 0.75rem;
     padding: 0.6rem 0.9rem;
-    border: 1px solid #cfc8b8;
+    border: 1px solid #d0d5dd;
     border-radius: 0.75rem;
     background: #fff;
   }
   /* a further size of the same item sits attached under its card */
   .dt tbody tr[data-cont] {
     margin-top: -0.75rem;
-    border-top: 1px dashed #cfc8b8;
+    border-top: 1px dashed #d0d5dd;
     border-top-left-radius: 0;
     border-top-right-radius: 0;
   }
@@ -453,7 +453,7 @@ html[lang='ur'] body {
     font-weight: 600;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: #6b6558;
+    color: #667085;
   }
   /* two cells per line, numbers three per line */
   .dt tbody td {
@@ -480,7 +480,7 @@ html[lang='ur'] body {
   .dt tbody td:first-child {
     font-size: 1.02rem;
     padding-bottom: 0.25rem;
-    border-bottom: 1px solid #eee7d6;
+    border-bottom: 1px solid #eaecf0;
   }
   .dt tbody .num {
     text-align: start;
@@ -490,7 +490,7 @@ html[lang='ur'] body {
     min-height: 2.5rem;
     padding-inline: 0.5rem;
     text-align: start;
-    border-color: #cfc8b8;
+    border-color: #d0d5dd;
     background: #fff;
   }
   /* an empty cell (e.g. no category) would only show its label */

@@ -23,27 +23,27 @@ const TILE: Record<
   FloorTable['status'],
   { box: string; band: string; dot: string; ink: string; soft: string }
 > = {
-  // nobody is seated: an empty outline, nothing to read
+  // nobody is seated: a quiet white card with a green edge ("free to take")
   FREE: {
-    box: 'border-2 border-dashed border-slate-400 bg-transparent hover:border-emerald-600 hover:bg-white',
-    band: 'bg-slate-200 text-slate-800',
+    box: 'border border-slate-200 border-s-4 border-s-emerald-500 bg-white shadow-sm hover:border-emerald-500 hover:shadow-md',
+    band: 'bg-white text-emerald-700',
     dot: 'bg-emerald-600',
     ink: 'text-slate-900',
-    soft: 'text-slate-600',
+    soft: 'text-slate-500',
   },
-  // seated and ordering: saffron, the colour of "Send to kitchen"
+  // seated and ordering: a saffron edge and chip, the colour of "Send to kitchen"
   OCCUPIED: {
-    box: 'border-2 border-amber-500 bg-amber-100 hover:bg-amber-200/70',
-    band: 'bg-amber-500 text-slate-900',
+    box: 'border border-amber-200 border-s-4 border-s-amber-500 bg-white shadow-sm hover:shadow-md',
+    band: 'bg-amber-50 text-amber-800',
     dot: 'bg-amber-500',
     ink: 'text-slate-900',
-    soft: 'text-amber-950/80',
+    soft: 'text-slate-600',
   },
   // the guest asked for the bill: a solid blue block, the only one on the floor. The cashier looks
   // for blue, and blue is also the colour of the "Bill" button that put it there
   BILLED: {
-    box: 'border-2 border-sky-900 bg-sky-700 hover:bg-sky-800',
-    band: 'bg-sky-900 text-white',
+    box: 'border border-sky-800 bg-sky-700 shadow-md hover:bg-sky-800',
+    band: 'bg-sky-800 text-white',
     dot: 'bg-sky-700',
     ink: 'text-white',
     soft: 'text-sky-100',

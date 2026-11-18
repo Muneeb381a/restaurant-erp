@@ -542,7 +542,7 @@ function SignedIn() {
           {offline.length > 0 && (
             <div
               role="alert"
-              className="flex items-center justify-center gap-2 bg-rose-600 px-3 py-2 text-sm font-semibold text-white"
+              className="flex items-center justify-center gap-2 border-b border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-800"
             >
               <Icon name="printer" size={18} />
               {t('shell.printerOffline', {

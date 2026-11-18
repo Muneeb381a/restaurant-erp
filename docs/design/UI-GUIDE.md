@@ -3,6 +3,8 @@
 Who uses this: a cashier or waiter, standing, one hand free, in a noisy room, often in Urdu, on a
 tablet or a phone. They do the same ten things all shift. The screen must never make them think.
 
+> **Visual style:** since November 2026 the look follows [REDESIGN-2026](REDESIGN-2026.md) (cool neutrals, white cards with soft shadows, a dark kitchen board, category-coloured menu tiles). The colour roles and rules below still apply; where this guide names an old shade or a "warm paper" look, the redesign wins.
+
 ## 1. Principles
 
 1. **One screen = one job, one obvious next step.** Each screen has exactly one primary button.

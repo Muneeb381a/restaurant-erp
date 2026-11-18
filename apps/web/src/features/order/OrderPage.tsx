@@ -23,6 +23,19 @@ const PRICE_LIST: Record<Order['type'], string> = {
 
 const POPULAR = '__popular';
 
+/** Each main category gets its own accent colour, in menu order (the name is always shown too: colour is never the only signal). */
+const HUES = [
+  { edge: 'border-s-emerald-500', dot: 'bg-emerald-500' },
+  { edge: 'border-s-orange-500', dot: 'bg-orange-500' },
+  { edge: 'border-s-sky-500', dot: 'bg-sky-500' },
+  { edge: 'border-s-violet-500', dot: 'bg-violet-500' },
+  { edge: 'border-s-rose-500', dot: 'bg-rose-500' },
+  { edge: 'border-s-teal-500', dot: 'bg-teal-500' },
+  { edge: 'border-s-pink-500', dot: 'bg-pink-500' },
+  { edge: 'border-s-amber-500', dot: 'bg-amber-500' },
+] as const;
+const hueAt = (n: number): (typeof HUES)[number] => HUES[n % HUES.length]!;
+
 const needsSheet = (i: MenuItem): boolean =>
   i.kind !== 'STANDARD' || i.variants.length > 1 || i.modifierGroups.length > 0;
 
@@ -215,6 +228,17 @@ export function OrderPage() {
   });
 
   const topCategories = (menu.data?.categories ?? []).filter((c) => c.parentId === null);
+  const hueIndex = new Map(topCategories.map((c, n) => [c.id, n]));
+  // a dish takes the colour of its main (top-level) category
+  const topOf = (categoryId: string | null): string | null => {
+    let cur = categoryId;
+    for (let i = 0; cur && i < 10; i++) {
+      const parent = menu.data?.categories.find((c) => c.id === cur)?.parentId ?? null;
+      if (!parent) return cur;
+      cur = parent;
+    }
+    return cur;
+  };
   // only dishes that are on today's menu count; a short or empty list is not worth a tab
   const onMenu = new Set((menu.data?.items ?? []).map((i) => i.id));
   const popularIds = (popular.data?.items ?? [])
@@ -373,7 +397,7 @@ export function OrderPage() {
               {t('order.popular')}
             </button>
           )}
-          {topCategories.map((c) => (
+          {topCategories.map((c, n) => (
             <button
               key={c.id}
               role="tab"
@@ -381,6 +405,10 @@ export function OrderPage() {
               className="seg-item shrink-0 whitespace-nowrap border border-slate-300 bg-white"
               onClick={() => setCategory(c.id)}
             >
+              <span
+                aria-hidden="true"
+                className={`me-2 inline-block size-2 rounded-full ${hueAt(n).dot}`}
+              />
               {localName(lang, c.name, c.nameUr)}
             </button>
           ))}
@@ -409,7 +437,7 @@ export function OrderPage() {
                 <button
                   disabled={!item.available || !editable}
                   onClick={() => pick(item)}
-                  className={`card relative flex min-h-24 w-full flex-col items-start justify-between p-3 text-start transition-colors hover:border-slate-500 active:bg-slate-100 disabled:opacity-40 ${plainLine && editable ? 'pb-16' : ''}`}
+                  className={`card relative flex min-h-24 w-full flex-col items-start justify-between p-3 text-start transition-colors border-s-4 ${hueAt(hueIndex.get(topOf(item.categoryId) ?? '') ?? 0).edge} hover:shadow-md active:bg-slate-50 disabled:opacity-40 ${plainLine && editable ? 'pb-16' : ''}`}
                 >
                   <span className="font-semibold leading-snug">
                     {localName(lang, item.name, item.nameUr)}
