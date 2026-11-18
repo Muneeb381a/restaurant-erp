@@ -1,5 +1,5 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import type { Express } from 'express';
+import express, { type Express } from 'express';
 import type { Kysely } from 'kysely';
 import { randomBytes } from 'node:crypto';
 import { pino } from 'pino';
@@ -7,6 +7,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadEnv } from '../../src/config/env';
 import { createControlDb } from '../../src/control/boot';
+import { captureServerErrors } from '../../src/control/error-log';
 import { createMultiTenantApp } from '../../src/control/multi-app';
 import { createAdmin, type PlatformDeps } from '../../src/control/platform.service';
 import { createLocalProvisioner } from '../../src/control/provisioner';
@@ -557,5 +558,51 @@ describe('live updates', () => {
     // and on (the default) the stream wants a signed-in user
     const on = await request(app).get(api('/r/alpha-grill/events'));
     expect(on.status).toBe(401);
+  });
+});
+
+describe('server errors are noted for the platform admin', () => {
+  it('records a 5xx with its route shape and code, attributes it to the restaurant and keeps no body', async () => {
+    const made = await newRestaurant('Faulty Grill', 'faulty-grill');
+    const id = made.tenant.id as string;
+    const probe = express();
+    probe.use((req, _res, next) => {
+      req.id = 'req-probe-1';
+      next();
+    });
+    probe.use(captureServerErrors(control, logger));
+    probe.post('/api/v1/r/faulty-grill/orders/:id/send', (_req, res) => {
+      res.locals.errorCode = 'INTERNAL_ERROR';
+      res.status(500).json({ secret: 'never stored' });
+    });
+    probe.get('/api/v1/r/faulty-grill/ok', (_req, res) => res.json({ ok: true }));
+
+    const orderId = '6f1c2a3e-1111-4222-8333-944455556666';
+    const bad = await request(probe)
+      .post(`/api/v1/r/faulty-grill/orders/${orderId}/send?token=abc`)
+      .send({ pin: '1234' });
+    expect(bad.status).toBe(500); // the answer itself is untouched
+    expect((await request(probe).get('/api/v1/r/faulty-grill/ok')).status).toBe(200);
+
+    const list = await asAdmin().get(`/platform/errors?tenantId=${id}&hours=1`);
+    expect(list.status).toBe(200);
+    expect(list.body.items).toHaveLength(1); // the 200 was not recorded
+    const e = list.body.items[0];
+    expect(e).toMatchObject({
+      slug: 'faulty-grill',
+      status: 500,
+      code: 'INTERNAL_ERROR',
+      method: 'POST',
+      route: '/r/faulty-grill/orders/:id/send',
+      requestId: 'req-probe-1',
+    });
+    expect(JSON.stringify(list.body)).not.toMatch(/never stored|1234|abc|6f1c2a3e/);
+
+    const tenants = await asAdmin().get('/platform/tenants');
+    expect(tenants.body.items.find((t: Json) => t.id === id).errors24h).toBe(1);
+  });
+
+  it('needs a platform admin', async () => {
+    expect((await request(app).get(api('/platform/errors'))).status).toBe(401);
   });
 });

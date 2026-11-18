@@ -5,6 +5,7 @@ import { sql } from 'kysely';
 import type { Logger } from 'pino';
 import { asyncHandler } from '../http/async-handler';
 import { errorHandler, notFound } from '../http/errors';
+import { captureServerErrors } from './error-log';
 import { platformRouter } from './platform.routes';
 import type { PlatformDeps } from './platform.service';
 import type { TenantRegistry } from './registry';
@@ -38,6 +39,9 @@ export function createMultiTenantApp(deps: {
     res.setHeader('x-request-id', req.id);
     next();
   });
+
+  // every 5xx (any restaurant or the platform) is noted for the platform admin
+  app.use(captureServerErrors(deps.control, deps.logger));
 
   app.get('/health', async (req, res) => {
     try {

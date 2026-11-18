@@ -62,7 +62,19 @@ export interface PlatformAuditLogTable {
   ip: Nullable<string>;
 }
 
+export interface ErrorEventsTable {
+  id: Generated<string>;
+  at: Created;
+  tenant_id: Nullable<string>;
+  status: number;
+  code: Nullable<string>;
+  method: string;
+  route: string;
+  request_id: Nullable<string>;
+}
+
 export interface ControlDB {
+  error_events: ErrorEventsTable;
   platform_admins: PlatformAdminsTable;
   platform_sessions: PlatformSessionsTable;
   tenants: TenantsTable;

@@ -8,6 +8,7 @@ import { ApiError } from '../../lib/api';
 import {
   platformApi,
   type AuditEntry,
+  type ServerError,
   type Tenant,
   type TenantHealth,
 } from '../../lib/platform-api';
@@ -39,6 +40,12 @@ export function TenantDetailPage() {
     queryKey: ['platform', 'audit', id],
     queryFn: async () =>
       (await platformApi<{ items: AuditEntry[] }>(`/audit?tenantId=${id}&limit=30`)).items,
+  });
+
+  const errors = useQuery({
+    queryKey: ['platform', 'errors', id],
+    queryFn: async () =>
+      (await platformApi<{ items: ServerError[] }>(`/errors?tenantId=${id}&hours=24`)).items,
   });
 
   const refresh = async (msg?: string): Promise<void> => {
@@ -245,6 +252,48 @@ export function TenantDetailPage() {
           />
         </section>
       )}
+
+      <section className="card overflow-hidden">
+        <h2 className="border-b border-slate-200 px-4 py-3 text-base font-semibold">
+          {t('platform.errors')}
+        </h2>
+        <p className="hint px-4 pt-2">{t('platform.errorsHint')}</p>
+        <div className="dt">
+          <table className="min-w-[34rem]">
+            <thead>
+              <tr>
+                <th>{t('platform.errWhen')}</th>
+                <th>{t('platform.errWhat')}</th>
+                <th>{t('platform.errCode')}</th>
+                <th>{t('platform.errId')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(errors.data ?? []).map((e) => (
+                <tr key={e.id}>
+                  <td className="whitespace-nowrap">{new Date(e.at).toLocaleString()}</td>
+                  <td dir="ltr">
+                    {e.method} {e.route}
+                  </td>
+                  <td dir="ltr">
+                    {e.status} {e.code ?? ''}
+                  </td>
+                  <td dir="ltr" className="text-slate-600">
+                    {e.requestId ?? '–'}
+                  </td>
+                </tr>
+              ))}
+              {errors.isSuccess && errors.data.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="!py-6 text-center text-slate-600">
+                    {t('platform.errorsNone')}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section className="card overflow-hidden">
         <h2 className="border-b border-slate-200 px-4 py-3 text-base font-semibold">

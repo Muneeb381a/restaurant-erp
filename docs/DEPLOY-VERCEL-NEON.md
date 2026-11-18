@@ -97,6 +97,8 @@ To look at exactly what will be deployed before sending it: `pnpm vercel:build &
 | After every deploy | `pnpm platform:migrate` (control, then every restaurant; one failure does not stop the rest), or **Install updates** on one restaurant |
 | Who did what | Platform → **Activity** (append-only) |
 | A restaurant leaves | **Archive** (code stops working, data kept). Deleting its Neon project is manual, in the Neon console, and cannot be undone |
+| Errors | Every failed request (HTTP 5xx) is noted in the control database. Platform → the restaurants list shows **Errors (24 h)** for each, and a restaurant's page lists them with the request id to search in the Vercel log. Nothing about the guest, the bill or the request body is kept; rows older than 30 days are purged. Run `pnpm platform:migrate` once after deploying this (adds the table) |
+| Is it up? | Point a free uptime pinger (UptimeRobot, Better Stack) at `https://<your-domain>/health` every 5 minutes, alert by SMS/WhatsApp/email. It answers `503` when the control database is unreachable |
 | Backups | `pnpm platform:backup` every night (a dump per restaurant + the control database, checked after writing), `pnpm platform:restore` for one restaurant. Neon's point-in-time history is a second net. Full guide: [BACKUP-RESTORE](BACKUP-RESTORE.md) |
 
 ## Limits you should know

@@ -224,5 +224,6 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
     };
   }
   problem.requestId = req.id;
+  res.locals.errorCode = problem.code; // read by the cloud error log (no message, no body)
   res.status(problem.status).type('application/problem+json').json(problem);
 };

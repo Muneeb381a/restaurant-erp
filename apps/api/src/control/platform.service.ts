@@ -17,6 +17,7 @@ import {
 } from '../modules/auth/tokens';
 import { bootstrapRestaurant, generateTempPassword, resetOwnerPassword } from './bootstrap';
 import { ProvisionError, type Provisioner } from './provisioner';
+import { errorCounts } from './error-log';
 import type { TenantRegistry } from './registry';
 import type { SecretBox } from './secret-box';
 import { checkSlug } from './slug';
@@ -291,7 +292,8 @@ export async function listTenants(d: PlatformDeps) {
     .selectAll()
     .orderBy('created_at', 'desc')
     .execute();
-  return rows.map(presentTenant);
+  const failures = await errorCounts(d.control, 24);
+  return rows.map((r) => ({ ...presentTenant(r), errors24h: failures.get(r.id) ?? 0 }));
 }
 
 export async function getTenant(d: PlatformDeps, id: string) {

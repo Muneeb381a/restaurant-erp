@@ -111,6 +111,19 @@ export interface Tenant {
   activatedAt: string | null;
   suspendedAt: string | null;
   suspendedReason: string | null;
+  /** Server errors (HTTP 5xx) in the last 24 hours; only the list carries it. */
+  errors24h?: number;
+}
+
+export interface ServerError {
+  id: string;
+  at: string;
+  slug: string | null;
+  status: number;
+  code: string | null;
+  method: string;
+  route: string;
+  requestId: string | null;
 }
 
 export interface Provisioned {

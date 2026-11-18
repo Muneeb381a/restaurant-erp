@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { asyncHandler } from '../http/async-handler';
 import { AppError } from '../http/errors';
 import { verifyAccessToken } from '../modules/auth/tokens';
+import { recentErrors } from './error-log';
 import {
   activateTenant,
   archiveTenant,
@@ -113,6 +114,24 @@ export function platformRouter(d: PlatformDeps): Router {
     auth,
     asyncHandler(async (_req, res) => {
       res.json({ items: await listTenants(d) });
+    }),
+  );
+  r.get(
+    '/platform/errors',
+    auth,
+    asyncHandler(async (req, res) => {
+      const q = z
+        .object({
+          tenantId: z.string().uuid().optional(),
+          hours: z.coerce.number().int().min(1).max(720).default(24),
+        })
+        .parse(req.query);
+      res.json({
+        items: await recentErrors(d.control, {
+          hours: q.hours,
+          ...(q.tenantId ? { tenantId: q.tenantId } : {}),
+        }),
+      });
     }),
   );
   r.post(

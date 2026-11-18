@@ -80,6 +80,7 @@ export function TenantsPage() {
               <th>{t('platform.restaurant')}</th>
               <th>{t('platform.status.label')}</th>
               <th>{t('platform.owner')}</th>
+              <th>{t('platform.errors24h')}</th>
               <th>{t('platform.createdOn')}</th>
             </tr>
           </thead>
@@ -101,6 +102,13 @@ export function TenantsPage() {
                   {x.ownerName}
                   <span className="sub">{x.contactPhone ?? ''}</span>
                 </td>
+                <td>
+                  {x.errors24h ? (
+                    <span className="chip-bad">{x.errors24h}</span>
+                  ) : (
+                    <span className="text-slate-500">0</span>
+                  )}
+                </td>
                 <td className="whitespace-nowrap text-slate-700">
                   {new Date(x.createdAt).toLocaleDateString()}
                 </td>
@@ -108,7 +116,7 @@ export function TenantsPage() {
             ))}
             {list.isSuccess && shown.length === 0 && (
               <tr>
-                <td colSpan={4} className="!py-10 text-center text-slate-600">
+                <td colSpan={5} className="!py-10 text-center text-slate-600">
                   {all.length === 0 ? t('platform.noneYet') : t('platform.noMatch')}
                 </td>
               </tr>
