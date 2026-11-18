@@ -9,6 +9,7 @@ import './index.css';
 import { TenantGate } from './features/landing/TenantGate';
 import { ApiError } from './lib/api';
 import { registerOffline } from './lib/online';
+import { hydrateCache, persistCache } from './lib/persist';
 import { mode, routerBasename } from './lib/tenant';
 
 // the platform admin and the landing page are separate downloads: restaurant staff never fetch them
@@ -31,6 +32,9 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+hydrateCache(queryClient);
+persistCache(queryClient);
 
 /** One build, four kinds of address (see lib/tenant.ts). */
 function Root(): ReactNode {

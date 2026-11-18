@@ -451,6 +451,14 @@ export interface OrderItemModifiers {
   price_delta_paisa: Generated<Int8>;
 }
 
+export interface OrderCommandKeys {
+  command: string;
+  created_at: Generated<Timestamp>;
+  key: string;
+  order_id: string;
+  result: Json;
+}
+
 export interface OrderItems {
   cost_paisa_snapshot: Int8 | null;
   course: Generated<number>;
@@ -839,6 +847,7 @@ export interface DB {
   modifiers: Modifiers;
   order_item_modifiers: OrderItemModifiers;
   order_items: OrderItems;
+  order_command_keys: OrderCommandKeys;
   orders: Orders;
   outbox_events: OutboxEvents;
   payment_methods: PaymentMethods;

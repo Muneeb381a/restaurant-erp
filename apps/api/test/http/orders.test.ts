@@ -1006,3 +1006,54 @@ describe('cancel', () => {
     ).toBe(200);
   });
 });
+
+describe('adding a dish twice with the same Idempotency-Key (a till retrying after a lost answer)', () => {
+  it('adds the dish once and answers the repeat with the first answer', async () => {
+    const o = await newOrder('TAKEAWAY');
+    const key = 'till-retry-0001';
+    const first = await api(captain)
+      .post(`/orders/${o.id}/items`)
+      .set('Idempotency-Key', key)
+      .send({ itemId: tikka.id, variantId: tikka.variantId, qty: 2 });
+    expect(first.status, JSON.stringify(first.body)).toBe(201);
+
+    const again = await api(captain)
+      .post(`/orders/${o.id}/items`)
+      .set('Idempotency-Key', key)
+      .send({ itemId: tikka.id, variantId: tikka.variantId, qty: 2 });
+    expect(again.status).toBe(201);
+    expect(again.body.addedLineId).toBe(first.body.addedLineId);
+
+    const now = await getOrder(o.id);
+    expect(now.items.filter((l: Json) => !l.parentId)).toHaveLength(1);
+    expect(now.items[0].qty).toBe(2);
+    expect(now.version).toBe(first.body.version); // nothing changed the second time
+  });
+
+  it('a new key is a new dish; the same key on another order is refused; a bad key is refused', async () => {
+    const o = await newOrder('TAKEAWAY');
+    const other = await newOrder('TAKEAWAY');
+    const send = (id: string, key: string) =>
+      api(captain)
+        .post(`/orders/${id}/items`)
+        .set('Idempotency-Key', key)
+        .send({ itemId: tikka.id, variantId: tikka.variantId });
+    expect((await send(o.id, 'till-retry-0002')).status).toBe(201);
+    expect((await send(o.id, 'till-retry-0003')).status).toBe(201);
+    expect((await getOrder(o.id)).items).toHaveLength(2);
+
+    const reused = await send(other.id, 'till-retry-0002');
+    expect(reused.status).toBe(409);
+    expect(reused.body.code).toBe('IDEMPOTENCY_KEY_REUSED');
+    expect((await getOrder(other.id)).items).toHaveLength(0);
+
+    expect((await send(o.id, 'short')).status).toBe(400);
+  });
+
+  it('a request without a key still works as before', async () => {
+    const o = await newOrder('TAKEAWAY');
+    expect((await add(captain, o.id, tikka)).status).toBe(201);
+    expect((await add(captain, o.id, tikka)).status).toBe(201);
+    expect((await getOrder(o.id)).items).toHaveLength(2);
+  });
+});

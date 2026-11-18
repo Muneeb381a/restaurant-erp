@@ -61,6 +61,19 @@ const updateItemBody = z
   .partial()
   .strict();
 
+/** `Idempotency-Key` (8-80 characters) of a command that may be repeated after a lost answer. */
+function commandKey(req: Request): string | undefined {
+  const key = req.header('idempotency-key');
+  if (key === undefined) return undefined;
+  if (!/^[A-Za-z0-9._:-]{8,80}$/.test(key))
+    throw new AppError(
+      400,
+      'VALIDATION_FAILED',
+      'Idempotency-Key must be 8-80 characters: letters, digits . _ : -',
+    );
+  return key;
+}
+
 /** `If-Match: 3` or `If-Match: "3"` → 3 */
 function ifMatch(req: Request): number | undefined {
   const raw = req.header('if-match');
@@ -236,6 +249,7 @@ export function ordersRouter(ctx: AppContext): Router {
         idParam.parse(req.params).id,
         addItemBody.parse(req.body),
         ifMatch(req),
+        commandKey(req),
       );
       send(res, out.order, 201, { addedLineId: out.lineId });
     }),

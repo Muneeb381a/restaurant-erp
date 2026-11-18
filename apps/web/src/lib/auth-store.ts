@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { clearCache } from './persist';
 import { storageKey } from './tenant';
 
 export interface Tokens {
@@ -24,7 +25,10 @@ export const useAuth = create<AuthState>()(
       lastUsername: '',
       setTokens: (tokens) => set({ tokens }),
       setLastUsername: (lastUsername) => set({ lastUsername }),
-      logout: () => set({ tokens: null }),
+      logout: () => {
+        clearCache(); // nothing of this restaurant stays on the device after sign-out
+        set({ tokens: null });
+      },
     }),
     {
       name: storageKey('erp-auth'),

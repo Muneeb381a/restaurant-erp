@@ -22,6 +22,7 @@ import { AppError } from '../../http/errors';
 import { withTx, type Queryable } from '../../shared/tx';
 import { writeAudit } from '../audit/audit.service';
 import { queueCancelTickets } from '../kitchen/tickets';
+import { rememberCommand, replayOf } from './command-keys';
 import {
   bumpVersion,
   getOrderFull,
@@ -432,9 +433,18 @@ export function addItem(
   orderId: string,
   input: AddItemInput,
   ifMatch: number | undefined,
+  /** A till that retries after a lost answer sends the same key: the dish is then added once. */
+  commandKey?: string,
 ) {
   return withTx(ctx.db, async (trx) => {
-    const order = await lockOrder(trx, a.branchId, orderId);
+    const order = await lockOrder(trx, a.branchId, orderId); // the order lock also serialises two tries with one key
+    if (commandKey) {
+      const seen = await replayOf<{
+        lineId: string;
+        order: Awaited<ReturnType<typeof getOrderFull>>;
+      }>(trx, commandKey, orderId);
+      if (seen) return seen;
+    }
     assertEditable(order);
     checkVersion(order, ifMatch, false);
     const day = await trx
@@ -596,7 +606,9 @@ export function addItem(
     }
 
     await bumpVersion(trx, orderId);
-    return { lineId: line.id, order: await getOrderFull(trx, a.branchId, orderId) };
+    const out = { lineId: line.id, order: await getOrderFull(trx, a.branchId, orderId) };
+    if (commandKey) await rememberCommand(trx, commandKey, orderId, 'ADD_ITEM', out);
+    return out;
   });
 }
 

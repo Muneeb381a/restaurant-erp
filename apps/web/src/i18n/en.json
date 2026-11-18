@@ -41,8 +41,26 @@
     "usePin": "Use the PIN pad instead"
   },
   "offline": {
-    "banner": "No internet. You can keep looking, but orders and payments cannot be saved until it is back.",
-    "cannotSave": "No internet, so this was not saved. Try again when the connection is back."
+    "banner": "No internet. You can still add dishes to open orders; they are kept on this device. The kitchen does not see them until the internet is back, so tell the kitchen yourself. Bills and payments need the internet.",
+    "cannotSave": "No internet, so this was not saved. Try again when the connection is back.",
+    "kept": "Kept on this device (no internet)",
+    "keptSend": "Kept: it goes to the kitchen when the internet is back. Tell the kitchen yourself.",
+    "pendingTitle": "Waiting for internet",
+    "pendingHelp": "Not saved yet. These are kept on this device and sent when the internet is back. The kitchen has not received them.",
+    "forget": "Remove",
+    "failed": "Could not be saved",
+    "notSaved": "Not saved yet",
+    "notSent": "Not sent to the kitchen yet",
+    "waitingBar": "{{count}} change(s) waiting to be saved.",
+    "sendingNow": "Sending now…",
+    "kitchenNotTold": "The kitchen has NOT received them: tell the kitchen yourself.",
+    "retryNow": "Send now",
+    "failedBar": "{{count}} change(s) could not be saved.",
+    "review": "Review",
+    "failedTitle": "Could not be saved",
+    "failedHint": "The server refused these when the internet came back (for example the order was closed or the dish sold out). Check each one and tell the kitchen if needed.",
+    "openOrder": "Open order",
+    "tryAgain": "Try again"
   },
   "shell": {
     "day": "Business day",

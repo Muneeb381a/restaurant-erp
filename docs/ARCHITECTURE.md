@@ -38,7 +38,7 @@ Non-goals (v1): microservices, Kubernetes, multi-tenant SaaS, channel managers, 
 | 10 | **Transactional outbox** for fiscal jobs, printing, WhatsApp, cloud sync | At-least-once + idempotent consumers; survives crashes/power cuts |
 | 11 | **Print service** inside the API host: ESC/POS over TCP:9100; bill rendered as bitmap for Urdu | Urdu shaping on thermal printers is unreliable in text mode |
 | 12 | **Docker Compose** on Ubuntu mini PC: `postgres`, `api`, `web (caddy)`, `worker`, `backup` | One command install/upgrade; Caddy gives HTTPS on LAN (needed for PWA/service worker) |
-| 13 | **Server is the single source of truth** (no multi-master offline clients in v1) | Eliminates CRDT/conflict complexity. If server/LAN is down → paper fallback SOP. Local-first clients = Phase 3 |
+| 13 | **Server is the single source of truth** (no multi-master offline clients in v1; the only exception is ADR 0026: *add dish* and *send to kitchen* may wait on the device and are replayed idempotently) | Eliminates CRDT/conflict complexity. If server/LAN is down → paper fallback SOP. Local-first clients = Phase 3 |
 
 ---
 

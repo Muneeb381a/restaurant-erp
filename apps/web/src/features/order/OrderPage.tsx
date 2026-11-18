@@ -9,6 +9,7 @@ import { localName } from '../../i18n';
 import { matchesQuery } from '../../lib/search';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
+import { useOutbox } from '../../lib/outbox';
 import { can, useMe, useMenu, useOrder } from '../../lib/queries';
 import type { MenuItem, Order, OrderLine, SendResult } from '../../lib/types';
 import { ItemSheet, QUICK_NOTES, type AddBody } from './ItemSheet';
@@ -33,6 +34,11 @@ export function OrderPage() {
   const order = useOrder(id);
   const menu = useMenu(order.data ? PRICE_LIST[order.data.type] : undefined);
 
+  // dishes and "send" kept on this device while the internet was down (ADR 0026)
+  const outboxItems = useOutbox((s) => s.items);
+  const pending = useMemo(() => outboxItems.filter((c) => c.orderId === id), [outboxItems, id]);
+  const pendingAdds = pending.filter((c) => c.kind === 'ADD' && c.state === 'WAITING').length;
+  const pendingSend = pending.some((c) => c.kind === 'SEND' && c.state === 'WAITING');
   const [category, setCategory] = useState<string | null>(null);
   // what sold most lately, best first: a one-tap shortcut for the usual orders
   const popular = useQuery({
@@ -67,10 +73,34 @@ export function OrderPage() {
     setMessage(e instanceof ApiError ? e.message : t('common.error'));
   };
 
+  // Without internet a dish (or "send") is kept on this device and goes to the server when it is back.
+  const offlineOk = (e: unknown): boolean =>
+    e instanceof ApiError &&
+    e.code === 'OFFLINE' &&
+    order.data?.status === 'OPEN' &&
+    !order.data.held;
   const add = useMutation({
-    mutationFn: (body: AddBody) => api<Order>(`/orders/${id}/items`, { method: 'POST', body }),
+    mutationFn: async (body: AddBody): Promise<Order | null> => {
+      try {
+        return await api<Order>(`/orders/${id}/items`, { method: 'POST', body });
+      } catch (e) {
+        if (!offlineOk(e)) throw e;
+        const item = menu.data?.items.find((i) => i.id === body.itemId);
+        const variant = item?.variants.find((v) => v.id === body.variantId);
+        const name = item ? localName(lang, item.name, item.nameUr) : '';
+        useOutbox.getState().enqueue({
+          orderId: id,
+          kind: 'ADD',
+          body: { ...body },
+          label: item && item.variants.length > 1 && variant ? `${name} (${variant.name})` : name,
+          qty: body.qty ?? 1,
+        });
+        toast(t('offline.kept'), 'warn');
+        return null;
+      }
+    },
     onSuccess: (o) => {
-      apply(o);
+      if (o) apply(o);
       setSheet(null);
     },
     onError,
@@ -130,9 +160,25 @@ export function OrderPage() {
 
   const [rush, setRush] = useState(false);
   const send = useMutation({
-    mutationFn: () =>
-      api<SendResult>(`/orders/${id}/send`, { method: 'POST', body: rush ? { rush: true } : {} }),
+    mutationFn: async (): Promise<SendResult | null> => {
+      const body = rush ? { rush: true } : {};
+      try {
+        return await api<SendResult>(`/orders/${id}/send`, { method: 'POST', body });
+      } catch (e) {
+        if (!offlineOk(e)) throw e;
+        if (!pendingSend)
+          useOutbox
+            .getState()
+            .enqueue({ orderId: id, kind: 'SEND', body, label: t('order.send'), qty: 0 });
+        toast(t('offline.keptSend'), 'warn');
+        return null;
+      }
+    },
     onSuccess: (out) => {
+      if (!out) {
+        setRush(false);
+        return;
+      }
       apply(out.order);
       setRush(false);
       const stations = out.kots.map((k) => k.station).join(', ');
@@ -272,6 +318,7 @@ export function OrderPage() {
   if (o.held) helper = t('order.helperHeld');
   else if (o.status === 'BILLED') helper = t('order.helperBilled');
   else if (o.status === 'SETTLED') helper = t('order.helperSettled');
+  else if (pending.length > 0) helper = t('offline.pendingHelp');
   else if (liveLines.length === 0) helper = t('order.helperEmpty');
   else if (unsentCount > 0) helper = t('order.helperUnsent', { count: unsentCount });
   else helper = t('order.helperSent');
@@ -518,11 +565,43 @@ export function OrderPage() {
         )}
 
         <ul className="min-h-0 flex-1 divide-y divide-slate-200 overflow-auto">
-          {lines.length === 0 && (
+          {lines.length === 0 && pending.length === 0 && (
             <li className="flex flex-col items-center gap-2 p-8 text-center text-slate-600">
               <Icon name="bag" size={28} />
               {t('order.empty')}
             </li>
+          )}
+          {pending.length > 0 && (
+            <>
+              <li className="sticky top-0 z-10 flex items-center bg-amber-100 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-amber-950">
+                {t('offline.pendingTitle')}
+              </li>
+              {pending.map((c) => (
+                <li key={c.id} className="space-y-1 px-4 py-3">
+                  <div className="flex items-start gap-2">
+                    <span className="me-auto font-medium">
+                      {c.kind === 'ADD' ? `${ltr(`${c.qty}×`)} ${c.label}` : c.label}
+                    </span>
+                    <button
+                      className="btn-quiet px-2 text-rose-700"
+                      aria-label={`${t('offline.forget')} ${c.label}`}
+                      onClick={() => useOutbox.getState().remove(c.id)}
+                    >
+                      <Icon name="trash" size={18} />
+                    </button>
+                  </div>
+                  {c.state === 'FAILED' ? (
+                    <p className="text-sm font-medium text-rose-700">
+                      {t('offline.failed')}: {c.error}
+                    </p>
+                  ) : (
+                    <span className="chip-warn">
+                      {c.kind === 'ADD' ? t('offline.notSaved') : t('offline.notSent')}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </>
           )}
           {groups.map((g) => (
             <Fragment key={g.key}>
@@ -647,29 +726,33 @@ export function OrderPage() {
           </div>
           <p className="hint">{helper}</p>
 
-          {o.status === 'OPEN' && !o.held && unsentCount > 0 && (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                aria-pressed={rush}
-                className={`btn min-h-primary border ${rush ? 'border-amber-500 bg-amber-100 text-amber-900' : 'border-slate-400 bg-white text-slate-800'}`}
-                onClick={() => setRush(!rush)}
-              >
-                <Icon name="flame" size={18} />
-                {t('order.rush')}
-              </button>
-              <button
-                className="btn-send btn-lg flex-1"
-                disabled={send.isPending}
-                onClick={() => send.mutate()}
-              >
-                {t('order.send')}
-              </button>
-            </div>
-          )}
+          {o.status === 'OPEN' &&
+            !o.held &&
+            (unsentCount > 0 || pendingAdds > 0) &&
+            !pendingSend && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-pressed={rush}
+                  className={`btn min-h-primary border ${rush ? 'border-amber-500 bg-amber-100 text-amber-900' : 'border-slate-400 bg-white text-slate-800'}`}
+                  onClick={() => setRush(!rush)}
+                >
+                  <Icon name="flame" size={18} />
+                  {t('order.rush')}
+                </button>
+                <button
+                  className="btn-send btn-lg flex-1"
+                  disabled={send.isPending}
+                  onClick={() => send.mutate()}
+                >
+                  {t('order.send')}
+                </button>
+              </div>
+            )}
           {o.status === 'OPEN' &&
             !o.held &&
             unsentCount === 0 &&
+            pending.length === 0 &&
             liveLines.length > 0 &&
             can(me.data, 'bill.create') && (
               <button
