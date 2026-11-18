@@ -180,6 +180,7 @@
     "inProgress": "In progress",
     "freeOf": "{{free}} of {{total}} free",
     "onTables": "On tables",
+    "otherTables": "Other tables",
     "foodReady": "Food ready",
     "hint": "Tap a free table to start an order. Tap a busy table to see or add to its order."
   },
@@ -1134,6 +1135,7 @@
     "kStationSub_other": "{{count}} tickets · wait {{wait}} min · cook {{cook}} min"
   },
   "kitchen": {
+    "lateN": "{{count}} late",
     "title": "Kitchen",
     "station": "Station",
     "colNEW": "New",

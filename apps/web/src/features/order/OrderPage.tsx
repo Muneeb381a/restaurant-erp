@@ -550,85 +550,104 @@ export function OrderPage() {
 
       {/* ── cart */}
       <aside
-        className={`${cartOpen ? 'fixed inset-0 z-30 flex' : 'hidden'} min-h-0 w-full flex-col border-t-4 bg-white md:static md:z-auto md:flex md:w-[24rem] ${o.status === 'BILLED' ? 'border-sky-700' : o.status === 'SETTLED' ? 'border-emerald-600' : 'border-amber-500'}`}
+        className={`${cartOpen ? 'fixed inset-0 z-30 flex' : 'hidden'} min-h-0 w-full flex-col bg-slate-50 md:static md:z-auto md:flex md:w-[25rem] md:border-s md:border-slate-200`}
       >
-        <div className="flex items-center gap-2 border-b border-slate-300 px-4 py-3">
-          <div className="me-auto min-w-0">
-            <h1 className="truncate text-lg font-semibold">
-              {title} <span className="font-normal text-slate-600">{ltr(`#${o.orderNo}`)}</span>
-            </h1>
-            <span
-              className={`mt-0.5 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold ${o.status === 'BILLED' ? 'bg-sky-700 text-white' : o.status === 'SETTLED' ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-slate-900'}`}
+        {/* header: one dark block that says which order this is and where it stands */}
+        <div
+          className={`border-b-4 bg-slate-900 text-white ${o.status === 'BILLED' ? 'border-sky-500' : o.status === 'SETTLED' ? 'border-emerald-500' : 'border-amber-500'}`}
+        >
+          <div className="flex items-start gap-2 px-4 pt-3">
+            <div className="me-auto min-w-0">
+              <h1 className="flex flex-wrap items-baseline gap-x-2 truncate text-2xl font-semibold leading-tight">
+                {title}
+                <span className="text-base font-medium text-slate-400">{ltr(`#${o.orderNo}`)}</span>
+              </h1>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <span
+                  className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold ${o.status === 'BILLED' ? 'bg-sky-500 text-white' : o.status === 'SETTLED' ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-slate-900'}`}
+                >
+                  {t(
+                    o.status === 'BILLED'
+                      ? 'order.stateBilled'
+                      : o.status === 'SETTLED'
+                        ? 'order.stateSettled'
+                        : 'order.stateOpen',
+                  )}
+                </span>
+                {o.held && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-slate-700 px-2 py-0.5 text-xs font-bold text-slate-100">
+                    <Icon name="pause" size={12} /> {t('order.held')}
+                  </span>
+                )}
+                {liveLines.length > 0 && (
+                  <span className="text-xs text-slate-400">
+                    {t('floor.items', { count: liveLines.reduce((n, l) => n + l.qty, 0) })}
+                  </span>
+                )}
+              </div>
+            </div>
+            <button
+              className="inline-flex size-10 items-center justify-center rounded-lg text-slate-300 hover:bg-white/10 md:hidden"
+              aria-label={t('common.close')}
+              onClick={() => setCartOpen(false)}
             >
-              {t(
-                o.status === 'BILLED'
-                  ? 'order.stateBilled'
-                  : o.status === 'SETTLED'
-                    ? 'order.stateSettled'
-                    : 'order.stateOpen',
-              )}
-            </span>
-            {o.held && (
-              <span className="chip-warn ms-1">
-                <Icon name="pause" size={14} /> {t('order.held')}
-              </span>
+              <Icon name="chevronDown" />
+            </button>
+            {o.status === 'OPEN' && (
+              <OrderActions
+                order={o}
+                canTransfer={can(me.data, 'order.transfer')}
+                canCancel={can(me.data, 'order.cancel')}
+                holdBusy={hold.isPending}
+                onHold={() => hold.mutate(!o.held)}
+                onChanged={apply}
+                onCancelled={() => {
+                  qc.removeQueries({ queryKey: ['floor'] }); // not invalidate: no stale floor may flash up
+                  nav('/');
+                }}
+              />
             )}
           </div>
-          <button
-            className="btn-quiet px-2 md:hidden"
-            aria-label={t('common.close')}
-            onClick={() => setCartOpen(false)}
-          >
-            <Icon name="chevronDown" />
-          </button>
-          {o.status === 'OPEN' && (
-            <OrderActions
-              order={o}
-              canTransfer={can(me.data, 'order.transfer')}
-              canCancel={can(me.data, 'order.cancel')}
-              holdBusy={hold.isPending}
-              onHold={() => hold.mutate(!o.held)}
-              onChanged={apply}
-              onCancelled={() => {
-                qc.removeQueries({ queryKey: ['floor'] }); // not invalidate: no stale floor may flash up
-                nav('/');
-              }}
-            />
+
+          {o.status === 'OPEN' && !o.held && (
+            <ol
+              className="flex items-center gap-1 px-4 pb-3 pt-3 text-xs font-semibold"
+              aria-label={t('order.steps.title')}
+            >
+              {(['add', 'send', 'bill'] as const).map((k, n) => {
+                const at = liveLines.length === 0 ? 0 : unsent.length > 0 ? 1 : 2;
+                const state = n < at ? 'done' : n === at ? 'now' : 'next';
+                return (
+                  <Fragment key={k}>
+                    {n > 0 && (
+                      <span
+                        aria-hidden="true"
+                        className={`h-0.5 flex-1 rounded ${n <= at ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                      />
+                    )}
+                    <li
+                      aria-current={state === 'now' ? 'step' : undefined}
+                      className={`flex items-center gap-1.5 whitespace-nowrap ${state === 'now' ? 'text-white' : state === 'done' ? 'text-emerald-300' : 'text-slate-500'}`}
+                    >
+                      <span
+                        className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[0.7rem] ${
+                          state === 'done'
+                            ? 'bg-emerald-500 text-white'
+                            : state === 'now'
+                              ? 'bg-white text-slate-900'
+                              : 'border border-slate-600'
+                        }`}
+                      >
+                        {state === 'done' ? <Icon name="check" size={12} /> : n + 1}
+                      </span>
+                      {t(`order.steps.${k}`)}
+                    </li>
+                  </Fragment>
+                );
+              })}
+            </ol>
           )}
         </div>
-        {o.status === 'OPEN' && !o.held && (
-          <ol
-            className="grid grid-cols-3 gap-1 border-b border-slate-200 bg-slate-50 px-3 py-2 text-center text-xs font-semibold"
-            aria-label={t('order.steps.title')}
-          >
-            {(['add', 'send', 'bill'] as const).map((k, n) => {
-              const at = liveLines.length === 0 ? 0 : unsent.length > 0 ? 1 : 2;
-              const state = n < at ? 'done' : n === at ? 'now' : 'next';
-              return (
-                <li
-                  key={k}
-                  aria-current={state === 'now' ? 'step' : undefined}
-                  className={`flex items-center justify-center gap-1.5 rounded-lg px-1.5 py-1.5 ${
-                    state === 'now'
-                      ? 'bg-slate-900 text-white'
-                      : state === 'done'
-                        ? 'text-emerald-800'
-                        : 'text-slate-500'
-                  }`}
-                >
-                  <span
-                    className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[0.7rem] ${
-                      state === 'done' ? 'bg-emerald-600 text-white' : 'border border-current'
-                    }`}
-                  >
-                    {state === 'done' ? <Icon name="check" size={12} /> : n + 1}
-                  </span>
-                  {t(`order.steps.${k}`)}
-                </li>
-              );
-            })}
-          </ol>
-        )}
 
         {message && (
           <p role="alert" className="m-3 mb-0 rounded-lg bg-amber-50 p-2 text-sm text-amber-900">
@@ -636,26 +655,32 @@ export function OrderPage() {
           </p>
         )}
 
-        <ul className="min-h-0 flex-1 divide-y divide-slate-200 overflow-auto">
+        <ul className="min-h-0 flex-1 space-y-2 overflow-auto p-3">
           {lines.length === 0 && pending.length === 0 && (
-            <li className="flex flex-col items-center gap-2 p-8 text-center text-slate-600">
-              <Icon name="bag" size={28} />
+            <li className="flex flex-col items-center gap-3 p-10 text-center text-slate-500">
+              <span className="flex size-16 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200">
+                <Icon name="bag" size={28} />
+              </span>
               {t('order.empty')}
             </li>
           )}
           {pending.length > 0 && (
             <>
-              <li className="sticky top-0 z-10 flex items-center bg-amber-100 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-amber-950">
+              <li className="flex items-center gap-2 px-1 pt-1 text-xs font-bold uppercase tracking-wide text-amber-800">
+                <span className="size-2 rounded-full bg-amber-500" />
                 {t('offline.pendingTitle')}
               </li>
               {pending.map((c) => (
-                <li key={c.id} className="space-y-1 px-4 py-3">
+                <li
+                  key={c.id}
+                  className="space-y-1 rounded-xl border border-dashed border-amber-400 bg-amber-50 p-3"
+                >
                   <div className="flex items-start gap-2">
-                    <span className="me-auto font-medium">
+                    <span className="me-auto font-semibold">
                       {c.kind === 'ADD' ? `${ltr(`${c.qty}×`)} ${c.label}` : c.label}
                     </span>
                     <button
-                      className="btn-quiet px-2 text-rose-700"
+                      className="btn-quiet min-h-9 px-2 text-rose-700"
                       aria-label={`${t('offline.forget')} ${c.label}`}
                       onClick={() => useOutbox.getState().remove(c.id)}
                     >
@@ -678,9 +703,12 @@ export function OrderPage() {
           {groups.map((g) => (
             <Fragment key={g.key}>
               {groups.length > 1 && (
-                <li className="sticky top-0 z-10 flex items-center justify-between bg-slate-100 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-600">
+                <li className="flex items-center gap-2 px-1 pt-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                  <span
+                    className={`size-2 rounded-full ${g.key === 'new' ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                  />
                   <span>{g.label}</span>
-                  <span className="money">{ltr(formatRs(g.total))}</span>
+                  <span className="money ms-auto text-slate-700">{ltr(formatRs(g.total))}</span>
                 </li>
               )}
               {g.lines.map((line) => {
@@ -688,60 +716,80 @@ export function OrderPage() {
                 const dead = line.status === 'VOID';
                 const stepper = line.status === 'NEW' && !line.weightG && editable;
                 return (
-                  <li key={line.id} className={`space-y-1.5 px-4 py-3 ${dead ? 'opacity-50' : ''}`}>
-                    <div className="flex items-start gap-2">
-                      <span className={`me-auto font-medium ${dead ? 'line-through' : ''}`}>
-                        {!stepper && <span className="text-slate-600">{ltr(`${line.qty}×`)} </span>}
-                        {localName(lang, line.name, line.nameUr)}
-                        {line.weightG ? ` · ${ltr(`${line.weightG} g`)}` : ''}
-                      </span>
-                      <span className={`money whitespace-nowrap ${dead ? 'line-through' : ''}`}>
+                  <li
+                    key={line.id}
+                    className={`rounded-xl border border-slate-200 border-s-4 bg-white p-3 shadow-sm ${
+                      dead
+                        ? 'border-s-slate-300 opacity-50'
+                        : line.status === 'NEW'
+                          ? 'border-s-amber-500'
+                          : 'border-s-emerald-500'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {stepper ? (
+                        <div className="inline-flex shrink-0 items-center rounded-lg bg-slate-100">
+                          <button
+                            className="btn-quiet min-h-10 min-w-10 px-0"
+                            aria-label="minus"
+                            disabled={line.qty <= 1 || changeQty.isPending}
+                            onClick={() => changeQty.mutate({ line, qty: line.qty - 1 })}
+                          >
+                            <Icon name="minus" size={18} />
+                          </button>
+                          <span className="money w-7 text-center text-base font-bold">
+                            {line.qty}
+                          </span>
+                          <button
+                            className="btn-quiet min-h-10 min-w-10 px-0"
+                            aria-label="plus"
+                            disabled={changeQty.isPending}
+                            onClick={() => changeQty.mutate({ line, qty: line.qty + 1 })}
+                          >
+                            <Icon name="plus" size={18} />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="money inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 px-2 text-base font-bold text-slate-800">
+                          {ltr(`${line.qty}×`)}
+                        </span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className={`font-semibold leading-snug ${dead ? 'line-through' : ''}`}>
+                          {localName(lang, line.name, line.nameUr)}
+                          {line.weightG ? ` · ${ltr(`${line.weightG} g`)}` : ''}
+                        </div>
+                        {line.qty > 1 && !line.weightG && line.lineTotalPaisa % line.qty === 0 && (
+                          <div className="text-sm text-slate-500">
+                            {ltr(`${line.qty} × ${formatRs(line.lineTotalPaisa / line.qty)}`)}
+                          </div>
+                        )}
+                        {line.modifiers.length > 0 && (
+                          <div className="text-sm text-slate-600">
+                            {line.modifiers.map((m) => m.name).join(', ')}
+                          </div>
+                        )}
+                        {kids.length > 0 && (
+                          <div className="text-sm text-slate-600">
+                            {kids.map((k) => `${k.qty}× ${k.name}`).join(' · ')}
+                          </div>
+                        )}
+                        {line.note && (
+                          <div className="mt-1 inline-block rounded-md bg-amber-50 px-2 py-0.5 text-sm font-medium text-amber-900">
+                            “{line.note}”
+                          </div>
+                        )}
+                      </div>
+                      <span
+                        className={`money shrink-0 text-base font-semibold ${dead ? 'line-through' : ''}`}
+                      >
                         {ltr(formatRs(line.lineTotalPaisa))}
                       </span>
                     </div>
-                    {line.qty > 1 && !line.weightG && line.lineTotalPaisa % line.qty === 0 && (
-                      <div className="text-sm text-slate-600">
-                        {ltr(`${line.qty} × ${formatRs(line.lineTotalPaisa / line.qty)}`)}
-                      </div>
-                    )}
-                    {line.modifiers.length > 0 && (
-                      <div className="text-sm text-slate-600">
-                        {line.modifiers.map((m) => m.name).join(', ')}
-                      </div>
-                    )}
-                    {kids.length > 0 && (
-                      <div className="text-sm text-slate-600">
-                        {kids.map((k) => `${k.qty}× ${k.name}`).join(' · ')}
-                      </div>
-                    )}
-                    {line.note && (
-                      <div className="text-sm italic text-slate-600">“{line.note}”</div>
-                    )}
                     {dead ? (
-                      <span className="chip-mute">{t('order.voided')}</span>
+                      <span className="chip-mute mt-2">{t('order.voided')}</span>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        {stepper ? (
-                          <div className="inline-flex items-center rounded-lg border border-slate-400">
-                            <button
-                              className="btn-quiet min-w-touch px-0"
-                              aria-label="minus"
-                              disabled={line.qty <= 1 || changeQty.isPending}
-                              onClick={() => changeQty.mutate({ line, qty: line.qty - 1 })}
-                            >
-                              <Icon name="minus" size={18} />
-                            </button>
-                            <span className="money w-8 text-center font-semibold">{line.qty}</span>
-                            <button
-                              className="btn-quiet min-w-touch px-0"
-                              aria-label="plus"
-                              disabled={changeQty.isPending}
-                              onClick={() => changeQty.mutate({ line, qty: line.qty + 1 })}
-                            >
-                              <Icon name="plus" size={18} />
-                            </button>
-                          </div>
-                        ) : null}
+                      <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-slate-100 pt-2">
                         {line.status === 'NEW' ? (
                           <span className="chip-warn">{t('order.notSent')}</span>
                         ) : (
@@ -751,7 +799,7 @@ export function OrderPage() {
                         )}
                         {editable && line.status === 'NEW' && kids.length === 0 && (
                           <button
-                            className="btn-quiet px-2"
+                            className="btn-quiet min-h-9 px-2 text-sm"
                             aria-label={`${line.note ? t('order.editNote') : t('order.addNote')} ${line.name}`}
                             onClick={() => setNoting(line)}
                           >
@@ -761,7 +809,7 @@ export function OrderPage() {
                         )}
                         {editable && !stepper && !line.weightG && kids.length === 0 && (
                           <button
-                            className="btn-secondary px-3"
+                            className="btn-secondary min-h-9 px-3 text-sm"
                             disabled={add.isPending || changeQty.isPending}
                             aria-label={`${t('order.again')} ${line.name}`}
                             onClick={() => again(line)}
@@ -772,13 +820,13 @@ export function OrderPage() {
                         )}
                         {editable && (
                           <button
-                            className="btn-quiet ms-auto px-2 text-rose-700"
+                            className="btn-quiet ms-auto min-h-9 px-2 text-sm text-rose-700"
                             aria-label={`${t('order.void')} ${line.name}`}
                             onClick={() =>
                               line.status === 'NEW' ? voidLine.mutate({ line }) : setVoiding(line)
                             }
                           >
-                            <Icon name="trash" size={18} />
+                            <Icon name="trash" size={16} />
                             {t('order.void')}
                           </button>
                         )}
@@ -791,10 +839,15 @@ export function OrderPage() {
           ))}
         </ul>
 
-        <div className="space-y-2 border-t border-slate-300 bg-slate-50 p-4">
-          <div className="flex items-baseline justify-between">
-            <span className="text-slate-700">{t('order.subtotal')}</span>
-            <span className="money text-2xl font-semibold">{ltr(formatRs(o.subtotalPaisa))}</span>
+        {/* footer: the total, one sentence about what to do next, and the one big button */}
+        <div className="space-y-3 border-t border-slate-200 bg-white p-4 shadow-[0_-8px_16px_-12px_rgba(16,24,40,0.18)]">
+          <div className="flex items-end justify-between">
+            <span className="text-sm font-medium uppercase tracking-wide text-slate-500">
+              {t('order.subtotal')}
+            </span>
+            <span className="money text-3xl font-bold leading-none">
+              {ltr(formatRs(o.subtotalPaisa))}
+            </span>
           </div>
           <p className="hint">{helper}</p>
 
@@ -806,7 +859,7 @@ export function OrderPage() {
                 <button
                   type="button"
                   aria-pressed={rush}
-                  className={`btn min-h-primary border ${rush ? 'border-amber-500 bg-amber-100 text-amber-900' : 'border-slate-400 bg-white text-slate-800'}`}
+                  className={`btn min-h-primary border ${rush ? 'border-amber-500 bg-amber-100 text-amber-900' : 'border-slate-300 bg-white text-slate-800'}`}
                   onClick={() => setRush(!rush)}
                 >
                   <Icon name="flame" size={18} />

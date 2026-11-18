@@ -279,7 +279,9 @@ export function FloorPage() {
             className="space-y-4 rounded-2xl border border-slate-200 bg-slate-100/70 p-4 [background-image:radial-gradient(circle,rgba(152,162,179,.35)_1px,transparent_1px)] [background-size:20px_20px] md:p-5"
           >
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-slate-900">{area || t('floor.title')}</h2>
+              <h2 className="text-lg font-semibold text-slate-900">
+                {area || t('floor.otherTables')}
+              </h2>
               <span className="chip bg-white text-slate-700 shadow-sm">
                 {t('floor.freeOf', { free, total: tables.length })}
               </span>

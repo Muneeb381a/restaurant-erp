@@ -54,24 +54,17 @@ export const useKitchenBoard = (station?: string, enabled = true) =>
     refetchInterval: () => pollMs(5_000),
   });
 
-const COLUMNS: { status: Exclude<KotStatus, 'DONE'>; tone: string; head: string }[] = [
-  { status: 'NEW', tone: 'border-amber-500', head: 'bg-amber-500 text-slate-900' },
-  { status: 'PREPARING', tone: 'border-sky-600', head: 'bg-sky-700 text-white' },
-  { status: 'READY', tone: 'border-emerald-600', head: 'bg-emerald-700 text-white' },
+const COLUMNS: { status: Exclude<KotStatus, 'DONE'>; accent: string; dot: string }[] = [
+  { status: 'NEW', accent: 'border-amber-400', dot: 'bg-amber-400' },
+  { status: 'PREPARING', accent: 'border-sky-400', dot: 'bg-sky-400' },
+  { status: 'READY', accent: 'border-emerald-400', dot: 'bg-emerald-400' },
 ];
-
-/** A ticket's background follows its column, so a glance down the screen says where things stand. */
-const CARD: Record<Exclude<KotStatus, 'DONE'>, string> = {
-  NEW: 'bg-amber-50',
-  PREPARING: 'bg-sky-50',
-  READY: 'bg-emerald-50',
-};
 
 /** The button is the colour of the column the ticket moves to: tap blue and it turns up under the blue heading. */
 const GO: Record<'PREPARING' | 'READY' | 'DONE', string> = {
-  PREPARING: 'bg-sky-700 text-white hover:bg-sky-800',
-  READY: 'bg-emerald-600 text-white hover:bg-emerald-700',
-  DONE: 'bg-slate-800 text-white hover:bg-slate-900',
+  PREPARING: 'bg-sky-500 text-white hover:bg-sky-400',
+  READY: 'bg-emerald-500 text-white hover:bg-emerald-400',
+  DONE: 'bg-white text-slate-900 hover:bg-slate-100',
 };
 
 /** A short two-tone beep; browsers allow it once the person has tapped anything on the page. */
@@ -158,6 +151,10 @@ export function KitchenPage() {
     () => ({ NEW: by('NEW').length, PREPARING: by('PREPARING').length, READY: by('READY').length }),
     [tickets],
   );
+  // tickets that have waited too long and are not ready yet: the one number the line cook watches
+  const lateCount = (board.data?.tickets ?? []).filter(
+    (x) => (x.status === 'NEW' || x.status === 'PREPARING') && ageMin(x) >= 20,
+  ).length;
 
   function toggleSound(): void {
     const next = !sound;
@@ -179,15 +176,21 @@ export function KitchenPage() {
           <div className="me-auto">
             <h1 className="page-title text-white">{t('kitchen.title')}</h1>
             <p className="hint text-slate-400">{t('kitchen.hint')}</p>
+            {lateCount > 0 && (
+              <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-3 py-1 text-sm font-semibold text-rose-300 ring-1 ring-rose-500/40">
+                <Icon name="clock" size={14} />
+                {t('kitchen.lateN', { count: lateCount })}
+              </span>
+            )}
           </div>
           {(board.data?.stations.length ?? 0) > 1 && (
             <div
-              className="seg max-w-full overflow-x-auto"
+              className="seg max-w-full overflow-x-auto !border-slate-700 !bg-slate-800"
               role="group"
               aria-label={t('kitchen.station')}
             >
               <button
-                className="seg-item shrink-0"
+                className="seg-item shrink-0 [&:not([aria-pressed=true])]:text-slate-300 [&:not([aria-pressed=true])]:hover:bg-slate-700"
                 aria-pressed={station === ''}
                 onClick={() => setStation('')}
               >
@@ -196,7 +199,7 @@ export function KitchenPage() {
               {board.data?.stations.map((s) => (
                 <button
                   key={s.code}
-                  className="seg-item shrink-0 whitespace-nowrap"
+                  className="seg-item shrink-0 whitespace-nowrap [&:not([aria-pressed=true])]:text-slate-300 [&:not([aria-pressed=true])]:hover:bg-slate-700"
                   aria-pressed={station === s.code}
                   onClick={() => setStation(s.code)}
                 >
@@ -205,18 +208,26 @@ export function KitchenPage() {
               ))}
             </div>
           )}
-          <button className="btn-secondary" aria-pressed={sound} onClick={toggleSound}>
+          <button
+            className="btn border border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"
+            aria-pressed={sound}
+            onClick={toggleSound}
+          >
             <Icon name={sound ? 'bell' : 'bellOff'} size={20} />
             {sound ? t('kitchen.soundOn') : t('kitchen.soundOff')}
           </button>
         </div>
 
         {/* phones and small tablets show one column at a time */}
-        <div className="seg w-full lg:hidden" role="group" aria-label={t('kitchen.title')}>
+        <div
+          className="seg w-full !border-slate-700 !bg-slate-800 lg:hidden"
+          role="group"
+          aria-label={t('kitchen.title')}
+        >
           {COLUMNS.map((c) => (
             <button
               key={c.status}
-              className="seg-item flex-1 gap-2"
+              className="seg-item flex-1 gap-2 [&:not([aria-pressed=true])]:text-slate-300"
               aria-pressed={view === c.status}
               onClick={() => setView(c.status)}
             >
@@ -240,10 +251,13 @@ export function KitchenPage() {
               aria-label={label(c.status)}
             >
               <h2
-                className={`flex items-center justify-between rounded-lg px-4 py-2 text-base font-bold uppercase tracking-wide ${c.head}`}
+                className={`flex items-center gap-2.5 rounded-xl border-t-4 bg-slate-800 px-4 py-3 text-base font-bold uppercase tracking-wide text-white ${c.accent}`}
               >
+                <span aria-hidden="true" className={`size-2.5 rounded-full ${c.dot}`} />
                 {label(c.status)}
-                <span className="money">{counts[c.status]}</span>
+                <span className="money ms-auto rounded-full bg-white/10 px-2.5 py-0.5 text-sm">
+                  {counts[c.status]}
+                </span>
               </h2>
               {by(c.status).length === 0 && (
                 <p className="rounded-xl border border-dashed border-slate-600 p-6 text-center text-slate-400">
@@ -254,7 +268,6 @@ export function KitchenPage() {
                 <TicketCard
                   key={x.id}
                   x={x}
-                  tone={c.tone}
                   age={ageMin(x)}
                   canCook={canCook}
                   canServe={canServe}
@@ -267,17 +280,17 @@ export function KitchenPage() {
         </div>
 
         {served.length > 0 && (
-          <details className="card p-4">
+          <details className="rounded-xl bg-slate-800 p-4 text-slate-200">
             <summary className="cursor-pointer font-semibold">
               {t('kitchen.recent', { count: served.length })}
             </summary>
-            <ul className="mt-2 divide-y divide-slate-200">
+            <ul className="mt-2 divide-y divide-slate-700">
               {served.map((x) => (
                 <li key={x.id} className="flex items-center gap-3 py-2 text-sm">
                   <span className="me-auto font-medium">
-                    {where(x, t)} · <span className="text-slate-600">{x.stationName}</span>
+                    {where(x, t)} · <span className="text-slate-400">{x.stationName}</span>
                   </span>
-                  <span className="text-slate-600">
+                  <span className="text-slate-400">
                     {x.lines
                       .filter((l) => !l.voided)
                       .map((l) => `${ltr(`${l.qty}×`)} ${l.name}`)
@@ -309,7 +322,6 @@ const where = (x: Ticket, t: (k: string) => string): string =>
 
 function TicketCard({
   x,
-  tone,
   age,
   canCook,
   canServe,
@@ -317,7 +329,6 @@ function TicketCard({
   onMove,
 }: {
   x: Ticket;
-  tone: string;
   age: number;
   canCook: boolean;
   canServe: boolean;
@@ -325,8 +336,9 @@ function TicketCard({
   onMove: (s: KotStatus) => void;
 }) {
   const { t } = useTranslation();
-  const late = x.status !== 'READY' && age >= 20;
-  const slow = x.status !== 'READY' && age >= 10;
+  const ready = x.status === 'READY';
+  const late = !ready && age >= 20;
+  const slow = !ready && age >= 10;
   const next: { to: KotStatus; label: string; allowed: boolean } =
     x.status === 'NEW'
       ? { to: 'PREPARING', label: t('kitchen.start'), allowed: canCook }
@@ -335,26 +347,26 @@ function TicketCard({
         : { to: 'DONE', label: t('kitchen.served'), allowed: canServe };
   const back: KotStatus | null =
     x.status === 'PREPARING' ? 'NEW' : x.status === 'READY' ? 'PREPARING' : null;
-  const backAllowed = x.status === 'READY' ? canCook : canCook;
   const dineIn = x.orderType === 'DINE_IN';
+  // the band is the clock: green while fresh, amber when it is taking long, red and pulsing when late
+  const band = ready
+    ? 'bg-emerald-700 text-white'
+    : late
+      ? 'animate-pulse bg-rose-600 text-white'
+      : slow
+        ? 'bg-amber-400 text-slate-900'
+        : 'bg-emerald-600 text-white';
   return (
     <article
-      className={`card overflow-hidden border-2 ${tone} ${x.status === 'DONE' ? '' : CARD[x.status as Exclude<KotStatus, 'DONE'>]} ${x.rush ? 'ring-2 ring-rose-500' : ''}`}
+      className={`overflow-hidden rounded-2xl bg-slate-800 text-white shadow-lg ring-1 ${x.rush ? 'ring-2 ring-rose-500' : 'ring-white/10'}`}
     >
-      {/* how long it has been waiting: green, then amber, then red and blinking */}
-      <div
-        aria-hidden="true"
-        className={`h-1.5 ${x.status === 'READY' ? 'bg-emerald-600' : late ? 'animate-pulse bg-rose-600' : slow ? 'bg-amber-500' : 'bg-emerald-600'}`}
-      />
-      <header className="flex items-start gap-2 border-b border-slate-200/80 p-3">
+      <header className={`flex items-center gap-3 px-4 py-3 ${band}`}>
         <div className="me-auto min-w-0">
           <div className="truncate text-3xl font-bold leading-none tracking-tight">
             {dineIn ? ltr(x.tableCode ?? '') : ltr(`#${x.orderNo}`)}
           </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-700">
-            <span
-              className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide ${dineIn ? 'border border-slate-400 bg-white text-slate-800' : 'bg-slate-900 text-white'}`}
-            >
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-semibold opacity-90">
+            <span className="inline-flex items-center gap-1 uppercase tracking-wide">
               <Icon name={dineIn ? 'tables' : 'bag'} size={12} />
               {t(
                 dineIn
@@ -371,10 +383,8 @@ function TicketCard({
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <span
-            className={`money inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-base font-bold ${late ? 'animate-pulse bg-rose-600 text-white' : slow ? 'bg-amber-300 text-amber-950' : 'bg-white text-slate-800 ring-1 ring-slate-300'}`}
-          >
-            <Icon name="clock" size={14} />
+          <span className="money inline-flex items-center gap-1 whitespace-nowrap rounded-lg bg-black/20 px-2.5 py-1 text-lg font-bold">
+            <Icon name={ready ? 'check' : 'clock'} size={16} />
             {formatAge(age, t)}
           </span>
           {x.rush && (
@@ -384,43 +394,45 @@ function TicketCard({
           )}
         </div>
       </header>
-      <ul className="space-y-2 p-3">
+      <ul className="space-y-3 p-4">
         {x.lines.map((l) => (
           <li key={l.id} className={l.voided ? 'opacity-60' : ''}>
             <div
-              className={`flex items-baseline gap-2 text-xl font-bold leading-snug ${l.voided ? 'line-through' : ''}`}
+              className={`flex items-start gap-3 text-xl font-semibold leading-snug ${l.voided ? 'line-through' : ''}`}
             >
-              <span className="money inline-flex min-w-10 shrink-0 justify-center rounded-md bg-slate-900 px-1.5 text-lg text-white">
+              <span className="money inline-flex min-w-11 shrink-0 justify-center rounded-lg bg-white/10 px-2 py-0.5 text-xl font-bold text-amber-300">
                 {ltr(`${l.qty}×`)}
               </span>
               <span>
                 {l.name}
                 {l.weightG ? ` · ${ltr(`${l.weightG} g`)}` : ''}
                 {l.voided && (
-                  <span className="chip-bad ms-2 no-underline">{t('kitchen.cancelled')}</span>
+                  <span className="ms-2 rounded bg-rose-500/20 px-1.5 py-0.5 text-xs font-bold uppercase text-rose-300 no-underline">
+                    {t('kitchen.cancelled')}
+                  </span>
                 )}
               </span>
             </div>
             {l.modifiers.length > 0 && (
-              <div className="text-sm text-slate-700">{l.modifiers.join(', ')}</div>
+              <div className="ms-14 mt-0.5 text-sm text-slate-300">{l.modifiers.join(', ')}</div>
             )}
             {l.fromDeal && (
-              <div className="text-sm text-slate-600">
+              <div className="ms-14 mt-0.5 text-sm text-slate-400">
                 {t('kitchen.fromDeal', { deal: l.fromDeal })}
               </div>
             )}
             {l.note && (
-              <div className="rounded bg-amber-100 px-2 py-1 text-sm font-medium text-amber-900">
-                “{l.note}”
+              <div className="ms-14 mt-1.5 rounded-md border-s-4 border-amber-400 bg-amber-400/15 px-2.5 py-1 text-base font-semibold text-amber-200">
+                {l.note}
               </div>
             )}
           </li>
         ))}
       </ul>
-      <footer className="flex gap-2 border-t border-slate-200/80 p-3">
-        {back && backAllowed && (
+      <footer className="flex gap-2 border-t border-white/10 p-3">
+        {back && canCook && (
           <button
-            className="btn-secondary px-3"
+            className="btn border border-slate-600 px-3 text-slate-200 hover:bg-white/10"
             disabled={busy}
             onClick={() => onMove(back)}
             aria-label={t('kitchen.undo')}
@@ -430,14 +442,16 @@ function TicketCard({
         )}
         {next.allowed ? (
           <button
-            className={`btn btn-lg flex-1 ${GO[next.to as 'PREPARING' | 'READY' | 'DONE']}`}
+            className={`btn btn-lg flex-1 text-lg ${GO[next.to as 'PREPARING' | 'READY' | 'DONE']}`}
             disabled={busy}
             onClick={() => onMove(next.to)}
           >
             {next.label}
           </button>
         ) : (
-          <p className="hint flex-1 self-center text-center">{t(`kitchen.wait${x.status}`)}</p>
+          <p className="flex-1 self-center text-center text-sm text-slate-400">
+            {t(`kitchen.wait${x.status}`)}
+          </p>
         )}
       </footer>
     </article>

@@ -177,6 +177,7 @@
     "counterTitle": "ٹیک اوے اور ڈیلیوری",
     "noCounter": "کوئی کھلا ٹیک اوے یا ڈیلیوری آرڈر نہیں۔",
     "noTables": "دکھانے کے لیے کوئی ٹیبل نہیں۔",
+    "otherTables": "دیگر ٹیبلز",
     "onTables": "ٹیبلز پر",
     "freeOf": "{{total}} میں سے {{free}} خالی",
     "inProgress": "جاری",
@@ -1134,6 +1135,7 @@
     "kStationSub_other": "{{count}} ٹکٹ · انتظار {{wait}} منٹ · پکانا {{cook}} منٹ"
   },
   "kitchen": {
+    "lateN": "{{count}} دیر",
     "title": "کچن",
     "station": "سٹیشن",
     "colNEW": "نئے",
