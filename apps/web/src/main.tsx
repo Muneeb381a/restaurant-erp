@@ -8,6 +8,7 @@ import { initI18n } from './i18n';
 import './index.css';
 import { TenantGate } from './features/landing/TenantGate';
 import { ApiError } from './lib/api';
+import { reloadOnce } from './components/ErrorBoundary';
 import { registerOffline } from './lib/online';
 import { hydrateCache, persistCache } from './lib/persist';
 import { mode, routerBasename } from './lib/tenant';
@@ -74,4 +75,6 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
+// a new deploy removes the old page files: a tab that was open meanwhile reloads once instead of going blank
+window.addEventListener('vite:preloadError', () => reloadOnce());
 registerOffline();

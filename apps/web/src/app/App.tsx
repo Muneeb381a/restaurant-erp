@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ComponentType, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { isStaleChunk, reloadOnce } from '../components/ErrorBoundary';
 import { FloorPage } from '../features/floor/FloorPage';
 import { LoginPage } from '../features/login/LoginPage';
 import { Shell } from '../features/shell/Shell';
@@ -10,7 +11,15 @@ import { Shell } from '../features/shell/Shell';
  * Every other screen is fetched the first time it is opened, which keeps the start fast on a phone.
  */
 function page<T extends object>(load: () => Promise<T>, name: keyof T): ReactElement {
-  const Page = lazy(async () => ({ default: (await load())[name] as unknown as ComponentType }));
+  const Page = lazy(async () => {
+    try {
+      return { default: (await load())[name] as unknown as ComponentType };
+    } catch (e) {
+      // the app was updated while this tab was open: its page file is gone, a reload brings the new one
+      if (isStaleChunk(e)) reloadOnce();
+      throw e;
+    }
+  });
   return (
     <Suspense fallback={<PageLoading />}>
       <Page />

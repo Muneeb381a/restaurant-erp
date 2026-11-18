@@ -40,6 +40,12 @@
     "usePassword": "Use a password instead",
     "usePin": "Use the PIN pad instead"
   },
+  "crash": {
+    "title": "This screen could not open",
+    "hint": "The app may have been updated while this page was open. Reload to get the latest version. Your work on the server is safe.",
+    "reload": "Reload",
+    "home": "Go to tables"
+  },
   "offline": {
     "banner": "No internet. You can still add dishes to open orders; they are kept on this device. The kitchen does not see them until the internet is back, so tell the kitchen yourself. Bills and payments need the internet.",
     "cannotSave": "No internet, so this was not saved. Try again when the connection is back.",

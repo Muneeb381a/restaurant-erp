@@ -13,6 +13,7 @@ import { useAuth } from '../../lib/auth-store';
 import { startLive, useLive } from '../../lib/live';
 import { useOnline } from '../../lib/online';
 import { useOutboxSync } from '../../lib/sync';
+import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { OutboxBar } from './OutboxBar';
 import { formatRs, ltr } from '../../lib/money';
 import { can, useDay, useFloor, useMe, usePrinterHealth, useShift } from '../../lib/queries';
@@ -564,7 +565,9 @@ function SignedIn() {
           <OutboxBar online={online} />
 
           <main className="min-h-0 flex-1 overflow-auto">
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </main>
         </div>
       </div>
