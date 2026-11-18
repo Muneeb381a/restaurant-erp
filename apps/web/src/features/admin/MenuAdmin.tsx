@@ -7,6 +7,7 @@ import { api } from '../../lib/api';
 import type { AdminItem, AdminMenu, AdminVariant, ImportResult } from '../../lib/types';
 import { DealEditor } from './DealEditor';
 import { Icon } from '../../components/Icon';
+import { ItemPhoto } from '../../components/ItemPhoto';
 import { emptyGuestInfo, GuestInfoFields, guestPayload, type GuestInfo } from './GuestInfo';
 import { ConfirmDelete, Dialog, EmptyRow, ErrorText, Field, PageHead, Toggle } from './ui';
 
@@ -30,6 +31,7 @@ export function MenuAdmin() {
   const menu = useQuery({ queryKey: ADMIN_MENU_KEY, queryFn: () => api<AdminMenu>('/menu/admin') });
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
+  const [status, setStatus] = useState<'ALL' | 'SOLD_OUT' | 'HIDDEN' | 'OFF'>('ALL');
   const [editing, setEditing] = useState<AdminItem | 'new' | null>(null);
   const [addingVariantTo, setAddingVariantTo] = useState<AdminItem | null>(null);
   const [editingDeal, setEditingDeal] = useState<AdminItem | null>(null);
@@ -73,9 +75,13 @@ export function MenuAdmin() {
     return (menu.data?.items ?? []).filter(
       (i) =>
         (!category || i.categoryId === category) &&
+        (status === 'ALL' ||
+          (status === 'SOLD_OUT' && i.isActive && !i.isAvailable) ||
+          (status === 'HIDDEN' && i.hiddenFromGuests) ||
+          (status === 'OFF' && !i.isActive)) &&
         (!q || [i.name, i.nameUr, i.code, i.searchTerms].some((s) => s?.toLowerCase().includes(q))),
     );
-  }, [menu.data, search, category]);
+  }, [menu.data, search, category, status]);
 
   if (menu.isPending) return <p className="p-4">{t('common.loading')}</p>;
   if (menu.isError || !menu.data) return <ErrorText error={menu.error} />;
@@ -86,6 +92,40 @@ export function MenuAdmin() {
     const c = data.categories.find((x) => x.id === id);
     return c ? localName(lang, c.name, c.nameUr) : '';
   };
+  const all = data.items;
+  const soldOut = all.filter((i) => i.isActive && !i.isAvailable).length;
+  const hidden = all.filter((i) => i.hiddenFromGuests).length;
+  const off = all.filter((i) => !i.isActive).length;
+  const stats = [
+    {
+      key: 'ALL' as const,
+      n: all.length,
+      label: t('admin.menuPage.statItems'),
+      icon: 'book' as const,
+      tone: 'bg-slate-100 text-slate-700',
+    },
+    {
+      key: 'SOLD_OUT' as const,
+      n: soldOut,
+      label: t('admin.menuPage.statSoldOut'),
+      icon: 'alert' as const,
+      tone: 'bg-amber-100 text-amber-800',
+    },
+    {
+      key: 'HIDDEN' as const,
+      n: hidden,
+      label: t('admin.menuPage.statHidden'),
+      icon: 'bellOff' as const,
+      tone: 'bg-sky-100 text-sky-700',
+    },
+    {
+      key: 'OFF' as const,
+      n: off,
+      label: t('admin.menuPage.statOff'),
+      icon: 'pause' as const,
+      tone: 'bg-rose-100 text-rose-700',
+    },
+  ];
   const stationCode = (id: string | null): string =>
     data.stations.find((s) => s.id === id)?.code ?? '';
 
@@ -119,6 +159,31 @@ export function MenuAdmin() {
           {t('admin.menuPage.newItem')}
         </button>
       </PageHead>
+      <div
+        className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+        role="group"
+        aria-label={t('admin.menuPage.statsLabel')}
+      >
+        {stats.map((x) => (
+          <button
+            key={x.key}
+            aria-pressed={status === x.key}
+            onClick={() => setStatus(x.key)}
+            className="card flex items-center gap-3 p-3 text-start transition-shadow hover:shadow-md aria-pressed:border-slate-900 aria-pressed:ring-2 aria-pressed:ring-slate-900/10"
+          >
+            <span
+              className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${x.tone}`}
+            >
+              <Icon name={x.icon} size={20} />
+            </span>
+            <span className="min-w-0">
+              <span className="money block text-2xl font-semibold leading-none">{x.n}</span>
+              <span className="mt-1 block truncate text-sm text-slate-600">{x.label}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative w-full max-w-sm">
           <Icon
@@ -134,32 +199,44 @@ export function MenuAdmin() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <select
-          className="input max-w-52"
-          aria-label={t('admin.category')}
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
-          <option value="">{t('admin.all')}</option>
-          {data.categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {localName(lang, c.name, c.nameUr)}
-            </option>
-          ))}
-        </select>
         <span className="chip-mute ms-auto">
           {t('admin.menuPage.countN', { count: items.length })}
         </span>
       </div>
+      <div
+        className="flex gap-1.5 overflow-x-auto pb-1"
+        role="group"
+        aria-label={t('admin.category')}
+      >
+        <button
+          className="seg-item shrink-0 whitespace-nowrap border border-slate-200 bg-white"
+          aria-pressed={category === ''}
+          onClick={() => setCategory('')}
+        >
+          {t('admin.all')} <span className="money ms-1.5 opacity-60">{all.length}</span>
+        </button>
+        {data.categories.map((c) => (
+          <button
+            key={c.id}
+            className="seg-item shrink-0 whitespace-nowrap border border-slate-200 bg-white"
+            aria-pressed={category === c.id}
+            onClick={() => setCategory(c.id)}
+          >
+            {localName(lang, c.name, c.nameUr)}
+            <span className="money ms-1.5 opacity-60">
+              {all.filter((i) => i.categoryId === c.id).length}
+            </span>
+          </button>
+        ))}
+      </div>
       <ErrorText error={error} />
 
       <div className="dt dt-tight">
-        <table className="min-w-[50rem]">
+        <table className="min-w-[44rem]">
           <thead>
             <tr>
-              <th className="min-w-[15rem]">{t('admin.name')}</th>
-              <th>{t('admin.category')}</th>
-              <th>{t('admin.station')}</th>
+              <th className="min-w-[11rem]">{t('admin.name')}</th>
+              <th>{`${t('admin.category')} · ${t('admin.station')}`}</th>
               {hasVariantCol && <th>{t('admin.menuPage.variant')}</th>}
               {lists.map((l) => (
                 <th key={l.id} className="num">
@@ -174,7 +251,7 @@ export function MenuAdmin() {
           <tbody>
             {items.length === 0 && (
               <EmptyRow
-                cols={7 + (hasVariantCol ? 1 : 0) + data.priceLists.length}
+                cols={6 + (hasVariantCol ? 1 : 0) + data.priceLists.length}
                 icon="search"
                 text={t('admin.menuPage.noItems')}
               />
@@ -185,22 +262,49 @@ export function MenuAdmin() {
                   {idx === 0 ? (
                     <>
                       <td rowSpan={item.variants.length}>
-                        <span className="name">
-                          {localName(lang, item.name, item.nameUr)}
-                          <span className="sub">
-                            {item.code}
-                            {item.kind !== 'STANDARD' ? ` · ${item.kind}` : ''}
-                          </span>
-                          {item.hiddenFromGuests && (
-                            <span className="chip-mute mt-1">{t('guest.hiddenChip')}</span>
+                        <div className="flex items-center gap-3">
+                          {item.hasImage ? (
+                            <ItemPhoto
+                              itemId={item.id}
+                              version={1}
+                              className="size-11 shrink-0 rounded-lg"
+                            />
+                          ) : (
+                            <span
+                              aria-hidden="true"
+                              className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-base font-semibold text-slate-500"
+                            >
+                              {(item.name[0] ?? '?').toUpperCase()}
+                            </span>
                           )}
-                        </span>
+                          <span className="name">
+                            {localName(lang, item.name, item.nameUr)}
+                            <span className="sub">
+                              {item.code}
+                              {item.kind !== 'STANDARD' ? ` · ${item.kind}` : ''}
+                            </span>
+                            {item.hiddenFromGuests && (
+                              <span className="chip-mute mt-1">{t('guest.hiddenChip')}</span>
+                            )}
+                          </span>
+                        </div>
                       </td>
                       <td rowSpan={item.variants.length}>
-                        {categoryName(item.categoryId) || <span className="text-slate-400">–</span>}
-                      </td>
-                      <td rowSpan={item.variants.length}>
-                        <span className="chip-mute">{stationCode(item.stationId)}</span>
+                        <div className="flex flex-col items-start gap-1">
+                          {categoryName(item.categoryId) ? (
+                            <span className="chip bg-slate-100 text-slate-700">
+                              {categoryName(item.categoryId)}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">–</span>
+                          )}
+                          {stationCode(item.stationId) && (
+                            <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                              <Icon name="flame" size={12} />
+                              {stationCode(item.stationId)}
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </>
                   ) : null}
@@ -261,12 +365,15 @@ export function MenuAdmin() {
                         className="sticky end-0 whitespace-nowrap bg-white text-end shadow-[-8px_0_8px_-8px_rgba(30,27,22,.15)]"
                         rowSpan={item.variants.length}
                       >
-                        <button className="btn-secondary me-1" onClick={() => setEditing(item)}>
+                        <button
+                          className="btn-secondary me-1 min-h-9 px-3 text-sm"
+                          onClick={() => setEditing(item)}
+                        >
                           {t('admin.edit')}
                         </button>
                         {item.kind === 'STANDARD' && (
                           <button
-                            className="btn-secondary"
+                            className="btn-secondary min-h-9 px-3 text-sm"
                             onClick={() => setAddingVariantTo(item)}
                             aria-label={`${t('admin.menuPage.addVariant')} ${item.name}`}
                           >
@@ -275,10 +382,13 @@ export function MenuAdmin() {
                         )}
                         {item.kind === 'DEAL' && (
                           <>
-                            <button className="btn-secondary" onClick={() => setEditingDeal(item)}>
+                            <button
+                              className="btn-secondary min-h-9 px-3 text-sm"
+                              onClick={() => setEditingDeal(item)}
+                            >
                               {t('admin.dealEditor.edit')}
                             </button>
-                            <div className="mt-1 text-xs text-slate-500">
+                            <div className="mt-1 max-w-44 whitespace-normal text-xs text-slate-500">
                               {t('admin.menuPage.dealNote')}
                             </div>
                           </>
@@ -487,6 +597,7 @@ function ItemDialog({
   onDelete?: (() => void) | undefined;
 }) {
   const { t, i18n } = useTranslation();
+  const qc = useQueryClient();
   const [name, setName] = useState(item?.name ?? '');
   const [nameUr, setNameUr] = useState(item?.nameUr ?? '');
   const [code, setCode] = useState('');
@@ -534,6 +645,7 @@ function ItemDialog({
         ...guestPayload(guest),
       };
       const savePhoto = async (id: string): Promise<void> => {
+        if (guest.photo || guest.removePhoto) qc.removeQueries({ queryKey: ['item-photo', id] });
         if (guest.photo)
           await api(`/items/${id}/image`, {
             method: 'PUT',

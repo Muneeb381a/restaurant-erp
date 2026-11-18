@@ -186,7 +186,10 @@ html[lang='ur'] body {
   }
   .dt-tight thead th,
   .dt-tight tbody td {
-    @apply px-2.5;
+    @apply px-2;
+  }
+  .dt-tight .cell-input {
+    @apply w-20;
   }
   .dt .num {
     @apply money text-end;

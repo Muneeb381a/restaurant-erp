@@ -21,7 +21,15 @@ const minutesSince = (iso: string): number =>
  */
 const TILE: Record<
   FloorTable['status'],
-  { box: string; band: string; dot: string; ink: string; soft: string }
+  {
+    box: string;
+    band: string;
+    dot: string;
+    ink: string;
+    soft: string;
+    chip: string;
+    avatar: string;
+  }
 > = {
   // nobody is seated: a quiet white card with a green edge ("free to take")
   FREE: {
@@ -30,6 +38,8 @@ const TILE: Record<
     dot: 'bg-emerald-600',
     ink: 'text-slate-900',
     soft: 'text-slate-500',
+    chip: 'bg-emerald-100 text-emerald-700',
+    avatar: 'bg-slate-100 text-slate-700',
   },
   // seated and ordering: a saffron edge and chip, the colour of "Send to kitchen"
   OCCUPIED: {
@@ -38,6 +48,8 @@ const TILE: Record<
     dot: 'bg-amber-500',
     ink: 'text-slate-900',
     soft: 'text-slate-600',
+    chip: 'bg-amber-100 text-amber-800',
+    avatar: 'bg-amber-100 text-amber-900',
   },
   // the guest asked for the bill: a solid blue block, the only one on the floor. The cashier looks
   // for blue, and blue is also the colour of the "Bill" button that put it there
@@ -47,8 +59,18 @@ const TILE: Record<
     dot: 'bg-sky-700',
     ink: 'text-white',
     soft: 'text-sky-100',
+    chip: 'bg-sky-100 text-sky-700',
+    avatar: 'bg-sky-800 text-white',
   },
 };
+
+const initials = (name: string): string =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join('');
 
 export function FloorPage() {
   const { t } = useTranslation();
@@ -205,112 +227,163 @@ export function FloorPage() {
       {floor.isPending && <p className="text-slate-600">{t('common.loading')}</p>}
 
       {all.length > 0 && (
-        <div className="seg flex-wrap" role="group" aria-label={t('floor.filter')}>
+        <div
+          className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+          role="group"
+          aria-label={t('floor.filter')}
+        >
           {filters.map((f) => (
             <button
               key={f.key}
-              className="seg-item gap-2"
               aria-pressed={filter === f.key}
               onClick={() => setFilter(f.key)}
+              className={`card flex items-center gap-3 p-3 text-start transition-shadow hover:shadow-md aria-pressed:border-slate-900 aria-pressed:ring-2 aria-pressed:ring-slate-900/10`}
             >
-              {f.key !== 'ALL' && (
-                <span className={`size-2.5 rounded-full ring-2 ring-white ${TILE[f.key].dot}`} />
-              )}
-              {f.label}
-              <span className="money opacity-70">{f.n}</span>
+              <span
+                className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${f.key === 'ALL' ? 'bg-slate-100 text-slate-700' : TILE[f.key].chip}`}
+              >
+                <Icon
+                  name={
+                    f.key === 'BILLED'
+                      ? 'receipt'
+                      : f.key === 'OCCUPIED'
+                        ? 'user'
+                        : f.key === 'FREE'
+                          ? 'check'
+                          : 'tables'
+                  }
+                  size={20}
+                />
+              </span>
+              <span className="min-w-0">
+                <span className="money block text-2xl font-semibold leading-none">{f.n}</span>
+                <span className="mt-1 block truncate text-sm text-slate-600">{f.label}</span>
+              </span>
             </button>
           ))}
         </div>
       )}
 
-      {[...groups.entries()].map(([area, tables]) => (
-        <section key={area} className="space-y-2">
-          {area && <h2 className="micro">{area}</h2>}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {tables.map((table) => (
-              <button
-                key={table.id}
-                // cached data from before this visit may be out of date (a table just paid and freed):
-                // only fresh data can be tapped
-                disabled={dayClosed || create.isPending || !floor.isFetchedAfterMount}
-                onClick={() => open(table)}
-                aria-label={`${table.code} ${statusLabel(table.status)}`}
-                className={`flex min-h-32 flex-col overflow-hidden rounded-xl p-0 text-start transition-colors disabled:opacity-50 ${TILE[table.status].box} ${table.order?.ticketsReady ? 'ring-4 ring-emerald-500/70' : ''} ${flash.has(table.id) ? 'animate-flash' : ''}`}
-              >
-                <span
-                  className={`flex w-full items-center gap-1.5 px-3 py-1 text-xs font-bold uppercase tracking-wide ${TILE[table.status].band}`}
-                >
-                  <Icon
-                    name={
-                      table.status === 'BILLED'
-                        ? 'receipt'
-                        : table.status === 'OCCUPIED'
-                          ? 'user'
-                          : 'check'
-                    }
-                    size={14}
-                  />
-                  {table.status === 'BILLED' ? t('floor.billReady') : statusLabel(table.status)}
-                  {table.order?.held && (
-                    <span className="ms-auto inline-flex items-center gap-1">
-                      <Icon name="pause" size={12} /> {t('order.held')}
-                    </span>
-                  )}
-                </span>
-                <span
-                  className={`flex flex-1 flex-col justify-between gap-1 p-3 ${TILE[table.status].ink}`}
-                >
-                  <span className="text-2xl font-semibold">{ltr(table.code)}</span>
-                  {table.order ? (
-                    <span className="text-sm">
-                      <span className="money block text-lg font-semibold">
-                        {ltr(formatRs(table.order.subtotalPaisa))}
-                      </span>
-                      <span
-                        className={`flex items-center gap-1 whitespace-nowrap ${minutesSince(table.order.openedAt) > 90 ? (table.status === 'BILLED' ? 'font-bold text-amber-200' : 'font-semibold text-rose-700') : TILE[table.status].soft}`}
-                      >
-                        <Icon name="clock" size={14} />
-                        {formatAge(minutesSince(table.order.openedAt), t)}
-                      </span>
-                      {table.order.ticketsReady > 0 && (
-                        <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-md bg-emerald-600 px-2 py-0.5 text-xs font-bold text-white">
-                          <Icon name="check" size={12} /> {t('floor.foodReady')}
-                        </span>
-                      )}
-                      {table.order.waiterName && (
-                        <span className={`block truncate text-xs ${TILE[table.status].soft}`}>
-                          {table.order.waiterName}
+      {[...groups.entries()].map(([area, tables]) => {
+        const free = tables.filter((x) => x.status === 'FREE').length;
+        return (
+          <section key={area} className="space-y-3">
+            <div className="flex items-center gap-3">
+              <h2 className="text-base font-semibold text-slate-900">{area || t('floor.title')}</h2>
+              <span className="chip-mute">{t('floor.freeOf', { free, total: tables.length })}</span>
+              <span aria-hidden="true" className="h-px flex-1 bg-slate-200" />
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {tables.map((table) => {
+                const tile = TILE[table.status];
+                const mins = table.order ? minutesSince(table.order.openedAt) : 0;
+                const slow = mins > 90;
+                return (
+                  <button
+                    key={table.id}
+                    // cached data from before this visit may be out of date (a table just paid and freed):
+                    // only fresh data can be tapped
+                    disabled={dayClosed || create.isPending || !floor.isFetchedAfterMount}
+                    onClick={() => open(table)}
+                    aria-label={`${table.code} ${statusLabel(table.status)}`}
+                    className={`flex min-h-36 flex-col overflow-hidden rounded-xl p-0 text-start transition disabled:opacity-50 ${tile.box} ${table.order?.ticketsReady ? 'ring-4 ring-emerald-500/60' : ''} ${flash.has(table.id) ? 'animate-flash' : ''}`}
+                  >
+                    <span
+                      className={`flex w-full items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${tile.band}`}
+                    >
+                      <Icon
+                        name={
+                          table.status === 'BILLED'
+                            ? 'receipt'
+                            : table.status === 'OCCUPIED'
+                              ? 'user'
+                              : 'check'
+                        }
+                        size={14}
+                      />
+                      {table.status === 'BILLED' ? t('floor.billReady') : statusLabel(table.status)}
+                      {table.order?.held && (
+                        <span className="ms-auto inline-flex items-center gap-1">
+                          <Icon name="pause" size={12} /> {t('order.held')}
                         </span>
                       )}
                     </span>
-                  ) : (
-                    <span className={`text-sm ${TILE[table.status].soft}`}>
-                      {t('floor.seats', { count: table.seats })}
+                    <span className={`flex flex-1 flex-col gap-2 p-3 ${tile.ink}`}>
+                      <span className="flex items-start justify-between gap-2">
+                        <span className="text-2xl font-semibold leading-none">
+                          {ltr(table.code)}
+                        </span>
+                        {table.order && (
+                          <span className="money text-lg font-semibold leading-none">
+                            {ltr(formatRs(table.order.subtotalPaisa))}
+                          </span>
+                        )}
+                      </span>
+                      {table.order ? (
+                        <span className="mt-auto space-y-1.5 text-sm">
+                          <span
+                            className={`flex items-center gap-1 whitespace-nowrap ${slow ? (table.status === 'BILLED' ? 'font-bold text-amber-200' : 'font-semibold text-rose-700') : tile.soft}`}
+                          >
+                            <Icon name="clock" size={14} />
+                            {formatAge(mins, t)}
+                          </span>
+                          {table.order.ticketsReady > 0 && (
+                            <span className="inline-flex w-fit items-center gap-1 rounded-md bg-emerald-600 px-2 py-0.5 text-xs font-bold text-white">
+                              <Icon name="check" size={12} /> {t('floor.foodReady')}
+                            </span>
+                          )}
+                          {table.order.waiterName && (
+                            <span className={`flex items-center gap-2 ${tile.soft}`}>
+                              <span
+                                aria-hidden="true"
+                                className={`flex size-6 shrink-0 items-center justify-center rounded-full text-[0.65rem] font-bold ${tile.avatar}`}
+                              >
+                                {initials(table.order.waiterName)}
+                              </span>
+                              <span className="truncate text-xs">{table.order.waiterName}</span>
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className={`mt-auto flex items-center gap-1.5 text-sm ${tile.soft}`}>
+                          <Icon name="user" size={14} />
+                          {t('floor.seats', { count: table.seats })}
+                        </span>
+                      )}
                     </span>
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
-      ))}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
       {floor.isSuccess && groups.size === 0 && (
         <p className="p-6 text-center text-slate-600">{t('floor.noTables')}</p>
       )}
 
-      <section className="space-y-2">
-        <h2 className="micro">{t('floor.counterTitle')}</h2>
+      <section className="space-y-3">
+        <div className="flex items-center gap-3">
+          <h2 className="text-base font-semibold text-slate-900">{t('floor.counterTitle')}</h2>
+          <span className="chip-mute">{(counter.data ?? []).length}</span>
+          <span aria-hidden="true" className="h-px flex-1 bg-slate-200" />
+        </div>
         {(counter.data ?? []).length === 0 ? (
           <p className="hint">{t('floor.noCounter')}</p>
         ) : (
-          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {(counter.data ?? []).map((o) => (
               <li key={o.id}>
                 <Link
                   to={`/order/${o.id}`}
-                  className="card flex min-h-touch items-center gap-3 p-3 hover:border-slate-500"
+                  className={`card flex min-h-touch items-center gap-3 border-s-4 p-3 transition-shadow hover:shadow-md ${o.status === 'BILLED' ? 'border-s-sky-600' : 'border-s-amber-500'}`}
                 >
-                  <span className="me-auto">
+                  <span
+                    className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${o.status === 'BILLED' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-800'}`}
+                  >
+                    <Icon name="bag" size={20} />
+                  </span>
+                  <span className="me-auto min-w-0">
                     <span className="block font-semibold">
                       {t(o.type === 'TAKEAWAY' ? 'order.takeaway' : 'order.delivery')}{' '}
                       {ltr(`#${o.orderNo}`)}
