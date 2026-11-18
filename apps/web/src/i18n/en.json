@@ -51,6 +51,19 @@
     "chrome": "Download for Google Chrome",
     "paper": "Paper: choose 80 mm in the printer’s preferences once. Opening the app any other way still works; it then asks which printer to use."
   },
+  "billsPage": {
+    "recent": "Recent",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "pickDate": "Pick a date",
+    "bills": "Bills",
+    "paidTotal": "Paid in total",
+    "waiting": "Waiting for payment",
+    "findNo": "Find bill number",
+    "dayLine": "{{count}} bills",
+    "refunded": "Refunded",
+    "notPaidYet": "Not paid yet"
+  },
   "crash": {
     "title": "This screen could not open",
     "hint": "The app may have been updated while this page was open. Reload to get the latest version. Your work on the server is safe.",

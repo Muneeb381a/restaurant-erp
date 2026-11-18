@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import {
   asPaisa,
   canTransitionOrder,
@@ -156,6 +157,8 @@ export async function listBills(
   let query = q
     .selectFrom('bills')
     .innerJoin('business_days', 'business_days.id', 'bills.business_day_id')
+    .leftJoin('orders', 'orders.id', 'bills.order_id')
+    .leftJoin('dining_tables', 'dining_tables.id', 'orders.table_id')
     .select([
       'bills.id as id',
       'bills.order_id as orderId',
@@ -164,6 +167,16 @@ export async function listBills(
       'bills.total_paisa as totalPaisa',
       'bills.settled_at as settledAt',
       'business_days.business_date as businessDate',
+      // what the guest sees on the list: which table or counter order, how it was paid, whether any of it was returned
+      'orders.order_no as orderNo',
+      'orders.type as orderType',
+      'dining_tables.code as tableCode',
+      sql<
+        string[]
+      >`coalesce((select array_agg(distinct pm.name order by pm.name) from payments p join payment_methods pm on pm.id = p.method_id where p.bill_id = bills.id), '{}')`.as(
+        'methods',
+      ),
+      sql<boolean>`exists (select 1 from credit_notes c where c.bill_id = bills.id)`.as('refunded'),
     ])
     .where('bills.branch_id', '=', branchId)
     .where('bills.status', 'in', ['SETTLED', 'PRE_BILLED'])

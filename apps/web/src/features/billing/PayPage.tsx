@@ -47,6 +47,8 @@ export function PayPage() {
     enabled: bill.data?.status === 'PRE_BILLED',
   });
   const methods = usePaymentMethods();
+  // the amount a new payment row starts with depends on the quote: wait for it instead of guessing
+  const quotesLoading = bill.data?.status === 'PRE_BILLED' && quotes.isPending;
 
   const [rows, setRows] = useState<TenderRow[]>([]);
   const [message, setMessage] = useState<string | null>(null);
@@ -488,7 +490,7 @@ export function PayPage() {
                 <button
                   key={m.id}
                   className="btn-secondary min-h-primary flex-col gap-0.5 text-sm"
-                  disabled={!payable}
+                  disabled={!payable || quotesLoading}
                   onClick={() => addRow(m)}
                 >
                   <Icon

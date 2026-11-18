@@ -246,23 +246,23 @@ function SignedIn() {
 
   const sideItem = (it: NavItem): ReactNode => {
     const cls = ({ isActive }: { isActive?: boolean }): string =>
-      `group relative flex min-h-9 w-full items-center gap-2.5 rounded-md text-[0.8125rem] font-medium transition-colors ${
-        expanded ? 'px-2.5' : 'justify-center px-0'
+      `group relative flex min-h-10 w-full items-center gap-3 rounded-lg text-sm font-medium transition-colors ${
+        expanded ? 'px-3' : 'justify-center px-0'
       } ${
         isActive
-          ? 'bg-white text-slate-900 shadow-[0_0_0_1px_rgba(30,27,22,0.09),0_1px_2px_rgba(30,27,22,0.06)]'
-          : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
+          ? 'bg-white/10 text-white before:absolute before:inset-y-2 before:start-0 before:w-1 before:rounded-full before:bg-emerald-400'
+          : 'text-slate-400 hover:bg-white/5 hover:text-white'
       }`;
     const body = (active: boolean): ReactNode => (
       <>
         <span className="relative shrink-0">
           <Icon
             name={it.icon}
-            size={18}
-            className={active ? 'text-slate-900' : 'text-slate-500 group-hover:text-slate-800'}
+            size={20}
+            className={active ? 'text-emerald-300' : 'text-slate-500 group-hover:text-slate-200'}
           />
           {it.badge && !expanded && (
-            <span className="absolute -end-1.5 -top-1.5 flex min-w-[1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[0.62rem] font-bold leading-4 text-white">
+            <span className="absolute -end-1.5 -top-1.5 flex min-w-[1rem] items-center justify-center rounded-full bg-amber-400 px-1 text-[0.62rem] font-bold leading-4 text-slate-900">
               {it.badge.n}
             </span>
           )}
@@ -273,7 +273,7 @@ function SignedIn() {
         {it.badge && expanded && (
           <span
             title={it.badge.title}
-            className="ms-auto flex min-w-[1.35rem] items-center justify-center rounded-full bg-amber-100 px-1.5 text-xs font-semibold leading-[1.35rem] text-amber-800"
+            className="ms-auto flex min-w-[1.4rem] items-center justify-center rounded-full bg-amber-400 px-1.5 text-xs font-bold leading-[1.4rem] text-slate-900"
           >
             {it.badge.n}
           </span>
@@ -309,14 +309,14 @@ function SignedIn() {
   const tabItem = (it: NavItem): ReactNode => {
     const cls = ({ isActive }: { isActive?: boolean }): string =>
       `relative flex min-h-[3.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[0.72rem] font-medium ${
-        isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500'
+        isActive ? 'bg-white/10 text-white' : 'text-slate-400'
       }`;
     const body = (active: boolean): ReactNode => (
       <>
         <span className="relative">
-          <Icon name={it.icon} size={22} className={active ? 'text-slate-900' : ''} />
+          <Icon name={it.icon} size={22} className={active ? 'text-emerald-300' : ''} />
           {it.badge && (
-            <span className="absolute -end-2.5 -top-1.5 flex min-w-[1.1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[0.65rem] font-bold leading-[1.1rem] text-white">
+            <span className="absolute -end-2.5 -top-1.5 flex min-w-[1.1rem] items-center justify-center rounded-full bg-amber-400 px-1 text-[0.65rem] font-bold leading-[1.1rem] text-slate-900">
               {it.badge.n}
             </span>
           )}
@@ -405,38 +405,38 @@ function SignedIn() {
       <div className="flex min-h-0 flex-1 flex-col-reverse md:flex-row">
         {/* tablets and desktops: the side menu */}
         <div
-          className={`hidden shrink-0 flex-col border-e border-slate-200 bg-slate-50 text-slate-700 transition-[width] duration-200 md:flex ${expanded ? 'w-56' : 'w-14'}`}
+          className={`hidden shrink-0 flex-col border-t border-white/10 bg-slate-900 text-slate-300 transition-[width] duration-200 md:flex ${expanded ? 'w-60' : 'w-[4.25rem]'}`}
         >
           <nav
             aria-label={t('shell.mainNav')}
-            className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2 py-3"
+            className="min-h-0 flex-1 space-y-6 overflow-y-auto px-3 py-4"
           >
             {groups.map((g, i) => (
               <div key={g.label} className="space-y-0.5">
                 {expanded ? (
-                  <div className="px-2.5 pb-1.5 text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-500">
+                  <div className="px-3 pb-2 text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-500">
                     {g.label}
                   </div>
                 ) : (
-                  i > 0 && <div className="mx-1 mb-3 border-t border-slate-200" />
+                  i > 0 && <div className="mx-2 mb-4 border-t border-white/10" />
                 )}
                 {g.items.map((it) => sideItem(it))}
               </div>
             ))}
           </nav>
-          <div className="space-y-0.5 border-t border-slate-200 p-2">
+          <div className="space-y-1 border-t border-white/10 p-3">
             <button
               type="button"
               onClick={() => setHelpOpen(true)}
               title={t('help.open')}
               aria-label={t('help.open')}
-              className={`group flex min-h-9 w-full items-center gap-2.5 rounded-md text-[0.8125rem] font-medium text-slate-600 transition-colors hover:bg-slate-200/60 hover:text-slate-900 ${expanded ? 'px-2.5' : 'justify-center'}`}
+              className={`group flex min-h-10 w-full items-center gap-3 rounded-lg text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white ${expanded ? 'px-3' : 'justify-center'}`}
             >
-              <Icon name="info" size={18} className="text-slate-500 group-hover:text-slate-800" />
+              <Icon name="info" size={20} className="text-slate-500 group-hover:text-slate-200" />
               {expanded && t('help.open')}
             </button>
             <div
-              className={`flex min-h-8 items-center gap-2 text-xs font-medium text-slate-500 ${expanded ? 'px-2.5' : 'justify-center'}`}
+              className={`flex min-h-9 items-center gap-2.5 rounded-lg bg-white/5 text-xs font-medium text-slate-300 ${expanded ? 'px-3' : 'justify-center'}`}
               title={
                 polling
                   ? t('shell.pollingHint')
@@ -462,7 +462,7 @@ function SignedIn() {
         {/* phones: a bar at the bottom with the four main places and "More" */}
         <nav
           aria-label={t('shell.mainNav')}
-          className="flex shrink-0 gap-1 border-t border-slate-200 bg-white p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden"
+          className="flex shrink-0 gap-1 border-t border-white/10 bg-slate-900 p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] md:hidden"
         >
           {primary.map((it) => tabItem(it))}
           {more.length > 0 && (
@@ -471,7 +471,7 @@ function SignedIn() {
               aria-haspopup="dialog"
               aria-expanded={moreOpen}
               onClick={() => setMoreOpen(true)}
-              className="relative flex min-h-[3.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[0.72rem] font-medium text-slate-500"
+              className="relative flex min-h-[3.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[0.72rem] font-medium text-slate-400"
             >
               <Icon name="more" size={22} />
               {t('shell.more')}

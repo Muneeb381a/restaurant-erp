@@ -388,6 +388,11 @@ describe('look-up and reports', () => {
     const bill = await paidBill([[naan, 1]]);
     const found = (await api(cashier).get(`/bills?billNo=${bill.billNo}`)).body.items as Json[];
     expect(found.map((b) => b.id)).toContain(bill.id);
+    // the list also says how it was paid and whether anything was returned
+    const row = found.find((b) => b.id === bill.id)!;
+    expect(row.methods.length).toBeGreaterThan(0);
+    expect(typeof row.refunded).toBe('boolean');
+    expect(row).toHaveProperty('orderNo');
     expect((await api(captain).get('/bills')).status).toBe(403);
 
     const day = (await api(manager).get('/business-days/current')).body.day;

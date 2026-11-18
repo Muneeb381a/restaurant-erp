@@ -455,6 +455,13 @@ export interface BillListItem {
   totalPaisa: number;
   settledAt: string | null;
   businessDate: string;
+  orderNo: number | null;
+  orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | null;
+  tableCode: string | null;
+  /** payment methods used, by name */
+  methods: string[];
+  /** some of it was returned (a credit note exists) */
+  refunded: boolean;
 }
 
 export interface BillQuoteTotals {
