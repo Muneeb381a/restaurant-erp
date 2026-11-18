@@ -1,3 +1,4 @@
+import i18n from 'i18next';
 import { useAuth, type Tokens } from './auth-store';
 import { apiBase, useTenantState } from './tenant';
 
@@ -103,14 +104,24 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
             : undefined,
     });
 
-  let res = await send(useAuth.getState().tokens);
+  const sendOrExplain = async (tokens: Tokens | null): Promise<Response> => {
+    try {
+      return await send(tokens);
+    } catch (e) {
+      // fetch only throws when the request never reached the server (no internet, server down)
+      if (e instanceof TypeError)
+        throw new ApiError(0, 'OFFLINE', i18n.t('offline.cannotSave'), {});
+      throw e;
+    }
+  };
+  let res = await sendOrExplain(useAuth.getState().tokens);
   if (res.status === 401 && opts.auth !== false && useAuth.getState().tokens) {
     const fresh = await refreshTokens();
     if (!fresh) {
       useAuth.getState().logout();
       throw await toError(res);
     }
-    res = await send(fresh);
+    res = await sendOrExplain(fresh);
   }
   if (!res.ok) throw await toError(res);
   if (res.status === 204) return undefined as T;

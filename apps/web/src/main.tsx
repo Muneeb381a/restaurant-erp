@@ -8,6 +8,7 @@ import { initI18n } from './i18n';
 import './index.css';
 import { TenantGate } from './features/landing/TenantGate';
 import { ApiError } from './lib/api';
+import { registerOffline } from './lib/online';
 import { mode, routerBasename } from './lib/tenant';
 
 // the platform admin and the landing page are separate downloads: restaurant staff never fetch them
@@ -20,8 +21,12 @@ const LandingPage = lazy(async () => ({
 
 const queryClient = new QueryClient({
   defaultOptions: {
+    // a payment or an order must never wait silently for the internet and then fire later: it fails at
+    // once with a clear message (see lib/api.ts). Reads keep their data and refresh when back online.
+    mutations: { networkMode: 'always' },
     queries: {
-      retry: (count, error) => !(error instanceof ApiError && error.status < 500) && count < 2,
+      retry: (count, error) =>
+        !(error instanceof ApiError && error.status > 0 && error.status < 500) && count < 2,
       refetchOnWindowFocus: true,
     },
   },
@@ -64,3 +69,5 @@ createRoot(document.getElementById('root')!).render(
     </I18nextProvider>
   </StrictMode>,
 );
+
+registerOffline();

@@ -77,6 +77,36 @@ export function platformRouter(d: PlatformDeps): Router {
     }),
   );
 
+  // "install this restaurant as an app": a web-app manifest per restaurant, opening on its own sign-in
+  r.get(
+    '/public/tenants/:slug/manifest',
+    asyncHandler(async (req, res) => {
+      const slug = z.string().min(1).max(60).parse(req.params.slug);
+      const info = await publicTenantInfo(d, slug);
+      const start = `/r/${info.slug}/`;
+      res.type('application/manifest+json').json({
+        name: info.name,
+        short_name: info.name.slice(0, 12),
+        description: 'Orders, kitchen and billing',
+        start_url: start,
+        scope: start,
+        display: 'standalone',
+        background_color: '#fbf8f2',
+        theme_color: '#0a4638',
+        icons: [
+          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+          {
+            src: '/icon-maskable-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+        ],
+      });
+    }),
+  );
+
   r.post(
     '/platform/auth/login',
     asyncHandler(async (req, res) => {

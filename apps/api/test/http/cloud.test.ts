@@ -600,6 +600,18 @@ describe('server errors are noted for the platform admin', () => {
 
     const tenants = await asAdmin().get('/platform/tenants');
     expect(tenants.body.items.find((t: Json) => t.id === id).errors24h).toBe(1);
+
+    // the same restaurant can be installed as an app that opens on its own sign-in
+    const manifest = await request(app).get(api('/public/tenants/faulty-grill/manifest'));
+    expect(manifest.status).toBe(200);
+    expect(manifest.headers['content-type']).toContain('application/manifest+json');
+    expect(manifest.body).toMatchObject({
+      name: 'Faulty Grill',
+      start_url: '/r/faulty-grill/',
+      scope: '/r/faulty-grill/',
+      display: 'standalone',
+    });
+    expect((await request(app).get(api('/public/tenants/no-such/manifest'))).status).toBe(404);
   });
 
   it('needs a platform admin', async () => {

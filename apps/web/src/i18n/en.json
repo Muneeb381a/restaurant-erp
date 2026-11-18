@@ -40,6 +40,10 @@
     "usePassword": "Use a password instead",
     "usePin": "Use the PIN pad instead"
   },
+  "offline": {
+    "banner": "No internet. You can keep looking, but orders and payments cannot be saved until it is back.",
+    "cannotSave": "No internet, so this was not saved. Try again when the connection is back."
+  },
   "shell": {
     "day": "Business day",
     "noDay": "No open day",

@@ -11,6 +11,7 @@ import { Toaster } from '../../components/Toast';
 import { ApiError, api } from '../../lib/api';
 import { useAuth } from '../../lib/auth-store';
 import { startLive, useLive } from '../../lib/live';
+import { useOnline } from '../../lib/online';
 import { formatRs, ltr } from '../../lib/money';
 import { can, useDay, useFloor, useMe, usePrinterHealth, useShift } from '../../lib/queries';
 import type { Shift } from '../../lib/types';
@@ -79,6 +80,7 @@ function SignedIn() {
     (x) => x.status === (cooks ? 'NEW' : 'READY'),
   ).length;
   const polling = useLive((x) => x.polling);
+  const online = useOnline();
   const live = useLive((x) => x.connected) || polling; // polling is a normal state, not a fault
   const tablesBusy = (floor.data?.tables ?? []).filter((x) => x.status !== 'FREE').length;
   const tablesBilled = (floor.data?.tables ?? []).filter((x) => x.status === 'BILLED').length;
@@ -543,6 +545,16 @@ function SignedIn() {
               {t('shell.printerOffline', {
                 names: offline.map((p) => `${p.name} (${p.queued})`).join(', '),
               })}
+            </div>
+          )}
+
+          {!online && (
+            <div
+              role="status"
+              className="flex items-center gap-2 bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-900"
+            >
+              <Icon name="alert" size={18} />
+              {t('offline.banner')}
             </div>
           )}
 

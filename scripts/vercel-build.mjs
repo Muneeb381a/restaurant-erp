@@ -140,6 +140,12 @@ writeFileSync(
           headers: { 'cache-control': 'public, max-age=31536000, immutable' },
           continue: true,
         },
+        // the service worker and the app manifest must always be fetched fresh, or a new version never arrives
+        {
+          src: '/(sw\\.js|manifest\\.webmanifest)',
+          headers: { 'cache-control': 'no-cache' },
+          continue: true,
+        },
         // the API answers with its own caching rules; never cache it at the edge
         { src: '/api/(.*)', headers: { 'cache-control': 'no-store' }, continue: true },
         { handle: 'filesystem' },

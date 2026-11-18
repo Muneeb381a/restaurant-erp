@@ -86,7 +86,7 @@ export function LoginPage() {
       if (e instanceof ApiError && e.code === 'ACCOUNT_LOCKED') {
         const seconds = Number(e.body.retryAfterSeconds ?? 600);
         setError(t('login.locked', { minutes: Math.max(1, Math.ceil(seconds / 60)) }));
-      } else if (e instanceof ApiError && e.status < 500) {
+      } else if (e instanceof ApiError && e.code !== 'OFFLINE' && e.status < 500) {
         setError(t('login.wrong'));
       } else {
         setError(t('login.network'));
