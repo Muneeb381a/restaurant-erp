@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
-import { splitEqually } from '../../lib/split';
+import { splitByDishes, splitEqually, type Owner } from '../../lib/split';
 import { Modal } from '../../components/Modal';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr, parseRs } from '../../lib/money';
@@ -654,6 +654,7 @@ export function PayPage() {
       {splitting && (
         <SplitDialog
           totalFor={totalFor}
+          dishes={groupLines(b.lines)}
           methods={methods.data ?? []}
           onClose={() => setSplitting(false)}
           onApply={(shares, method) => {
@@ -861,11 +862,13 @@ function DiscountDialog({
 /** "Split between N people": N payment rows with equal shares that add up to the bill exactly. */
 function SplitDialog({
   totalFor,
+  dishes,
   methods,
   onClose,
   onApply,
 }: {
   totalFor: (cls: 'CASH_OTHER' | 'DIGITAL') => number;
+  dishes: { key: string; qty: number; description: string; netPaisa: number }[];
   methods: PaymentMethod[];
   onClose: () => void;
   onApply: (shares: number[], method: PaymentMethod) => void;
@@ -873,12 +876,35 @@ function SplitDialog({
   const { t } = useTranslation();
   const usable = methods.filter((m) => m.code !== 'KHATA' && m.is_active);
   const [people, setPeople] = useState(2);
+  const [mode, setMode] = useState<'equal' | 'dishes'>('equal');
+  // who pays for each dish; everybody (equally) until someone is picked
+  const [owners, setOwners] = useState<Record<string, Owner>>({});
+  const ownerOf = (key: string): Owner => {
+    const o = owners[key] ?? 'ALL';
+    return o === 'ALL' || o < people ? o : 'ALL'; // a person who was removed: back to everybody
+  };
   const [methodId, setMethodId] = useState(
     (usable.find((m) => m.code === 'CASH') ?? usable[0])?.id ?? '',
   );
   const method = usable.find((m) => m.id === methodId);
   if (!method) return null;
-  const shares = splitEqually(totalFor(method.tender_class), people);
+  const total = totalFor(method.tender_class);
+  const byDish = mode === 'dishes';
+  let shares: number[];
+  try {
+    shares = byDish
+      ? splitByDishes(
+          total,
+          dishes.map((d) => d.netPaisa),
+          dishes.map((d) => ownerOf(d.key)),
+          people,
+        )
+      : splitEqually(total, people);
+  } catch {
+    shares = []; // nothing to split by dishes (e.g. all dishes free)
+  }
+  // by dishes, everybody must have something to pay for, or they would be asked for Rs 0
+  const ready = shares.length === people && (!byDish || shares.every((x) => x > 0));
   return (
     <Modal
       title={t('bill.splitTitle')}
@@ -889,13 +915,25 @@ function SplitDialog({
           <button className="btn-secondary" onClick={onClose}>
             {t('common.cancel')}
           </button>
-          <button className="btn-primary" onClick={() => onApply(shares, method)}>
+          <button className="btn-primary" disabled={!ready} onClick={() => onApply(shares, method)}>
             {t('bill.splitApply')}
           </button>
         </>
       }
     >
       <div className="space-y-4">
+        <div className="seg w-full" role="group" aria-label={t('bill.splitTitle')}>
+          {(['equal', 'dishes'] as const).map((m) => (
+            <button
+              key={m}
+              className="seg-item flex-1"
+              aria-pressed={mode === m}
+              onClick={() => setMode(m)}
+            >
+              {t(m === 'equal' ? 'bill.splitEqual' : 'bill.splitDishes')}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-3">
           <span className="label me-auto">{t('bill.splitPeople')}</span>
           <div className="inline-flex items-center rounded-lg border border-slate-400">
@@ -930,6 +968,38 @@ function SplitDialog({
             ))}
           </select>
         </label>
+        {byDish && (
+          <ul className="divide-y divide-slate-200 rounded-lg border border-slate-300">
+            {dishes.map((d) => (
+              <li key={d.key} className="flex items-center gap-2 px-3 py-2">
+                <span className="me-auto min-w-0">
+                  <span className="block truncate">
+                    {ltr(`${d.qty}×`)} {d.description}
+                  </span>
+                  <span className="money text-sm text-slate-600">{ltr(formatRs(d.netPaisa))}</span>
+                </span>
+                <select
+                  className="input w-36 py-1"
+                  aria-label={`${t('bill.splitWho')} ${d.description}`}
+                  value={String(ownerOf(d.key))}
+                  onChange={(e) =>
+                    setOwners({
+                      ...owners,
+                      [d.key]: e.target.value === 'ALL' ? 'ALL' : Number(e.target.value),
+                    })
+                  }
+                >
+                  <option value="ALL">{t('bill.splitEveryone')}</option>
+                  {Array.from({ length: people }, (_, i) => (
+                    <option key={i} value={i}>
+                      {t('bill.splitPerson')} {ltr(String(i + 1))}
+                    </option>
+                  ))}
+                </select>
+              </li>
+            ))}
+          </ul>
+        )}
         <ul className="divide-y divide-slate-200 rounded-lg border border-slate-300 bg-slate-50">
           {shares.map((paisa, i) => (
             <li key={i} className="flex items-center justify-between px-3 py-2">
@@ -940,7 +1010,12 @@ function SplitDialog({
             </li>
           ))}
         </ul>
-        <p className="hint">{t('bill.splitHint')}</p>
+        <p className="hint">{t(byDish ? 'bill.splitDishesHint' : 'bill.splitHint')}</p>
+        {byDish && !ready && shares.length > 0 && (
+          <p role="alert" className="text-sm text-amber-800">
+            {t('bill.splitNeedDish')}
+          </p>
+        )}
       </div>
     </Modal>
   );
