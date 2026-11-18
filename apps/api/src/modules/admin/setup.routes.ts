@@ -71,7 +71,7 @@ export function setupRouter(ctx: AppContext): Router {
         { key: 'restaurant', done: !!(branch.address && branch.phone) },
         { key: 'tables', done: c.tables > 0, count: c.tables },
         { key: 'menu', done: c.priced > 0, count: c.priced },
-        { key: 'printers', done: c.printers > 0, count: c.printers },
+        { key: 'printers', done: c.printers > 0, count: c.printers, optional: true },
         { key: 'staff', done: c.staff > 1, count: c.staff },
         { key: 'payments', done: c.methods > 0, count: c.methods },
         { key: 'day', done: !!day },

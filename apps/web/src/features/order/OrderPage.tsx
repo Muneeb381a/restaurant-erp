@@ -12,6 +12,7 @@ import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
 import { topOf as topOfCat } from '../../lib/categories';
 import { useOutbox } from '../../lib/outbox';
+import { mode } from '../../lib/tenant';
 import { can, useMe, useMenu, useOrder } from '../../lib/queries';
 import type { MenuItem, Order, OrderLine, SendResult } from '../../lib/types';
 import { ItemSheet, QUICK_NOTES, type AddBody } from './ItemSheet';
@@ -198,7 +199,8 @@ export function OrderPage() {
       setRush(false);
       const stations = out.kots.map((k) => k.station).join(', ');
       toast(t('order.sentOk', { stations }));
-      if (out.unprinted.length)
+      // in the cloud the kitchen works from its screen, so "no printer" is not a problem to report
+      if (out.unprinted.length && mode.kind !== 'tenant')
         setMessage(t('order.noPrinter', { stations: out.unprinted.join(', ') }));
     },
     onError: (e) => {

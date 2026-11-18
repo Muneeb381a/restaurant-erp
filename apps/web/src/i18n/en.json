@@ -40,6 +40,17 @@
     "usePassword": "Use a password instead",
     "usePin": "Use the PIN pad instead"
   },
+  "printHelp": {
+    "title": "Print receipts by themselves",
+    "hint": "Do this once on the counter computer. After that every receipt prints with no dialog.",
+    "intro": "A website is not allowed to see your printers, so the app cannot detect them by itself. This small file opens the app in a mode that prints straight to the computer’s default printer.",
+    "step1": "Install the printer’s driver on this computer and make it the default printer (Windows Settings, Printers). The printer’s test page must print.",
+    "step2": "Download the file below and put it on the desktop.",
+    "step3": "Always open the app from that file. After a payment the receipt prints at once.",
+    "edge": "Download for Microsoft Edge",
+    "chrome": "Download for Google Chrome",
+    "paper": "Paper: choose 80 mm in the printer’s preferences once. Opening the app any other way still works; it then asks which printer to use."
+  },
   "crash": {
     "title": "This screen could not open",
     "hint": "The app may have been updated while this page was open. Reload to get the latest version. Your work on the server is safe.",

@@ -136,6 +136,9 @@ export function PayPage() {
       apply(out.bill);
       setResult(out);
       setMessage(null);
+      // no receipt printer is set up (a cloud shop, or none yet): the receipt opens for printing by
+      // itself, so nobody has to remember a button. On a computer started with auto-print it prints at once.
+      if (out.receipts === 0 && !out.replayed) browserPrint.mutate(undefined);
     },
     onError: (e) => {
       if (e instanceof ApiError && e.code === 'KHATA_LIMIT_EXCEEDED')

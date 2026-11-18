@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Icon, type IconName } from '../../components/Icon';
 import { can, useMe } from '../../lib/queries';
+import { mode } from '../../lib/tenant';
 
 /** Which admin sections exist, the permission each needs (the API enforces them too), and their group. */
 export const ADMIN_SECTIONS = [
@@ -84,7 +85,10 @@ export function AdminLayout() {
   const me = useMe();
   const { pathname } = useLocation();
   if (me.isPending) return <p className="p-4">{t('common.loading')}</p>;
-  const allowed = ADMIN_SECTIONS.filter((s) => can(me.data, s.permission));
+  // in the cloud the browser prints (nothing to set up), so the printer screens would only confuse
+  const allowed = ADMIN_SECTIONS.filter(
+    (s) => can(me.data, s.permission) && !(s.path === 'printers' && mode.kind === 'tenant'),
+  );
   if (allowed.length === 0) return <Navigate to="/" replace />;
   const groups = [...new Set(allowed.map((s) => s.group))];
   const current = allowed.find((s) => pathname.startsWith(`/admin/${s.path}`));

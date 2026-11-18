@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
 import { pollMs, useLive } from './live';
+import { mode } from './tenant';
 import type {
   Bill,
   BusinessDay,
@@ -92,6 +93,7 @@ export const usePrinterHealth = () =>
   useQuery({
     queryKey: ['printers-health'],
     queryFn: async () => (await api<{ items: PrinterHealth[] }>('/printers/health')).items,
+    enabled: mode.kind !== 'tenant', // the cloud has no LAN printers to watch
     // on the restaurant's own network a printer going offline must be noticed within seconds; in the
     // cloud (polling mode) there are no LAN printers to watch, so it asks only now and then
     refetchInterval: () => (useLive.getState().polling ? 30_000 : 5000),
