@@ -98,3 +98,11 @@ says it in words ("Taking the order", "Bill ready: collect payment", "Paid").
 - [ ] 48 px targets, works one-handed on a phone width (360 px)?
 - [ ] Both languages, RTL checked?
 - [ ] Keyboard focus visible, dialog traps focus and closes on Esc?
+
+## Menu categories and sub-categories
+A category may sit inside one main category (BBQ → Regular, Special), two levels at most, so a cashier
+never digs through a deep tree. Made in Admin, Menu, Categories ("+ Sub-category" on a main category).
+A dish is filed under the sub-category; opening the main category shows everything below it. The till
+shows a second row of tabs under the main tab; the admin menu shows the same as a second row of chips;
+the guest QR menu names the section "BBQ › Special". A main category that has sub-categories stays a main
+category, and one with dishes or sub-categories cannot be deleted (move them first).

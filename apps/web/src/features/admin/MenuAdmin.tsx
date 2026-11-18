@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { localName } from '../../i18n';
 import { api } from '../../lib/api';
+import { categoryTree, topOf, withDescendants } from '../../lib/categories';
 import type { AdminItem, AdminMenu, AdminVariant, ImportResult } from '../../lib/types';
 import { DealEditor } from './DealEditor';
 import { Icon } from '../../components/Icon';
@@ -74,7 +75,9 @@ export function MenuAdmin() {
     const q = search.trim().toLowerCase();
     return (menu.data?.items ?? []).filter(
       (i) =>
-        (!category || i.categoryId === category) &&
+        (!category ||
+          (menu.data !== undefined &&
+            withDescendants(menu.data.categories, category).has(i.categoryId ?? ''))) &&
         (status === 'ALL' ||
           (status === 'SOLD_OUT' && i.isActive && !i.isAvailable) ||
           (status === 'HIDDEN' && i.hiddenFromGuests) ||
@@ -88,10 +91,8 @@ export function MenuAdmin() {
   const data = menu.data;
   // channels in the order a restaurant thinks of them: dine-in first
   const lists = sortLists(data.priceLists);
-  const categoryName = (id: string | null): string => {
-    const c = data.categories.find((x) => x.id === id);
-    return c ? localName(lang, c.name, c.nameUr) : '';
-  };
+  const tree = categoryTree(data.categories, (c) => localName(lang, c.name, c.nameUr));
+  const categoryName = (id: string | null): string => tree.find((n) => n.cat.id === id)?.path ?? '';
   const all = data.items;
   const soldOut = all.filter((i) => i.isActive && !i.isAvailable).length;
   const hidden = all.filter((i) => i.hiddenFromGuests).length;
@@ -126,6 +127,16 @@ export function MenuAdmin() {
       tone: 'bg-rose-100 text-rose-700',
     },
   ];
+  // main categories as chips; the sub-categories of the one in use appear on a second row
+  const mainCats = data.categories.filter(
+    (c) => !c.parentId || !data.categories.some((x) => x.id === c.parentId),
+  );
+  const activeTop = category ? topOf(data.categories, category) : null;
+  const subCats = data.categories.filter((c) => activeTop !== null && c.parentId === activeTop);
+  const countIn = (id: string): number => {
+    const ids = withDescendants(data.categories, id);
+    return all.filter((i) => ids.has(i.categoryId ?? '')).length;
+  };
   const stationCode = (id: string | null): string =>
     data.stations.find((s) => s.id === id)?.code ?? '';
 
@@ -215,20 +226,51 @@ export function MenuAdmin() {
         >
           {t('admin.all')} <span className="money ms-1.5 opacity-60">{all.length}</span>
         </button>
-        {data.categories.map((c) => (
+        {mainCats.map((c) => (
           <button
             key={c.id}
             className="seg-item shrink-0 whitespace-nowrap border border-slate-200 bg-white"
-            aria-pressed={category === c.id}
+            aria-pressed={activeTop === c.id}
             onClick={() => setCategory(c.id)}
           >
             {localName(lang, c.name, c.nameUr)}
-            <span className="money ms-1.5 opacity-60">
-              {all.filter((i) => i.categoryId === c.id).length}
-            </span>
+            <span className="money ms-1.5 opacity-60">{countIn(c.id)}</span>
           </button>
         ))}
       </div>
+      {subCats.length > 0 && (
+        <div
+          className="flex gap-1.5 overflow-x-auto pb-1 ps-3"
+          role="group"
+          aria-label={t('admin.menuPage.subCategory')}
+        >
+          <button
+            className="seg-item shrink-0 whitespace-nowrap border border-slate-200 bg-white text-sm"
+            aria-pressed={category === activeTop}
+            onClick={() => setCategory(activeTop ?? '')}
+          >
+            {t('admin.menuPage.allIn', {
+              name: localName(
+                lang,
+                data.categories.find((c) => c.id === activeTop)?.name ?? '',
+                data.categories.find((c) => c.id === activeTop)?.nameUr ?? null,
+              ),
+            })}
+            <span className="money ms-1.5 opacity-60">{countIn(activeTop ?? '')}</span>
+          </button>
+          {subCats.map((c) => (
+            <button
+              key={c.id}
+              className="seg-item shrink-0 whitespace-nowrap border border-slate-200 bg-white text-sm"
+              aria-pressed={category === c.id}
+              onClick={() => setCategory(c.id)}
+            >
+              {localName(lang, c.name, c.nameUr)}
+              <span className="money ms-1.5 opacity-60">{countIn(c.id)}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <ErrorText error={error} />
 
       <div className="dt dt-tight">
@@ -740,11 +782,13 @@ function ItemDialog({
               onChange={(e) => setCategoryId(e.target.value)}
             >
               <option value="">{t('admin.none')}</option>
-              {data.categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {localName(i18n.language, c.name, c.nameUr)}
-                </option>
-              ))}
+              {categoryTree(data.categories, (c) => localName(i18n.language, c.name, c.nameUr)).map(
+                ({ cat, depth, path }) => (
+                  <option key={cat.id} value={cat.id}>
+                    {depth ? `\u00a0\u00a0↳ ${path}` : path}
+                  </option>
+                ),
+              )}
             </select>
             <button
               type="button"

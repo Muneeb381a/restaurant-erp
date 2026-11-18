@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api';
+import { categoryTree, parentChoices } from '../../lib/categories';
 import type { AdminMenu } from '../../lib/types';
 import { ConfirmDelete, Dialog, ErrorText, Field } from './ui';
 
@@ -14,6 +15,12 @@ interface Row {
   nameUr: string | null;
   code?: string;
   dishes: number;
+  /** categories only: 0 = main, 1 = sub-category */
+  depth?: number;
+  parentId?: string | null;
+  hasChildren?: boolean;
+  /** dishes in the sub-categories below (a main category shows both numbers) */
+  subDishes?: number;
 }
 
 /**
@@ -35,17 +42,26 @@ export function MenuSetupDialog({
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>(first);
   const [editing, setEditing] = useState<string | 'new' | null>(null);
+  // "Add sub-category" on a main category opens the new form already inside it
+  const [newParent, setNewParent] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Row | null>(null);
 
   const rows: Row[] =
     tab === 'categories'
-      ? data.categories.map((c) => ({
-          id: c.id,
-          title: c.name,
-          sub: '',
-          nameUr: c.nameUr,
-          dishes: data.items.filter((i) => i.categoryId === c.id).length,
-        }))
+      ? categoryTree(data.categories).map(({ cat: c, depth }) => {
+          const below = data.categories.filter((x) => x.parentId === c.id);
+          return {
+            id: c.id,
+            title: c.name,
+            sub: '',
+            nameUr: c.nameUr,
+            dishes: data.items.filter((i) => i.categoryId === c.id).length,
+            depth,
+            parentId: c.parentId,
+            hasChildren: below.length > 0,
+            subDishes: data.items.filter((i) => below.some((b) => b.id === i.categoryId)).length,
+          };
+        })
       : data.stations.map((s) => ({
           id: s.id,
           title: s.name,
@@ -87,6 +103,8 @@ export function MenuSetupDialog({
                 <RowForm
                   tab={tab}
                   row={r}
+                  data={data}
+                  parentFor={null}
                   path={path}
                   onCancel={() => setEditing(null)}
                   onDone={() => {
@@ -96,9 +114,13 @@ export function MenuSetupDialog({
                 />
               </li>
             ) : (
-              <li key={r.id} className="flex flex-wrap items-center gap-2 p-3">
+              <li
+                key={r.id}
+                className={`flex flex-wrap items-center gap-2 p-3 ${r.depth ? 'bg-slate-50 ps-10' : ''}`}
+              >
                 <div className="me-auto min-w-0">
                   <div className="truncate font-semibold">
+                    {r.depth ? <span className="me-1.5 text-slate-400">↳</span> : null}
                     {r.title}
                     {r.nameUr && (
                       <span className="ms-2 font-normal text-slate-500">{r.nameUr}</span>
@@ -107,8 +129,23 @@ export function MenuSetupDialog({
                   <div className="text-xs text-slate-500">
                     {r.sub && <span className="me-2 font-mono">{r.sub}</span>}
                     {t('admin.menuPage.dishesN', { count: r.dishes })}
+                    {r.hasChildren && (r.subDishes ?? 0) > 0 && (
+                      <span> · {t('admin.menuPage.inSubN', { count: r.subDishes })}</span>
+                    )}
                   </div>
                 </div>
+                {tab === 'categories' && !r.depth && (
+                  <button
+                    className="btn-quiet text-sm"
+                    aria-label={`${t('admin.menuPage.addSub')} ${r.title}`}
+                    onClick={() => {
+                      setNewParent(r.id);
+                      setEditing('new');
+                    }}
+                  >
+                    + {t('admin.menuPage.subCategory')}
+                  </button>
+                )}
                 <button
                   className="btn-secondary"
                   aria-label={`${t('admin.edit')} ${r.title}`}
@@ -131,6 +168,8 @@ export function MenuSetupDialog({
               <RowForm
                 tab={tab}
                 row={null}
+                data={data}
+                parentFor={newParent}
                 path={path}
                 onCancel={() => setEditing(null)}
                 onDone={() => {
@@ -146,7 +185,10 @@ export function MenuSetupDialog({
           <button
             className="btn-primary"
             disabled={editing === 'new'}
-            onClick={() => setEditing('new')}
+            onClick={() => {
+              setNewParent(null);
+              setEditing('new');
+            }}
           >
             {t(tab === 'categories' ? 'admin.menuPage.newCategory' : 'admin.menuPage.newStation')}
           </button>
@@ -171,12 +213,17 @@ export function MenuSetupDialog({
 function RowForm({
   tab,
   row,
+  data,
+  parentFor,
   path,
   onCancel,
   onDone,
 }: {
   tab: Tab;
   row: Row | null;
+  data: AdminMenu;
+  /** a new category created from "Add sub-category" starts inside this one */
+  parentFor: string | null;
   path: string;
   onCancel: () => void;
   onDone: () => void;
@@ -185,12 +232,14 @@ function RowForm({
   const [name, setName] = useState(row?.title ?? '');
   const [nameUr, setNameUr] = useState(row?.nameUr ?? '');
   const [code, setCode] = useState(row?.code ?? '');
+  const [parentId, setParentId] = useState<string>(row ? (row.parentId ?? '') : (parentFor ?? ''));
+  const choices = parentChoices(data.categories, row?.id ?? null);
   const [error, setError] = useState<unknown>(null);
   const save = useMutation({
     mutationFn: () => {
       const body =
         tab === 'categories'
-          ? { name: name.trim(), nameUr: nameUr.trim() || null }
+          ? { name: name.trim(), nameUr: nameUr.trim() || null, parentId: parentId || null }
           : { name: name.trim(), code: (code.trim() || name.trim()).toUpperCase().slice(0, 40) };
       return row
         ? api(`${path}/${row.id}`, { method: 'PATCH', body })
@@ -230,6 +279,24 @@ function RowForm({
           </Field>
         )}
       </div>
+      {tab === 'categories' && (
+        <Field label={t('admin.menuPage.insideCategory')}>
+          <select
+            className="input"
+            value={parentId}
+            disabled={row?.hasChildren}
+            onChange={(e) => setParentId(e.target.value)}
+          >
+            <option value="">{t('admin.menuPage.mainCategory')}</option>
+            {choices.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          {row?.hasChildren && <p className="hint mt-1">{t('admin.menuPage.hasSubHint')}</p>}
+        </Field>
+      )}
       <ErrorText error={error} />
       <div className="flex justify-end gap-2">
         <button className="btn-secondary" onClick={onCancel}>

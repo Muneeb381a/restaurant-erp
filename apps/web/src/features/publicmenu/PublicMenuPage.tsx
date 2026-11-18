@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { Mark } from '../../components/Brand';
 import { localName, setLanguage, type Lang } from '../../i18n';
+import { categoryTree } from '../../lib/categories';
 import { formatRs, ltr } from '../../lib/money';
 import { apiBase, withApiBase } from '../../lib/tenant';
 
@@ -107,11 +108,12 @@ export function PublicMenuPage() {
       (!vegOnly || i.tags.includes('VEGETARIAN')) &&
       (!q || `${i.name} ${i.nameUr ?? ''} ${i.description ?? ''}`.toLowerCase().includes(q));
     const cats = [...d.categories].sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name));
-    const out = cats
-      .map((c) => ({
-        id: c.id,
-        name: localName(lang, c.name, c.nameUr),
-        items: d.items.filter((i) => i.categoryId === c.id && match(i)),
+    // a sub-category follows its main category and is named "BBQ › Special"
+    const out = categoryTree(cats, (c) => localName(lang, c.name, c.nameUr))
+      .map(({ cat, path }) => ({
+        id: cat.id,
+        name: path,
+        items: d.items.filter((i) => i.categoryId === cat.id && match(i)),
       }))
       .filter((s) => s.items.length > 0);
     const loose = d.items.filter((i) => !i.categoryId && match(i));

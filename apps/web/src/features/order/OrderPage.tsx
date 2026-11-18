@@ -10,6 +10,7 @@ import { localName } from '../../i18n';
 import { matchesQuery } from '../../lib/search';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
+import { topOf as topOfCat } from '../../lib/categories';
 import { useOutbox } from '../../lib/outbox';
 import { can, useMe, useMenu, useOrder } from '../../lib/queries';
 import type { MenuItem, Order, OrderLine, SendResult } from '../../lib/types';
@@ -230,6 +231,12 @@ export function OrderPage() {
 
   const topCategories = (menu.data?.categories ?? []).filter((c) => c.parentId === null);
   const hueIndex = new Map(topCategories.map((c, n) => [c.id, n]));
+  // in a main category with sub-categories (BBQ: Regular, Special) a second row of tabs appears
+  const activeTop =
+    category && category !== POPULAR ? topOfCat(menu.data?.categories ?? [], category) : null;
+  const subTabs = (menu.data?.categories ?? []).filter(
+    (c) => activeTop !== null && c.parentId === activeTop,
+  );
   // a dish takes the colour of its main (top-level) category
   const topOf = (categoryId: string | null): string | null => {
     let cur = categoryId;
@@ -402,7 +409,7 @@ export function OrderPage() {
             <button
               key={c.id}
               role="tab"
-              aria-selected={category === c.id}
+              aria-selected={activeTop === c.id}
               className="seg-item shrink-0 whitespace-nowrap border border-slate-300 bg-white"
               onClick={() => setCategory(c.id)}
             >
@@ -414,6 +421,33 @@ export function OrderPage() {
             </button>
           ))}
         </div>
+        {subTabs.length > 0 && (
+          <div
+            className="flex gap-1.5 overflow-x-auto px-3 pb-2 ps-6"
+            role="tablist"
+            aria-label={t('admin.menuPage.subCategory')}
+          >
+            <button
+              role="tab"
+              aria-selected={category === activeTop}
+              className="seg-item shrink-0 whitespace-nowrap border border-slate-200 bg-slate-100 text-sm"
+              onClick={() => setCategory(activeTop)}
+            >
+              {t('common.all')}
+            </button>
+            {subTabs.map((c) => (
+              <button
+                key={c.id}
+                role="tab"
+                aria-selected={category === c.id}
+                className="seg-item shrink-0 whitespace-nowrap border border-slate-200 bg-slate-100 text-sm"
+                onClick={() => setCategory(c.id)}
+              >
+                {localName(lang, c.name, c.nameUr)}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="grid min-h-0 flex-1 grid-cols-2 content-start gap-2 overflow-auto p-3 pt-1 sm:grid-cols-3 lg:grid-cols-4">
           {visibleItems.length === 0 && (
             <p className="col-span-full p-6 text-center text-slate-600">{t('order.noMatch')}</p>
