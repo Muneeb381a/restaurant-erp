@@ -179,6 +179,7 @@
     "noTables": "No tables to show.",
     "inProgress": "In progress",
     "freeOf": "{{free}} of {{total}} free",
+    "onTables": "On tables",
     "foodReady": "Food ready",
     "hint": "Tap a free table to start an order. Tap a busy table to see or add to its order."
   },

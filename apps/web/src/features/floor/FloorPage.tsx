@@ -16,53 +16,69 @@ const minutesSince = (iso: string): number =>
   Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
 
 /**
- * A table says its state three ways: a coloured band with the word, the tile's border and fill, and
- * what it shows inside (a free table is empty and dashed; a busy one carries amount, time, captain).
+ * A table is drawn as a table: a top surface with chairs around it (as many as it has seats). The state
+ * shows three ways: the surface colour, the word on it, and what it carries (amount, time, captain).
+ * Free = white with a green rim, occupied = saffron, bill ready = solid blue (the one the cashier looks for).
  */
 const TILE: Record<
   FloorTable['status'],
   {
-    box: string;
-    band: string;
+    surface: string;
+    chair: string;
     dot: string;
-    ink: string;
     soft: string;
     chip: string;
+    label: string;
     avatar: string;
   }
 > = {
-  // nobody is seated: a quiet white card with a green edge ("free to take")
   FREE: {
-    box: 'border border-slate-200 border-s-4 border-s-emerald-500 bg-white shadow-sm hover:border-emerald-500 hover:shadow-md',
-    band: 'bg-white text-emerald-700',
+    surface: 'border-2 border-emerald-500 bg-white text-slate-900 group-hover:bg-emerald-50',
+    chair: 'bg-slate-300 group-hover:bg-emerald-300',
     dot: 'bg-emerald-600',
-    ink: 'text-slate-900',
     soft: 'text-slate-500',
     chip: 'bg-emerald-100 text-emerald-700',
+    label: 'text-emerald-700',
     avatar: 'bg-slate-100 text-slate-700',
   },
-  // seated and ordering: a saffron edge and chip, the colour of "Send to kitchen"
   OCCUPIED: {
-    box: 'border border-amber-200 border-s-4 border-s-amber-500 bg-white shadow-sm hover:shadow-md',
-    band: 'bg-amber-50 text-amber-800',
+    surface: 'border-2 border-amber-500 bg-amber-50 text-slate-900',
+    chair: 'bg-amber-400',
     dot: 'bg-amber-500',
-    ink: 'text-slate-900',
-    soft: 'text-slate-600',
+    soft: 'text-amber-900/70',
     chip: 'bg-amber-100 text-amber-800',
+    label: 'text-amber-800',
     avatar: 'bg-amber-100 text-amber-900',
   },
-  // the guest asked for the bill: a solid blue block, the only one on the floor. The cashier looks
-  // for blue, and blue is also the colour of the "Bill" button that put it there
   BILLED: {
-    box: 'border border-sky-800 bg-sky-700 shadow-md hover:bg-sky-800',
-    band: 'bg-sky-800 text-white',
+    surface: 'border-2 border-sky-900 bg-sky-700 text-white shadow-md',
+    chair: 'bg-sky-400',
     dot: 'bg-sky-700',
-    ink: 'text-white',
     soft: 'text-sky-100',
     chip: 'bg-sky-100 text-sky-700',
-    avatar: 'bg-sky-800 text-white',
+    label: 'text-sky-100',
+    avatar: 'bg-sky-100 text-sky-900',
   },
 };
+
+/** Round for a two-seater, a square for four, a long table for more: the shape tells the size at a glance. */
+const shapeOf = (seats: number): string =>
+  seats <= 2
+    ? 'size-32 rounded-full'
+    : seats <= 4
+      ? 'h-32 w-full max-w-44 rounded-2xl'
+      : 'h-32 w-full rounded-2xl';
+
+/** A row of chairs (at most 5 so a big table stays tidy). */
+function ChairRow({ n, className }: { n: number; className: string }) {
+  return (
+    <span className="flex h-2 justify-center gap-2" aria-hidden="true">
+      {Array.from({ length: Math.min(5, n) }, (_, i) => (
+        <span key={i} className={`h-2 w-7 rounded-full transition-colors ${className}`} />
+      ))}
+    </span>
+  );
+}
 
 const initials = (name: string): string =>
   name
@@ -151,6 +167,7 @@ export function FloorPage() {
     return () => clearTimeout(id);
   }, [floor.data]);
 
+  const openTotal = all.reduce((n, x) => n + (x.order?.subtotalPaisa ?? 0), 0);
   const filters: { key: Filter; label: string; n: number }[] = [
     { key: 'ALL', label: t('common.all'), n: all.length },
     { key: 'FREE', label: t('floor.free'), n: count('FREE') },
@@ -228,7 +245,7 @@ export function FloorPage() {
 
       {all.length > 0 && (
         <div
-          className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+          className="flex flex-wrap items-center gap-2"
           role="group"
           aria-label={t('floor.filter')}
         >
@@ -237,47 +254,54 @@ export function FloorPage() {
               key={f.key}
               aria-pressed={filter === f.key}
               onClick={() => setFilter(f.key)}
-              className={`card flex items-center gap-3 p-3 text-start transition-shadow hover:shadow-md aria-pressed:border-slate-900 aria-pressed:ring-2 aria-pressed:ring-slate-900/10`}
+              className="inline-flex min-h-touch items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 aria-pressed:border-slate-900 aria-pressed:bg-slate-900 aria-pressed:text-white"
             >
-              <span
-                className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${f.key === 'ALL' ? 'bg-slate-100 text-slate-700' : TILE[f.key].chip}`}
-              >
-                <Icon
-                  name={
-                    f.key === 'BILLED'
-                      ? 'receipt'
-                      : f.key === 'OCCUPIED'
-                        ? 'user'
-                        : f.key === 'FREE'
-                          ? 'check'
-                          : 'tables'
-                  }
-                  size={20}
-                />
-              </span>
-              <span className="min-w-0">
-                <span className="money block text-2xl font-semibold leading-none">{f.n}</span>
-                <span className="mt-1 block truncate text-sm text-slate-600">{f.label}</span>
-              </span>
+              {f.key !== 'ALL' && (
+                <span className={`size-2.5 rounded-full ${TILE[f.key].dot} ring-2 ring-white`} />
+              )}
+              {f.label}
+              <span className="money opacity-70">{f.n}</span>
             </button>
           ))}
+          <span className="ms-auto text-sm text-slate-600">
+            {t('floor.onTables')}{' '}
+            <span className="money font-semibold text-slate-900">{ltr(formatRs(openTotal))}</span>
+          </span>
         </div>
       )}
 
       {[...groups.entries()].map(([area, tables]) => {
         const free = tables.filter((x) => x.status === 'FREE').length;
+        const busy = tables.length - free;
         return (
-          <section key={area} className="space-y-3">
+          <section
+            key={area}
+            className="space-y-4 rounded-2xl border border-slate-200 bg-slate-100/70 p-4 [background-image:radial-gradient(circle,rgba(152,162,179,.35)_1px,transparent_1px)] [background-size:20px_20px] md:p-5"
+          >
             <div className="flex items-center gap-3">
-              <h2 className="text-base font-semibold text-slate-900">{area || t('floor.title')}</h2>
-              <span className="chip-mute">{t('floor.freeOf', { free, total: tables.length })}</span>
-              <span aria-hidden="true" className="h-px flex-1 bg-slate-200" />
+              <h2 className="text-lg font-semibold text-slate-900">{area || t('floor.title')}</h2>
+              <span className="chip bg-white text-slate-700 shadow-sm">
+                {t('floor.freeOf', { free, total: tables.length })}
+              </span>
+              <span
+                aria-hidden="true"
+                className="ms-auto hidden h-1.5 w-32 overflow-hidden rounded-full bg-white sm:block"
+              >
+                <span
+                  className="block h-full rounded-full bg-amber-500"
+                  style={{ width: `${tables.length ? (busy / tables.length) * 100 : 0}%` }}
+                />
+              </span>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {tables.map((table) => {
                 const tile = TILE[table.status];
                 const mins = table.order ? minutesSince(table.order.openedAt) : 0;
                 const slow = mins > 90;
+                const lateInk =
+                  table.status === 'BILLED'
+                    ? 'font-bold text-amber-200'
+                    : 'font-semibold text-rose-700';
                 return (
                   <button
                     key={table.id}
@@ -286,71 +310,68 @@ export function FloorPage() {
                     disabled={dayClosed || create.isPending || !floor.isFetchedAfterMount}
                     onClick={() => open(table)}
                     aria-label={`${table.code} ${statusLabel(table.status)}`}
-                    className={`flex min-h-36 flex-col overflow-hidden rounded-xl p-0 text-start transition disabled:opacity-50 ${tile.box} ${table.order?.ticketsReady ? 'ring-4 ring-emerald-500/60' : ''} ${flash.has(table.id) ? 'animate-flash' : ''}`}
+                    className={`group flex flex-col items-center gap-1.5 rounded-2xl p-1 text-center outline-offset-4 transition disabled:opacity-50 ${flash.has(table.id) ? 'animate-flash' : ''}`}
                   >
+                    <ChairRow n={Math.ceil(Math.max(table.seats, 1) / 2)} className={tile.chair} />
                     <span
-                      className={`flex w-full items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${tile.band}`}
+                      className={`relative flex flex-col items-center justify-center gap-0.5 px-3 transition group-hover:-translate-y-0.5 group-active:translate-y-0 ${shapeOf(table.seats)} ${tile.surface} ${table.order?.ticketsReady ? 'ring-4 ring-emerald-500/60' : ''}`}
                     >
-                      <Icon
-                        name={
-                          table.status === 'BILLED'
-                            ? 'receipt'
-                            : table.status === 'OCCUPIED'
-                              ? 'user'
-                              : 'check'
-                        }
-                        size={14}
-                      />
-                      {table.status === 'BILLED' ? t('floor.billReady') : statusLabel(table.status)}
-                      {table.order?.held && (
-                        <span className="ms-auto inline-flex items-center gap-1">
-                          <Icon name="pause" size={12} /> {t('order.held')}
-                        </span>
-                      )}
-                    </span>
-                    <span className={`flex flex-1 flex-col gap-2 p-3 ${tile.ink}`}>
-                      <span className="flex items-start justify-between gap-2">
-                        <span className="text-2xl font-semibold leading-none">
-                          {ltr(table.code)}
-                        </span>
-                        {table.order && (
-                          <span className="money text-lg font-semibold leading-none">
+                      <span
+                        className={`text-[0.65rem] font-bold uppercase tracking-wider ${tile.label}`}
+                      >
+                        {table.status === 'BILLED'
+                          ? t('floor.billReady')
+                          : statusLabel(table.status)}
+                      </span>
+                      <span className="text-3xl font-semibold leading-none">{ltr(table.code)}</span>
+                      {table.order ? (
+                        <>
+                          <span className="money text-base font-semibold leading-tight">
                             {ltr(formatRs(table.order.subtotalPaisa))}
                           </span>
-                        )}
-                      </span>
-                      {table.order ? (
-                        <span className="mt-auto space-y-1.5 text-sm">
                           <span
-                            className={`flex items-center gap-1 whitespace-nowrap ${slow ? (table.status === 'BILLED' ? 'font-bold text-amber-200' : 'font-semibold text-rose-700') : tile.soft}`}
+                            className={`flex items-center gap-1 text-xs ${slow ? lateInk : tile.soft}`}
                           >
-                            <Icon name="clock" size={14} />
+                            <Icon name="clock" size={12} />
                             {formatAge(mins, t)}
                           </span>
-                          {table.order.ticketsReady > 0 && (
-                            <span className="inline-flex w-fit items-center gap-1 rounded-md bg-emerald-600 px-2 py-0.5 text-xs font-bold text-white">
-                              <Icon name="check" size={12} /> {t('floor.foodReady')}
-                            </span>
-                          )}
-                          {table.order.waiterName && (
-                            <span className={`flex items-center gap-2 ${tile.soft}`}>
-                              <span
-                                aria-hidden="true"
-                                className={`flex size-6 shrink-0 items-center justify-center rounded-full text-[0.65rem] font-bold ${tile.avatar}`}
-                              >
-                                {initials(table.order.waiterName)}
-                              </span>
-                              <span className="truncate text-xs">{table.order.waiterName}</span>
-                            </span>
-                          )}
-                        </span>
+                        </>
                       ) : (
-                        <span className={`mt-auto flex items-center gap-1.5 text-sm ${tile.soft}`}>
-                          <Icon name="user" size={14} />
+                        <span className={`flex items-center gap-1 text-xs ${tile.soft}`}>
+                          <Icon name="user" size={12} />
                           {t('floor.seats', { count: table.seats })}
                         </span>
                       )}
+                      {table.order?.ticketsReady ? (
+                        <span
+                          className="absolute -end-2 -top-2 flex size-7 items-center justify-center rounded-full bg-emerald-600 text-white shadow-md"
+                          title={t('floor.foodReady')}
+                        >
+                          <Icon name="check" size={16} />
+                          <span className="sr-only">{t('floor.foodReady')}</span>
+                        </span>
+                      ) : null}
+                      {table.order?.held && (
+                        <span className="absolute -start-2 -top-2 flex size-7 items-center justify-center rounded-full bg-slate-700 text-white shadow-md">
+                          <Icon name="pause" size={14} />
+                          <span className="sr-only">{t('order.held')}</span>
+                        </span>
+                      )}
                     </span>
+                    <ChairRow n={Math.floor(Math.max(table.seats, 1) / 2)} className={tile.chair} />
+                    {table.order?.waiterName ? (
+                      <span className="flex max-w-full items-center gap-1.5 text-xs text-slate-600">
+                        <span
+                          aria-hidden="true"
+                          className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-bold ${tile.avatar}`}
+                        >
+                          {initials(table.order.waiterName)}
+                        </span>
+                        <span className="truncate">{table.order.waiterName}</span>
+                      </span>
+                    ) : (
+                      <span className="h-5" aria-hidden="true" />
+                    )}
                   </button>
                 );
               })}
@@ -364,7 +385,7 @@ export function FloorPage() {
 
       <section className="space-y-3">
         <div className="flex items-center gap-3">
-          <h2 className="text-base font-semibold text-slate-900">{t('floor.counterTitle')}</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{t('floor.counterTitle')}</h2>
           <span className="chip-mute">{(counter.data ?? []).length}</span>
           <span aria-hidden="true" className="h-px flex-1 bg-slate-200" />
         </div>
