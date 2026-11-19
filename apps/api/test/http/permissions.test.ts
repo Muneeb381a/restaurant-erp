@@ -43,6 +43,13 @@ const ALL_PERMISSIONS = [
   'kitchen.view',
   'kitchen.update',
   'kitchen.serve',
+  'employee.view',
+  'employee.manage',
+  'attendance.view',
+  'attendance.mark',
+  'attendance.clock',
+  'leave.view',
+  'leave.manage',
 ];
 const NOT_MANAGER = ['user.manage', 'tax.manage', 'settings.manage', 'device.manage'];
 
@@ -67,6 +74,7 @@ const GRANTS: Record<RoleCode, string[]> = {
     'khata.collect',
     'kitchen.view',
     'kitchen.serve',
+    'attendance.clock',
   ],
   CAPTAIN: [
     'order.create',
@@ -78,7 +86,15 @@ const GRANTS: Record<RoleCode, string[]> = {
   ],
   KITCHEN: ['menu.availability', 'kitchen.view', 'kitchen.update'],
   STORE: ['stock.manage', 'report.view'],
-  ACCOUNTANT: ['report.view', 'report.financial', 'audit.view', 'expense.manage'],
+  ACCOUNTANT: [
+    'report.view',
+    'report.financial',
+    'audit.view',
+    'expense.manage',
+    'employee.view',
+    'attendance.view',
+    'leave.view',
+  ],
 };
 
 const uuid = (): string => randomUUID();

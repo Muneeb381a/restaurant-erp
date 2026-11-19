@@ -67,15 +67,38 @@ export function sendToKitchen(
     const parents = fresh.filter((l) => parentIds.has(l.id));
     const printable = fresh.filter((l) => !parentIds.has(l.id));
 
+    // A line remembers the station its dish had WHEN IT WAS ADDED. If the station was set up (or changed)
+    // afterwards, that memory is stale: look the dish up again now, so fixing the menu is enough.
+    const stale = printable.filter((l) => !l.station_id);
+    if (stale.length) {
+      const now = await trx
+        .selectFrom('items')
+        .innerJoin('stations', 'stations.id', 'items.station_id')
+        .select(['items.id as item_id', 'items.station_id as station_id'])
+        .where('items.id', 'in', [...new Set(stale.map((l) => l.item_id))])
+        .where('stations.archived_at', 'is', null)
+        .execute();
+      const byItem = new Map(now.map((r) => [r.item_id, r.station_id as string]));
+      for (const l of stale) {
+        const sid = byItem.get(l.item_id);
+        if (!sid) continue;
+        await trx
+          .updateTable('order_items')
+          .set({ station_id: sid })
+          .where('id', '=', l.id)
+          .execute();
+        l.station_id = sid;
+      }
+    }
+
     const missing = printable.filter((l) => !l.station_id);
     if (missing.length) {
+      const names = [...new Set(missing.map((l) => l.name_snapshot))];
       throw new AppError(
         409,
         'STATION_MISSING',
-        'Some items have no kitchen station; assign one in the menu',
-        {
-          items: [...new Set(missing.map((l) => l.name_snapshot))],
-        },
+        `These dishes have no kitchen station: ${names.join(', ')}. Open Admin, Menu, choose the dish and pick its station (Karahi, Grill, ...), then send again.`,
+        { items: names },
       );
     }
 

@@ -864,6 +864,7 @@ export interface Employees {
 
 export interface Attendance {
   branch_id: string;
+  leave_request_id: string | null;
   clock_in: Timestamp | null;
   clock_out: Timestamp | null;
   created_at: Generated<Timestamp>;
@@ -878,6 +879,49 @@ export interface Attendance {
   updated_at: Generated<Timestamp>;
   work_date: DateString;
   worked_minutes: number | null;
+}
+
+export interface LeaveTypes {
+  allow_negative: Generated<boolean>;
+  allowance_half_days: number | null;
+  branch_id: string;
+  code: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  is_active: Generated<boolean>;
+  name: string;
+  name_ur: string | null;
+  paid: Generated<boolean>;
+}
+
+export interface LeaveRequests {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  decided_at: Timestamp | null;
+  decided_by: string | null;
+  decision_note: string | null;
+  employee_id: string;
+  from_date: DateString;
+  half_days: number;
+  id: Generated<string>;
+  is_half_day: Generated<boolean>;
+  leave_type_id: string;
+  reason: string | null;
+  requested_by: string | null;
+  status: Generated<string>;
+  to_date: DateString;
+}
+
+export interface LeaveAdjustments {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  employee_id: string;
+  half_days: number;
+  id: Generated<string>;
+  leave_type_id: string;
+  reason: string;
+  year: number;
 }
 
 export interface Holidays {
@@ -918,6 +962,9 @@ export interface DB {
   user_avatars: UserAvatars;
   item_variants: ItemVariants;
   holidays: Holidays;
+  leave_adjustments: LeaveAdjustments;
+  leave_requests: LeaveRequests;
+  leave_types: LeaveTypes;
   items: Items;
   khata_accounts: KhataAccounts;
   khata_entries: KhataEntries;

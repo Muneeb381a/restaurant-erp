@@ -42,6 +42,7 @@ export const ADMIN_SECTIONS = [
     permission: 'attendance.view',
     group: 'admin.groupStaff',
   },
+  { path: 'leave', label: 'leave.title', permission: 'leave.view', group: 'admin.groupStaff' },
   {
     path: 'clock',
     label: 'hr.clockTitle',

@@ -25,6 +25,17 @@ import {
   updateEmployee,
   type Actor,
 } from './hr.service';
+import {
+  adjustLeave,
+  cancelLeave,
+  createLeaveRequest,
+  createLeaveType,
+  decideLeave,
+  leaveBalances,
+  listLeaveRequests,
+  listLeaveTypes,
+  updateLeaveType,
+} from './leave.service';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const month = z.string().regex(/^\d{4}-\d{2}$/);
@@ -69,6 +80,8 @@ export function hrRouter(ctx: AppContext): Router {
   const manageEmp = [...read, requirePermission(ctx, 'employee.manage')];
   const viewAtt = [...read, requirePermission(ctx, 'attendance.view')];
   const markAtt = [...read, requirePermission(ctx, 'attendance.mark')];
+  const viewLeave = [...read, requirePermission(ctx, 'leave.view')];
+  const manageLeave = [...read, requirePermission(ctx, 'leave.manage')];
   const clockAtt = [...read, requirePermission(ctx, 'attendance.clock')];
   const actor = (req: Request): Actor => ({
     branchId: req.branchId!,
@@ -233,6 +246,144 @@ export function hrRouter(ctx: AppContext): Router {
     asyncHandler(async (req, res) => {
       await removeHoliday(ctx, actor(req), idParam.parse(req.params).id);
       res.status(204).end();
+    }),
+  );
+
+  // ── leave
+  const typeBody = z
+    .object({
+      code: z
+        .string()
+        .trim()
+        .regex(/^[A-Z0-9_]{1,20}$/),
+      name: z.string().trim().min(1).max(60),
+      nameUr: opt(60),
+      paid: z.boolean(),
+      allowanceHalfDays: z.number().int().min(0).max(732).nullable(),
+      allowNegative: z.boolean(),
+      isActive: z.boolean(),
+    })
+    .strict();
+  r.get(
+    '/leave-types',
+    ...viewLeave,
+    asyncHandler(async (req, res) => {
+      res.json({ items: await listLeaveTypes(ctx, req.branchId!) });
+    }),
+  );
+  r.post(
+    '/leave-types',
+    ...manageLeave,
+    asyncHandler(async (req, res) => {
+      const b = typeBody
+        .partial({ paid: true, allowanceHalfDays: true, allowNegative: true, isActive: true })
+        .parse(req.body);
+      res.status(201).json(await createLeaveType(ctx, actor(req), b));
+    }),
+  );
+  r.patch(
+    '/leave-types/:id',
+    ...manageLeave,
+    asyncHandler(async (req, res) => {
+      const b = typeBody.omit({ code: true }).partial().parse(req.body);
+      res.json(await updateLeaveType(ctx, actor(req), idParam.parse(req.params).id, b));
+    }),
+  );
+  r.get(
+    '/leave-balances',
+    ...viewLeave,
+    asyncHandler(async (req, res) => {
+      const q = z
+        .object({
+          year: z.coerce.number().int().min(2000).max(2100),
+          employeeId: z.string().uuid().optional(),
+        })
+        .parse(req.query);
+      res.json(await leaveBalances(ctx, req.branchId!, q.year, q.employeeId));
+    }),
+  );
+  r.post(
+    '/leave-adjustments',
+    ...manageLeave,
+    asyncHandler(async (req, res) => {
+      const b = z
+        .object({
+          employeeId: z.string().uuid(),
+          leaveTypeId: z.string().uuid(),
+          year: z.number().int().min(2000).max(2100),
+          halfDays: z
+            .number()
+            .int()
+            .min(-732)
+            .max(732)
+            .refine((n) => n !== 0),
+          reason: z.string().trim().min(1).max(200),
+        })
+        .strict()
+        .parse(req.body);
+      res.status(201).json(await adjustLeave(ctx, actor(req), b));
+    }),
+  );
+  r.get(
+    '/leave-requests',
+    ...viewLeave,
+    asyncHandler(async (req, res) => {
+      const q = z
+        .object({
+          status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']).optional(),
+          employeeId: z.string().uuid().optional(),
+          from: isoDate.optional(),
+          to: isoDate.optional(),
+        })
+        .parse(req.query);
+      res.json({ items: await listLeaveRequests(ctx, req.branchId!, q) });
+    }),
+  );
+  r.post(
+    '/leave-requests',
+    ...manageLeave,
+    asyncHandler(async (req, res) => {
+      const b = z
+        .object({
+          employeeId: z.string().uuid(),
+          leaveTypeId: z.string().uuid(),
+          from: isoDate,
+          to: isoDate,
+          half: z.boolean().optional(),
+          reason: opt(200),
+          approve: z.boolean().optional(),
+        })
+        .strict()
+        .parse(req.body);
+      res.status(201).json(await createLeaveRequest(ctx, actor(req), b));
+    }),
+  );
+  for (const [path, outcome] of [
+    ['approve', 'APPROVED'],
+    ['reject', 'REJECTED'],
+  ] as const)
+    r.post(
+      `/leave-requests/:id/${path}`,
+      ...manageLeave,
+      asyncHandler(async (req, res) => {
+        const b = z
+          .object({ note: opt(200) })
+          .strict()
+          .parse(req.body ?? {});
+        res.json(
+          await decideLeave(ctx, actor(req), idParam.parse(req.params).id, outcome, b.note ?? null),
+        );
+      }),
+    );
+  r.post(
+    '/leave-requests/:id/cancel',
+    ...manageLeave,
+    asyncHandler(async (req, res) => {
+      const b = z
+        .object({ note: z.string().trim().min(1).max(200) })
+        .strict()
+        .parse(req.body);
+      res.json(await cancelLeave(ctx, actor(req), idParam.parse(req.params).id, b.note));
     }),
   );
 

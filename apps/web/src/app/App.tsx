@@ -71,6 +71,7 @@ const SettingsAdmin = page(() => import('../features/admin/SettingsAdmin'), 'Set
 const EmployeesAdmin = page(() => import('../features/admin/StaffAdmin'), 'EmployeesAdmin');
 const AttendanceAdmin = page(() => import('../features/admin/StaffAdmin'), 'AttendanceAdmin');
 const ClockScreen = page(() => import('../features/admin/StaffAdmin'), 'ClockScreen');
+const LeaveAdmin = page(() => import('../features/admin/LeaveAdmin'), 'LeaveAdmin');
 const SetupAdmin = page(() => import('../features/admin/SetupAdmin'), 'SetupAdmin');
 
 export function App() {
@@ -105,6 +106,7 @@ export function App() {
           <Route path="settings" element={SettingsAdmin} />
           <Route path="employees" element={EmployeesAdmin} />
           <Route path="attendance" element={AttendanceAdmin} />
+          <Route path="leave" element={LeaveAdmin} />
           <Route path="clock" element={ClockScreen} />
           <Route path="setup" element={SetupAdmin} />
         </Route>

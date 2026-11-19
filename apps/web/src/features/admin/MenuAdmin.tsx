@@ -340,6 +340,14 @@ export function MenuAdmin() {
                           ) : (
                             <span className="text-slate-400">–</span>
                           )}
+                          {!item.stationId && item.kind !== 'DEAL' && (
+                            <span
+                              className="chip bg-amber-100 text-amber-800"
+                              title={t('admin.menuPage.noStationHint')}
+                            >
+                              {t('admin.menuPage.noStation')}
+                            </span>
+                          )}
                           {stationCode(item.stationId) && (
                             <span className="inline-flex items-center gap-1 text-xs text-slate-500">
                               <Icon name="flame" size={12} />

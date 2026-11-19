@@ -259,6 +259,29 @@ describe('send to kitchen', () => {
     ).toBe(true);
   });
 
+  it('a dish given its station AFTER it was added to the order is sent to that station (no stale snapshot)', async () => {
+    const late = await mkItem({ name: 'Late Station Karahi' }); // no station yet
+    const o = await newOrder();
+    await add(o.id, late);
+    const first = await send(o.id);
+    expect(first.status).toBe(409);
+    expect(first.body.code).toBe('STATION_MISSING');
+    expect(first.body.items).toEqual(['Late Station Karahi']);
+    expect(first.body.title).toContain('Admin, Menu');
+    // the owner fixes the menu; the order line was added before, but sending looks the dish up again
+    const fix = await api(owner).patch(`/items/${late.id}`, { stationId: S.BBQ });
+    expect(fix.status, JSON.stringify(fix.body)).toBe(200);
+    const second = await send(o.id);
+    expect(second.status, JSON.stringify(second.body)).toBe(201);
+    expect(second.body.kots.map((k: Json) => k.station)).toEqual(['BBQ']);
+    const line = await t.kdb
+      .selectFrom('order_items')
+      .select('station_id')
+      .where('order_id', '=', o.id)
+      .executeTakeFirst();
+    expect(line?.station_id).toBe(S.BBQ);
+  });
+
   it('refuses held, billed or stale-version orders', async () => {
     const o = await newOrder();
     await add(o.id, tikka);

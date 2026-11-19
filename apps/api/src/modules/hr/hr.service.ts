@@ -593,6 +593,12 @@ export function markAttendance(
       .where('work_date', '=', date)
       .forUpdate()
       .executeTakeFirst();
+    if (before?.leave_request_id)
+      throw new AppError(
+        409,
+        'LEAVE_ATTENDANCE_LOCKED',
+        'This day belongs to an approved leave. Cancel the leave first.',
+      );
     const row = await trx
       .insertInto('attendance')
       .values({
@@ -833,6 +839,12 @@ export async function clock(ctx: AppContext, a: Actor, employeeId: string, pin: 
       .where('work_date', '=', today)
       .forUpdate()
       .executeTakeFirst();
+    if (existing?.leave_request_id)
+      throw new AppError(
+        409,
+        'LEAVE_ATTENDANCE_LOCKED',
+        'They are on approved leave today. Ask the manager.',
+      );
     if (existing && existing.clock_out)
       throw new AppError(
         409,
