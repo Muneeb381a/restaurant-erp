@@ -35,6 +35,19 @@ export const ADMIN_SECTIONS = [
   { path: 'costs', label: 'admin.costs', permission: 'expense.manage', group: 'admin.groupStock' },
   { path: 'users', label: 'admin.users', permission: 'user.manage', group: 'admin.groupPeople' },
   { path: 'roles', label: 'admin.roles', permission: 'user.manage', group: 'admin.groupPeople' },
+  { path: 'employees', label: 'hr.staff', permission: 'employee.view', group: 'admin.groupStaff' },
+  {
+    path: 'attendance',
+    label: 'hr.attendance',
+    permission: 'attendance.view',
+    group: 'admin.groupStaff',
+  },
+  {
+    path: 'clock',
+    label: 'hr.clockTitle',
+    permission: 'attendance.clock',
+    group: 'admin.groupStaff',
+  },
   {
     path: 'setup',
     label: 'admin.setup',
@@ -72,6 +85,7 @@ const GROUP_ICON: Record<string, IconName> = {
   'admin.groupMenu': 'book',
   'admin.groupStock': 'box',
   'admin.groupPeople': 'user',
+  'admin.groupStaff': 'clock',
   'admin.groupBusiness': 'sliders',
 };
 

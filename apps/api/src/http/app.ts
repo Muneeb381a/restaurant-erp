@@ -14,6 +14,7 @@ import { billingRouter } from '../modules/billing/billing.routes';
 import { shiftRouter } from '../modules/day/shift.routes';
 import { khataRouter } from '../modules/khata/khata.routes';
 import { inventoryRouter } from '../modules/inventory/inventory.routes';
+import { hrRouter } from '../modules/hr/hr.routes';
 import { reportsRouter } from '../modules/reports/reports.routes';
 import { fiscalRouter } from '../modules/fiscal/fiscal.routes';
 import { taxRouter } from '../modules/tax/tax.routes';
@@ -84,6 +85,7 @@ export function createApp(ctx: AppContext, opts: AppOptions = {}): Express {
   v1.use('/', ordersRouter(ctx)); // /business-days /shifts /floor /orders
   v1.use('/', khataRouter(ctx)); // /khata/accounts…
   v1.use('/', inventoryRouter(ctx)); // /inventory/* /purchases /suppliers /stocktakes /expenses /variants/:id/recipe
+  v1.use('/', hrRouter(ctx)); // /employees /attendance /attendance-clock /holidays
   v1.use('/', setupRouter(ctx)); // /setup/status: what is still missing before selling
   v1.use('/', reportsRouter(ctx)); // /reports/dashboard
   v1.use('/', fiscalRouter(ctx)); // /fiscal/summary /fiscal/jobs /fiscal/reconciliation

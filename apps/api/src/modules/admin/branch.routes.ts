@@ -52,6 +52,9 @@ export const SETTING_SCHEMAS: Record<string, z.ZodType> = {
     .regex(/^https?:\/\//),
   /** Customer receipt language: English text mode, or Urdu as a bitmap. */
   'receipt.language': z.enum(['en', 'ur']),
+  /** Staff: minutes after the shift start before someone counts as late; minutes after the end before overtime starts. */
+  'hr.late_grace_minutes': z.number().int().min(0).max(240),
+  'hr.overtime_after_minutes': z.number().int().min(0).max(240),
 };
 
 export function branchRouter(ctx: AppContext): Router {

@@ -831,8 +831,65 @@ export interface Users {
   username: string;
 }
 
+export interface Employees {
+  address: string | null;
+  base_pay_paisa: Generated<Int8>;
+  branch_id: string;
+  cnic: string | null;
+  code: string;
+  created_at: Generated<Timestamp>;
+  department: Generated<string>;
+  designation: Generated<string>;
+  emergency_contact: string | null;
+  full_name: string;
+  full_name_ur: string | null;
+  id: Generated<string>;
+  join_date: DateString;
+  left_date: DateString | null;
+  notes: string | null;
+  pay_frequency: Generated<string>;
+  pay_type: Generated<string>;
+  payout_account: string | null;
+  payout_method: string | null;
+  phone: string | null;
+  pin_failed: Generated<number>;
+  pin_hash: string | null;
+  pin_locked_until: Timestamp | null;
+  shift_end: string | null;
+  shift_start: string | null;
+  status: Generated<string>;
+  user_id: string | null;
+  weekly_off: Generated<number[]>;
+}
+
+export interface Attendance {
+  branch_id: string;
+  clock_in: Timestamp | null;
+  clock_out: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  employee_id: string;
+  id: Generated<string>;
+  late_minutes: Generated<number>;
+  marked_by: string | null;
+  note: string | null;
+  overtime_minutes: Generated<number>;
+  source: Generated<string>;
+  status: string;
+  updated_at: Generated<Timestamp>;
+  work_date: DateString;
+  worked_minutes: number | null;
+}
+
+export interface Holidays {
+  branch_id: string;
+  holiday_date: DateString;
+  id: Generated<string>;
+  name: string;
+}
+
 export interface DB {
   areas: Areas;
+  attendance: Attendance;
   audit_log: AuditLog;
   bill_lines: BillLines;
   bills: Bills;
@@ -850,6 +907,7 @@ export interface DB {
   devices: Devices;
   dining_tables: DiningTables;
   doc_counters: DocCounters;
+  employees: Employees;
   expenses: Expenses;
   fiscal_jobs: FiscalJobs;
   ingredients: Ingredients;
@@ -859,6 +917,7 @@ export interface DB {
   branch_logo: BranchLogo;
   user_avatars: UserAvatars;
   item_variants: ItemVariants;
+  holidays: Holidays;
   items: Items;
   khata_accounts: KhataAccounts;
   khata_entries: KhataEntries;

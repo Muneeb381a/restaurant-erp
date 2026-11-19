@@ -78,7 +78,7 @@ describe('phase 2 migration on a database that already has data', () => {
     await pay(db.pool, b, billId, 1160, 'pre-existing');
 
     expect(await migrateUp(db.url, 'core')).toEqual([]); // re-run is a no-op
-    expect(await migrateUp(db.url, 'phase2')).toEqual(['0001_inventory_finance', '0002_inventory_app']);
+    expect(await migrateUp(db.url, 'phase2')).toEqual(['0001_inventory_finance', '0002_inventory_app', '0003_hr_employees_attendance']);
     expect(await migrateUp(db.url, 'phase2')).toEqual([]);
 
     const { rows } = await db.pool.query(`SELECT count(*)::int AS n FROM payments`);

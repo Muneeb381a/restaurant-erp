@@ -68,6 +68,9 @@ const TaxAdmin = page(() => import('../features/admin/TaxAdmin'), 'TaxAdmin');
 const FiscalAdmin = page(() => import('../features/admin/FiscalAdmin'), 'FiscalAdmin');
 const RolesAdmin = page(() => import('../features/admin/RolesAdmin'), 'RolesAdmin');
 const SettingsAdmin = page(() => import('../features/admin/SettingsAdmin'), 'SettingsAdmin');
+const EmployeesAdmin = page(() => import('../features/admin/StaffAdmin'), 'EmployeesAdmin');
+const AttendanceAdmin = page(() => import('../features/admin/StaffAdmin'), 'AttendanceAdmin');
+const ClockScreen = page(() => import('../features/admin/StaffAdmin'), 'ClockScreen');
 const SetupAdmin = page(() => import('../features/admin/SetupAdmin'), 'SetupAdmin');
 
 export function App() {
@@ -100,6 +103,9 @@ export function App() {
           <Route path="fiscal" element={FiscalAdmin} />
           <Route path="roles" element={RolesAdmin} />
           <Route path="settings" element={SettingsAdmin} />
+          <Route path="employees" element={EmployeesAdmin} />
+          <Route path="attendance" element={AttendanceAdmin} />
+          <Route path="clock" element={ClockScreen} />
           <Route path="setup" element={SetupAdmin} />
         </Route>
       </Route>
