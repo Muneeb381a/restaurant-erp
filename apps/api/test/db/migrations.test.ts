@@ -37,7 +37,7 @@ describe('0002_auth_rbac on a database that already has data (upgrade path)', ()
     const billId = await createPreBilledBill(db.pool, b, orderId, 1);
     await pay(db.pool, b, billId, 1160, 'before-0002');
 
-    expect(await migrateUp(db.url, 'core')).toEqual(['0002_auth_rbac', '0003_menu', '0004_orders', '0005_kitchen_printing', '0006_billing', '0007_shifts_cash', '0008_khata', '0009_credit_notes', '0010_urdu_receipt', '0011_tax', '0012_fiscal', '0013_kitchen_display', '0014_guest_menu', '0015_must_change_password', '0016_branding', '0017_order_command_keys', '0018_archive', '0019_archive_config']);
+    expect(await migrateUp(db.url, 'core')).toEqual(['0002_auth_rbac', '0003_menu', '0004_orders', '0005_kitchen_printing', '0006_billing', '0007_shifts_cash', '0008_khata', '0009_credit_notes', '0010_urdu_receipt', '0011_tax', '0012_fiscal', '0013_kitchen_display', '0014_guest_menu', '0015_must_change_password', '0016_branding', '0017_order_command_keys', '0018_archive', '0019_archive_config', '0020_print_agents']);
     expect(await migrateUp(db.url, 'core')).toEqual([]);
 
     const user = await db.pool.query(`SELECT failed_attempts, locked_until, last_failed_at FROM users WHERE id = $1`, [b.userId]);
@@ -128,7 +128,7 @@ describe('0003_menu on a database that already has menu data', () => {
       [variant, b.priceListId],
     );
 
-    expect(await migrateUp(db.url, 'core')).toEqual(['0003_menu', '0004_orders', '0005_kitchen_printing', '0006_billing', '0007_shifts_cash', '0008_khata', '0009_credit_notes', '0010_urdu_receipt', '0011_tax', '0012_fiscal', '0013_kitchen_display', '0014_guest_menu', '0015_must_change_password', '0016_branding', '0017_order_command_keys', '0018_archive', '0019_archive_config']);
+    expect(await migrateUp(db.url, 'core')).toEqual(['0003_menu', '0004_orders', '0005_kitchen_printing', '0006_billing', '0007_shifts_cash', '0008_khata', '0009_credit_notes', '0010_urdu_receipt', '0011_tax', '0012_fiscal', '0013_kitchen_display', '0014_guest_menu', '0015_must_change_password', '0016_branding', '0017_order_command_keys', '0018_archive', '0019_archive_config', '0020_print_agents']);
 
     const row = (await db.pool.query(`SELECT name_ur, search_terms FROM items WHERE id=$1`, [item])).rows[0];
     expect(row).toEqual({ name_ur: 'پرانی کڑاہی', search_terms: null });

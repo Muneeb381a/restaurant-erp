@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
-import { mode } from '../../lib/tenant';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
@@ -141,8 +140,7 @@ export function PayPage() {
       setMessage(null);
       // no receipt printer is set up (a cloud shop, or none yet): the receipt opens for printing by
       // itself, so nobody has to remember a button. On a computer started with auto-print it prints at once.
-      if ((out.receipts === 0 || mode.kind === 'tenant') && !out.replayed)
-        browserPrint.mutate(undefined);
+      if (out.receipts === 0 && !out.replayed) browserPrint.mutate(undefined);
     },
     onError: (e) => {
       if (e instanceof ApiError && e.code === 'KHATA_LIMIT_EXCEEDED')
@@ -187,8 +185,6 @@ export function PayPage() {
   });
   const reprint = useMutation({
     mutationFn: async () => {
-      // in the cloud the browser prints: no server queue to a printer nobody can reach
-      if (mode.kind === 'tenant') return 'browser' as const;
       try {
         await api(`/bills/${b!.id}/reprint`, { method: 'POST', body: { reason: 'Customer copy' } });
         return 'printer' as const;

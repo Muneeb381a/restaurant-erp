@@ -83,7 +83,7 @@ export async function enqueuePrintJob(q: Queryable, j: NewPrintJob): Promise<boo
 }
 
 export async function stationPrinters(q: Queryable, branchId: string, stationId: string) {
-  return q
+  const chosen = await q
     .selectFrom('station_printers')
     .innerJoin('printers', 'printers.id', 'station_printers.printer_id')
     .select(['printers.id as id', 'printers.paper_mm as paper_mm'])
@@ -92,6 +92,18 @@ export async function stationPrinters(q: Queryable, branchId: string, stationId:
     .where('printers.is_active', '=', true)
     .where('printers.kind', '=', 'KOT')
     .orderBy('printers.name')
+    .execute();
+  if (chosen.length > 0) return chosen;
+  // nothing chosen for this station: the print helper's kitchen printer takes it, so nobody has to map stations
+  return q
+    .selectFrom('printers')
+    .select(['id', 'paper_mm'])
+    .where('branch_id', '=', branchId)
+    .where('is_active', '=', true)
+    .where('archived_at', 'is', null)
+    .where('kind', '=', 'KOT')
+    .where('conn_type', '=', 'AGENT')
+    .orderBy('name')
     .execute();
 }
 
@@ -143,17 +155,19 @@ export async function processPrintJobs(
 
   const due = await ctx.db
     .selectFrom('print_jobs')
-    .select('printer_id')
+    .innerJoin('printers', 'printers.id', 'print_jobs.printer_id')
+    .select('print_jobs.printer_id as printer_id')
     .distinct()
-    .where('status', 'in', ['PENDING', 'FAILED'])
-    .where('next_attempt_at', '<=', now)
+    .where('printers.conn_type', '!=', 'AGENT') // those are fetched by the print helper (agent.service)
+    .where('print_jobs.status', 'in', ['PENDING', 'FAILED'])
+    .where('print_jobs.next_attempt_at', '<=', now)
     .execute();
 
   await Promise.all(due.map((d) => drainPrinter(ctx, transport, d.printer_id, result)));
   return result;
 }
 
-async function claimHead(ctx: AppContext, printerId: string, now: Date) {
+export async function claimHead(ctx: AppContext, printerId: string, now: Date) {
   return withTx(ctx.db, async (trx) => {
     const lock = await sql<{
       ok: boolean;

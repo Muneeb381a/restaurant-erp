@@ -827,11 +827,21 @@ async function queueReceipts(
 ): Promise<number> {
   const printers = await q
     .selectFrom('printers')
-    .select(['id', 'paper_mm'])
-    .where('branch_id', '=', a.branchId)
-    .where('kind', '=', 'RECEIPT')
-    .where('is_active', '=', true)
-    .orderBy('name')
+    .leftJoin('print_agents', 'print_agents.id', 'printers.agent_id')
+    .select(['printers.id as id', 'printers.paper_mm as paper_mm'])
+    .where('printers.branch_id', '=', a.branchId)
+    .where('printers.kind', '=', 'RECEIPT')
+    .where('printers.is_active', '=', true)
+    .where('printers.archived_at', 'is', null)
+    // a helper's printer counts only while the helper is online: otherwise nothing would ever print
+    // and the till would not know to open the browser's print dialog instead
+    .where((eb) =>
+      eb.or([
+        eb('printers.conn_type', '!=', 'AGENT'),
+        eb('print_agents.last_seen_at', '>', new Date(at.getTime() - 90_000)),
+      ]),
+    )
+    .orderBy('printers.name')
     .execute();
   if (printers.length === 0) return 0;
   const { doc } = await receiptDoc(q, a.branchId, bill, duplicate);

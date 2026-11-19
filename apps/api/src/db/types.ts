@@ -576,6 +576,8 @@ export interface PriceLists {
 }
 
 export interface Printers {
+  agent_id: string | null;
+  agent_printer: string | null;
   archived_at: Timestamp | null;
   branch_id: string;
   conn_type: string;
@@ -589,6 +591,18 @@ export interface Printers {
   name: string;
   paper_mm: Generated<number>;
   port: Generated<number | null>;
+}
+
+export interface PrintAgents {
+  branch_id: string;
+  computer: string | null;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  key_hash: string;
+  last_seen_at: Timestamp | null;
+  name: string;
+  printers_seen: Generated<Json>;
+  revoked_at: Timestamp | null;
 }
 
 export interface PrintJobs {
@@ -862,6 +876,7 @@ export interface DB {
   pgmigrations: Pgmigrations;
   pgmigrations_phase2: PgmigrationsPhase2;
   price_lists: PriceLists;
+  print_agents: PrintAgents;
   print_jobs: PrintJobs;
   printers: Printers;
   purchase_lines: PurchaseLines;

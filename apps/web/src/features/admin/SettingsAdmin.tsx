@@ -5,7 +5,6 @@ import { Icon, type IconName } from '../../components/Icon';
 import { api } from '../../lib/api';
 import { parseRs } from '../../lib/money';
 import { PrintHelp } from './PrintHelp';
-import { mode } from '../../lib/tenant';
 import { LogoControls } from './LogoControls';
 import { ErrorText, Field, PageHead, Toggle } from './ui';
 
@@ -130,11 +129,9 @@ export function SettingsAdmin() {
       )}
       <ErrorText error={saveBranch.error ?? setSetting.error} />
 
-      {mode.kind === 'tenant' && (
-        <Section icon="printer" title={t('printHelp.title')} hint={t('printHelp.hint')}>
-          <PrintHelp />
-        </Section>
-      )}
+      <Section icon="printer" title={t('printHelp.title')} hint={t('printHelp.hint')}>
+        <PrintHelp />
+      </Section>
 
       <Section icon="receipt" title={t('logo.title')} hint={t('logo.sectionHint')}>
         <LogoControls version={branch.data?.logoVersion ?? null} />

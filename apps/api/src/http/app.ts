@@ -4,6 +4,7 @@ import { sql } from 'kysely';
 import { avatarRouter, logoRouter } from '../modules/admin/branding.routes';
 import { branchRouter } from '../modules/admin/branch.routes';
 import { configRouters, stationPrintersRouter } from '../modules/admin/config.routes';
+import { printAgentRouter, printAgentsAdminRouter } from '../modules/printing/agent.routes';
 import { devicesRouter } from '../modules/admin/devices.routes';
 import { rolesRouter } from '../modules/admin/roles.routes';
 import { usersRouter } from '../modules/admin/users.routes';
@@ -75,6 +76,8 @@ export function createApp(ctx: AppContext, opts: AppOptions = {}): Express {
   v1.use('/users', avatarRouter(ctx)); // /users/me/avatar and /users/:id/avatar before the user CRUD
   v1.use('/users', usersRouter(ctx));
   v1.use('/devices', devicesRouter(ctx));
+  v1.use('/print-agent', printAgentRouter(ctx)); // the print helper program (its own key)
+  v1.use('/', printAgentsAdminRouter(ctx)); // /print-agents: set up, status, remove
   v1.use('/', kitchenRouter(ctx)); // before the CRUD routers: owns /printers/health
   v1.use('/stations', stationPrintersRouter(ctx)); // before CRUD: owns /:id/printers
   for (const [path, router] of Object.entries(configRouters(ctx))) v1.use(path, router);
