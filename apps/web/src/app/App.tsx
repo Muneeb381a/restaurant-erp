@@ -64,6 +64,8 @@ const AttendanceAdmin = page(() => import('../features/admin/StaffAdmin'), 'Atte
 const ClockScreen = page(() => import('../features/admin/StaffAdmin'), 'ClockScreen');
 const LeaveAdmin = page(() => import('../features/admin/LeaveAdmin'), 'LeaveAdmin');
 const PayrollAdmin = page(() => import('../features/admin/PayrollAdmin'), 'PayrollAdmin');
+const DuesAdmin = page(() => import('../features/admin/DuesAdmin'), 'DuesAdmin');
+const HrOverview = page(() => import('../features/admin/HrOverview'), 'HrOverview');
 const SetupAdmin = page(() => import('../features/admin/SetupAdmin'), 'SetupAdmin');
 
 export function App() {
@@ -96,6 +98,8 @@ export function App() {
           <Route path="fiscal" element={FiscalAdmin} />
           <Route path="roles" element={RolesAdmin} />
           <Route path="settings" element={SettingsAdmin} />
+          <Route path="overview" element={HrOverview} />
+          <Route path="dues" element={DuesAdmin} />
           <Route path="employees" element={EmployeesAdmin} />
           <Route path="attendance" element={AttendanceAdmin} />
           <Route path="leave" element={LeaveAdmin} />

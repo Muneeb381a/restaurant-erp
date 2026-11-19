@@ -7,6 +7,8 @@ import { idParam } from '../admin/crud';
 import { authenticate, requirePermission, resolveBranch } from '../auth/middleware';
 import type { Actor as OrdersActor } from '../orders/orders.service';
 import type { Actor } from './hr.service';
+import { createDue, listDues, setDuePaused, writeOffDue } from './dues.service';
+import { hrOverview } from './overview.service';
 import {
   addManualLine,
   addPayItem,
@@ -199,6 +201,86 @@ export function payrollRouter(ctx: AppContext): Router {
       };
       const out = await paySlip(ctx, a, idParam.parse(req.params).id, b, key(req));
       res.status(out.replayed ? 200 : 201).json(out);
+    }),
+  );
+
+  // ── advances, loans and fines owed by staff (recovered from pay)
+  r.get(
+    '/staff-dues',
+    ...view,
+    asyncHandler(async (req, res) => {
+      const q = z
+        .object({
+          employeeId: z.string().uuid().optional(),
+          open: z.enum(['true', 'false']).optional(),
+        })
+        .parse(req.query);
+      res.json({
+        items: await listDues(ctx, req.branchId!, {
+          employeeId: q.employeeId,
+          open: q.open === 'true',
+        }),
+      });
+    }),
+  );
+  r.post(
+    '/staff-dues',
+    ...manage,
+    asyncHandler(async (req, res) => {
+      const b = z
+        .object({
+          employeeId: z.string().uuid(),
+          kind: z.enum(['ADVANCE', 'LOAN', 'FINE']),
+          amountPaisa: paisa,
+          installmentPaisa: paisa.optional(),
+          reason: z.string().trim().min(1).max(120),
+          paidFrom: z.enum(['DRAWER_CASH', 'OWNER_CASH', 'BANK']).optional(),
+        })
+        .strict()
+        .parse(req.body);
+      const a: OrdersActor = {
+        branchId: req.branchId!,
+        userId: req.principal!.userId,
+        deviceId: req.principal!.deviceId,
+        ip: req.ip,
+        permissions: await ctx.permissions.get(req.principal!.roleId),
+      };
+      const out = await createDue(ctx, a, b, key(req));
+      res.status(out.replayed ? 200 : 201).json(out);
+    }),
+  );
+  r.patch(
+    '/staff-dues/:id',
+    ...manage,
+    asyncHandler(async (req, res) => {
+      const b = z.object({ paused: z.boolean() }).strict().parse(req.body);
+      await setDuePaused(ctx, actor(req), idParam.parse(req.params).id, b.paused);
+      res.status(204).end();
+    }),
+  );
+  r.post(
+    '/staff-dues/:id/write-off',
+    ...approve,
+    asyncHandler(async (req, res) => {
+      const b = z
+        .object({ reason: z.string().trim().min(1).max(200) })
+        .strict()
+        .parse(req.body);
+      res.json(await writeOffDue(ctx, actor(req), idParam.parse(req.params).id, b.reason));
+    }),
+  );
+
+  // ── the HR overview: who is here, attendance of the month, what staff cost
+  r.get(
+    '/hr/overview',
+    ...read,
+    requirePermission(ctx, 'employee.view'),
+    asyncHandler(async (req, res) => {
+      const q = z
+        .object({ date: isoDate, month: z.string().regex(/^\d{4}-\d{2}$/) })
+        .parse(req.query);
+      const perms = await ctx.permissions.get(req.principal!.roleId);
+      res.json(await hrOverview(ctx, req.branchId!, q, perms.has('payroll.view')));
     }),
   );
 

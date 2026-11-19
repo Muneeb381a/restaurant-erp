@@ -10,6 +10,8 @@ import {
   slipTotals,
   tallyDays,
   type AttendanceStatus,
+  dueBalance,
+  recoveryAmount,
   type DayFacts,
   type PayrollSettings,
   type SlipLine,
@@ -189,7 +191,7 @@ function datesOf(from: string, to: string): string[] {
 }
 
 interface Built {
-  lines: (SlipLine & { source: 'COMPUTED' | 'ITEM' })[];
+  lines: (SlipLine & { source: 'COMPUTED' | 'ITEM' | 'RECOVERY'; dueId?: string })[];
   tally: Record<string, number>;
   workedMinutes: number;
   lateCount: number;
@@ -276,6 +278,45 @@ async function buildSlip(
       amountPaisa: it.amount_paisa,
       source: 'ITEM',
     });
+  // money the person owes (advance, loan, fine): the agreed instalment, never more than is owed or than the pay left
+  const dues = await q
+    .selectFrom('staff_dues')
+    .select(['id', 'kind', 'reason', 'installment_paisa', 'paused', 'closed_at'])
+    .where('employee_id', '=', emp.id)
+    .where('closed_at', 'is', null)
+    .orderBy('created_at')
+    .execute();
+  for (const d of dues) {
+    const ents = await q
+      .selectFrom('staff_due_entries')
+      .select(['kind', 'amount_paisa'])
+      .where('due_id', '=', d.id)
+      .execute();
+    const balance = dueBalance(
+      ents.map((e) => ({
+        kind: e.kind as 'DISBURSE' | 'FINE' | 'RECOVERY' | 'WRITE_OFF',
+        amountPaisa: e.amount_paisa,
+      })),
+    );
+    const net = slipTotals(lines).netPaisa;
+    const take = recoveryAmount({
+      balancePaisa: balance,
+      installmentPaisa: d.installment_paisa,
+      netBeforePaisa: net,
+      paused: d.paused,
+      closed: d.closed_at !== null,
+    });
+    if (take > 0)
+      lines.push({
+        kind: 'DEDUCTION',
+        code: 'RECOVERY',
+        label: `${d.kind === 'FINE' ? 'Fine' : d.kind === 'LOAN' ? 'Loan' : 'Advance'}: ${d.reason}`,
+        detail: `still owed after this: ${((balance - take) / 100).toLocaleString('en-US')} Rs`,
+        amountPaisa: take,
+        source: 'RECOVERY',
+        dueId: d.id,
+      });
+  }
   void branchId;
   return {
     lines,
@@ -322,6 +363,7 @@ async function insertLines(
         detail: l.detail ?? null,
         amount_paisa: l.amountPaisa,
         source: l.source,
+        due_id: l.dueId ?? null,
         sort_no: n++,
       })
       .execute();
@@ -534,7 +576,7 @@ async function recalc(
     await trx
       .deleteFrom('payslip_lines')
       .where('payslip_id', '=', s.id)
-      .where('source', 'in', ['COMPUTED', 'ITEM'])
+      .where('source', 'in', ['COMPUTED', 'ITEM', 'RECOVERY'])
       .execute();
     const manual = await trx
       .selectFrom('payslip_lines')
@@ -685,6 +727,13 @@ export function approveRun(ctx: AppContext, a: Actor, id: string) {
   return withTx(ctx.db, async (trx) => {
     const run = await lockRun(trx, a.branchId, id);
     draftOnly(run.status);
+    // no recovery may change while this approval reads the balances
+    await trx
+      .selectFrom('staff_dues')
+      .select('id')
+      .where('branch_id', '=', a.branchId)
+      .forUpdate()
+      .execute();
     await recalc(trx, a.branchId, run);
     const slips = await trx
       .selectFrom('payslips as s')
@@ -734,6 +783,26 @@ export function approveRun(ctx: AppContext, a: Actor, id: string) {
         { problems },
       );
     const totals = slips.reduce((n, s) => n + s.net_paisa, 0);
+    // the recoveries on these payslips become ledger entries now: once per payslip, never again
+    const recoveries = await trx
+      .selectFrom('payslip_lines as l')
+      .innerJoin('payslips as s', 's.id', 'l.payslip_id')
+      .select(['l.due_id', 'l.amount_paisa', 'l.label', 's.id as slip_id'])
+      .where('s.run_id', '=', id)
+      .where('l.source', '=', 'RECOVERY')
+      .execute();
+    for (const r of recoveries)
+      await trx
+        .insertInto('staff_due_entries')
+        .values({
+          due_id: r.due_id!,
+          kind: 'RECOVERY',
+          amount_paisa: r.amount_paisa,
+          payslip_id: r.slip_id,
+          note: r.label,
+          created_by: a.userId,
+        })
+        .execute();
     await trx
       .updateTable('payroll_runs')
       .set({ status: 'APPROVED', approved_by: a.userId, approved_at: ctx.clock.now() })
@@ -744,7 +813,13 @@ export function approveRun(ctx: AppContext, a: Actor, id: string) {
       action: 'PAYROLL_RUN_APPROVE',
       entity: 'payroll_run',
       entityId: id,
-      after: { from: run.period_from, to: run.period_to, people: slips.length, netPaisa: totals },
+      after: {
+        from: run.period_from,
+        to: run.period_to,
+        people: slips.length,
+        netPaisa: totals,
+        recoveredPaisa: recoveries.reduce((n, r) => n + r.amount_paisa, 0),
+      },
     });
     return { id, people: slips.length, netPaisa: totals };
   });

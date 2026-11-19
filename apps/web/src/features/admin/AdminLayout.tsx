@@ -36,6 +36,12 @@ export const ADMIN_SECTIONS = [
   { path: 'costs', label: 'admin.costs', permission: 'expense.manage', group: 'admin.groupStock' },
   { path: 'users', label: 'admin.users', permission: 'user.manage', group: 'admin.groupPeople' },
   { path: 'roles', label: 'admin.roles', permission: 'user.manage', group: 'admin.groupPeople' },
+  {
+    path: 'overview',
+    label: 'overview.title',
+    permission: 'employee.view',
+    group: 'admin.groupStaff',
+  },
   { path: 'employees', label: 'hr.staff', permission: 'employee.view', group: 'admin.groupStaff' },
   {
     path: 'attendance',
@@ -44,6 +50,7 @@ export const ADMIN_SECTIONS = [
     group: 'admin.groupStaff',
   },
   { path: 'leave', label: 'leave.title', permission: 'leave.view', group: 'admin.groupStaff' },
+  { path: 'dues', label: 'dues.title', permission: 'payroll.view', group: 'admin.groupStaff' },
   {
     path: 'payroll',
     label: 'payroll.title',

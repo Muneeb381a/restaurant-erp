@@ -975,6 +975,7 @@ export interface PayslipLines {
   code: string;
   created_by: string | null;
   detail: string | null;
+  due_id: string | null;
   id: Generated<string>;
   kind: string;
   label: string;
@@ -994,6 +995,33 @@ export interface PayrollPayments {
   paid_by: string;
   paid_from: string;
   payslip_id: string;
+}
+
+export interface StaffDues {
+  branch_id: string;
+  closed_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  employee_id: string;
+  expense_id: string | null;
+  id: Generated<string>;
+  idempotency_key: string;
+  installment_paisa: Generated<Int8>;
+  kind: string;
+  paused: Generated<boolean>;
+  principal_paisa: Int8;
+  reason: string;
+}
+
+export interface StaffDueEntries {
+  amount_paisa: Int8;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  due_id: string;
+  id: Generated<string>;
+  kind: string;
+  note: string | null;
+  payslip_id: string | null;
 }
 
 export interface Holidays {
@@ -1034,6 +1062,8 @@ export interface DB {
   user_avatars: UserAvatars;
   item_variants: ItemVariants;
   holidays: Holidays;
+  staff_dues: StaffDues;
+  staff_due_entries: StaffDueEntries;
   employee_pay_items: EmployeePayItems;
   payroll_payments: PayrollPayments;
   payroll_runs: PayrollRuns;
