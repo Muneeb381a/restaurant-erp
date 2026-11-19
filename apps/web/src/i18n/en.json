@@ -368,7 +368,7 @@
     "setup": "Setup",
     "delete": "Delete",
     "deleteTitle": "Delete {{name}}?",
-    "deleteBody": "This cannot be undone. Something that was already used in orders (a table, a dish, a category) cannot be deleted: switch it off instead.",
+    "deleteBody": "This removes it from your shop for good and cannot be undone. Bills that already used it keep its name, so your records stay complete.",
     "payments": "Payments"
   },
   "order": {

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import type { Kysely } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 import { z } from 'zod';
 import { asyncHandler } from '../../http/async-handler';
 import type { AppContext } from '../../http/context';
@@ -22,6 +22,14 @@ export interface CrudOptions {
   orderBy: string[];
   /** Allow DELETE of a row that nothing refers to. A referenced row answers 409 IN_USE (switch it off). */
   deletable?: boolean;
+  /**
+   * Rows that history points at are ARCHIVED instead of refused (the table needs `is_active` and
+   * `archived_at`): they are switched off and hidden for good. `liveCheck` throws when the row is in use
+   * right now (for a table: an open order), which no archive may hide.
+   */
+  archivable?: {
+    liveCheck: (trx: Kysely<Record<string, Record<string, unknown>>>, id: string) => Promise<void>;
+  };
 }
 
 /**
@@ -43,6 +51,7 @@ export function crudRouter(ctx: AppContext, o: CrudOptions): Router {
     ...read,
     asyncHandler(async (req, res) => {
       let q = db.selectFrom(o.table).selectAll().where('branch_id', '=', req.branchId!);
+      if (o.archivable) q = q.where('archived_at', 'is', null); // archived rows are gone from every list
       for (const col of o.orderBy) q = q.orderBy(col);
       res.json({ items: await q.execute() });
     }),
@@ -149,19 +158,39 @@ export function crudRouter(ctx: AppContext, o: CrudOptions): Router {
             .forUpdate()
             .executeTakeFirst();
           if (!before) throw new AppError(404, 'NOT_FOUND', `${o.entity} not found`);
-          await orInUse(`This ${o.entity.replace('_', ' ')}`, () =>
-            t.deleteFrom(o.table).where('id', '=', id).execute(),
-          );
+          if (o.archivable) await o.archivable.liveCheck(t, id);
+          let archived = false;
+          if (o.archivable) {
+            // try the real delete; if history points at the row, archive it instead
+            await sql`savepoint try_delete`.execute(trx);
+            try {
+              await t.deleteFrom(o.table).where('id', '=', id).execute();
+            } catch (e) {
+              if ((e as { code?: string }).code !== '23503') throw e;
+              await sql`rollback to savepoint try_delete`.execute(trx);
+              await t
+                .updateTable(o.table)
+                .set({ is_active: false, archived_at: new Date() })
+                .where('id', '=', id)
+                .execute();
+              archived = true;
+            }
+          } else {
+            await orInUse(`This ${o.entity.replace('_', ' ')}`, () =>
+              t.deleteFrom(o.table).where('id', '=', id).execute(),
+            );
+          }
           await writeAudit(trx, {
             branchId: req.branchId,
             userId: req.principal!.userId,
             deviceId: req.principal!.deviceId,
-            action: `${o.entity.toUpperCase()}_DELETE`,
+            action: `${o.entity.toUpperCase()}_${archived ? 'ARCHIVE' : 'DELETE'}`,
             entity: o.entity,
             entityId: id,
             before,
             ip: req.ip,
           });
+          res.setHeader('X-Archived', String(archived));
         });
         res.status(204).end();
       }),

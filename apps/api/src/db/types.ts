@@ -243,6 +243,7 @@ export interface Devices {
 }
 
 export interface DiningTables {
+  archived_at: Timestamp | null;
   area_id: string | null;
   branch_id: string;
   code: string;
@@ -324,6 +325,7 @@ export interface ItemPrices {
 }
 
 export interface Items {
+  archived_at: Timestamp | null;
   allergens: Generated<string[]>;
   branch_id: string;
   category_id: string | null;
@@ -370,6 +372,7 @@ export interface ItemImages {
 }
 
 export interface ItemVariants {
+  archived_at: Timestamp | null;
   id: Generated<string>;
   is_active: Generated<boolean>;
   is_default: Generated<boolean>;

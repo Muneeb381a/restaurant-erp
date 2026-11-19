@@ -43,7 +43,41 @@ afterAll(async () => {
   await t.stop();
 });
 
+/** An order needs its current version to be cancelled (If-Match). */
+const cancelOrder = async (id: string): Promise<number> => {
+  const version = (await api(owner).get(`/orders/${id}`)).body.version;
+  return (
+    await api(owner)
+      .post(`/orders/${id}/cancel`, { reason: 'test' })
+      .set('If-Match', String(version))
+  ).status;
+};
+
+const audit = (action: string, entityId?: string) => {
+  let q = t.kdb.selectFrom('audit_log').selectAll().where('action', '=', action).orderBy('id');
+  if (entityId) q = q.where('entity_id', '=', entityId);
+  return q.execute();
+};
+
 describe('tables and areas', () => {
+  it('a table that had orders is archived: gone from the lists, its code free again; an open order blocks it', async () => {
+    const table = (await api(owner).post('/tables', { code: 'Q1', seats: 2 })).body;
+    const o = (await api(captain).post('/orders', { type: 'DINE_IN', tableId: table.id })).body;
+    const open = await api(owner).delete(`/tables/${table.id}`);
+    expect(open.status).toBe(409);
+    expect(open.body.title).toMatch(/open order/);
+
+    expect(await cancelOrder(o.id)).toBe(200);
+    const gone = await api(owner).delete(`/tables/${table.id}`);
+    expect(gone.status).toBe(204);
+    expect(gone.headers['x-archived']).toBe('true');
+    const list = (await api(owner).get('/tables')).body.items as { id: string }[];
+    expect(list.some((x) => x.id === table.id)).toBe(false);
+    // the code can be used again
+    expect((await api(owner).post('/tables', { code: 'Q1', seats: 4 })).status).toBe(201);
+    expect((await audit('DINING_TABLE_ARCHIVE', table.id)).length).toBe(1);
+  });
+
   it('an unused table and an empty area can be deleted, and it is audited', async () => {
     const area = (await api(owner).post('/areas', { name: 'Garden' })).body;
     const table = (await api(owner).post('/tables', { code: 'G1', seats: 4, area_id: area.id }))
@@ -66,7 +100,7 @@ describe('tables and areas', () => {
     expect(log.map((e: Json) => e.action).sort()).toEqual(['AREA_DELETE', 'DINING_TABLE_DELETE']);
   });
 
-  it('a table that has had an order stays: it is switched off instead', async () => {
+  it('a table with an open order cannot be deleted, but can still be switched off', async () => {
     const table = (await api(owner).post('/tables', { code: 'U1', seats: 2 })).body;
     const d = await dish('Chai');
     const o = (await api(captain).post('/orders', { type: 'DINE_IN', tableId: table.id })).body;
@@ -76,7 +110,7 @@ describe('tables and areas', () => {
     const res = await api(owner).delete(`/tables/${table.id}`);
     expect(res.status).toBe(409);
     expect(res.body.code).toBe('IN_USE');
-    expect(res.body.title ?? res.body.detail ?? '').toMatch(/Switch it off/i);
+    expect(res.body.title ?? res.body.detail ?? '').toMatch(/open order/i);
     expect((await api(owner).get(`/tables/${table.id}`)).status).toBe(200);
     // …and switching it off still works
     const off = await api(owner).patch(`/tables/${table.id}`, { is_active: false });
@@ -199,13 +233,31 @@ describe('dishes and variants', () => {
       itemId: sold.id,
       variantId: sold.variantId,
     });
+    // while it is on an open order it cannot go (the cart would lose it)
     const res = await api(owner).delete(`/items/${sold.id}`);
     expect(res.status).toBe(409);
     expect(res.body.code).toBe('IN_USE');
-    // it can still be switched off, and it stays in the records
-    const off = await api(owner).patch(`/items/${sold.id}`, { isActive: false });
-    expect(off.status).toBe(200);
-    expect((await api(owner).get(`/items/${sold.id}`)).body.isActive).toBe(false);
+    expect(res.body.title).toMatch(/open order/);
+
+    // once that order is over, "delete" removes it from the shop for good; the old order keeps it
+    expect(await cancelOrder(o.id)).toBe(200);
+    const archivedDel = await api(owner).delete(`/items/${sold.id}`);
+    expect(archivedDel.status).toBe(204);
+    expect(archivedDel.headers['x-archived']).toBe('true');
+    const listed = (await api(owner).get('/items?includeInactive=true')).body.items as {
+      id: string;
+    }[];
+    expect(listed.some((i) => i.id === sold.id)).toBe(false);
+    const admin = (await api(owner).get('/menu/admin')).body.items as { id: string }[];
+    expect(admin.some((i) => i.id === sold.id)).toBe(false);
+    const row = await t.kdb
+      .selectFrom('items')
+      .select(['is_active', 'archived_at'])
+      .where('id', '=', sold.id)
+      .executeTakeFirstOrThrow();
+    expect(row.is_active).toBe(false);
+    expect(row.archived_at).not.toBeNull(); // the row stays for the old order line
+    expect((await audit('ITEM_ARCHIVE', sold.id)).length).toBe(1);
   });
 
   it('a variant can be deleted unless it is the last one or was ordered; the default moves on', async () => {
@@ -227,16 +279,23 @@ describe('dishes and variants', () => {
     expect(last.status).toBe(400);
   });
 
-  it('an ordered variant is refused', async () => {
+  it('an ordered size is kept for the old bills but removed from the shop once its order is over', async () => {
     const d = await dish('Biryani');
     const plate = (await api(owner).post(`/items/${d.id}/variants`, { name: 'Plate' })).body;
     for (const l of lists)
       await api(owner).put(`/variants/${plate.id}/prices/${l.id}`, { pricePaisa: 30000 });
     const o = (await api(captain).post('/orders', { type: 'TAKEAWAY' })).body;
     await api(captain).post(`/orders/${o.id}/items`, { itemId: d.id, variantId: plate.id });
+    const live = await api(owner).delete(`/variants/${plate.id}`);
+    expect(live.status).toBe(409);
+    expect(live.body.code).toBe('IN_USE');
+
+    expect(await cancelOrder(o.id)).toBe(200);
     const res = await api(owner).delete(`/variants/${plate.id}`);
-    expect(res.status).toBe(409);
-    expect(res.body.code).toBe('IN_USE');
+    expect(res.status).toBe(204);
+    expect(res.headers['x-archived']).toBe('true');
+    const item = (await api(owner).get(`/items/${d.id}`)).body;
+    expect(item.variants.map((v: { id: string }) => v.id)).not.toContain(plate.id);
   });
 
   it('a station that dishes use cannot be deleted; an unused one can', async () => {

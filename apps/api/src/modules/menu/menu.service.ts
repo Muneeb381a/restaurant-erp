@@ -1,7 +1,7 @@
 import { dayBefore, validateDealDefinition, wouldCreateCycle, type Paisa } from '@erp/domain';
 import type { AppContext } from '../../http/context';
 import { AppError } from '../../http/errors';
-import { inUse, orInUse } from '../../shared/in-use';
+import { orInUse } from '../../shared/in-use';
 import { withTx, type Queryable } from '../../shared/tx';
 import { writeAudit } from '../audit/audit.service';
 import {
@@ -350,15 +350,60 @@ export function updateItem(ctx: AppContext, a: Actor, id: string, p: ItemPatch) 
 export function deleteItem(ctx: AppContext, a: Actor, id: string) {
   return command(ctx, a, async (trx) => {
     const before = await requireItem(trx, a.branchId, id, true);
+    // never while it is on an order that is still open (the cart would lose it)
+    const live = await trx
+      .selectFrom('order_items')
+      .innerJoin('orders', 'orders.id', 'order_items.order_id')
+      .select('orders.order_no')
+      .where('order_items.item_id', '=', id)
+      .where('order_items.status', '!=', 'VOID')
+      .where('orders.status', 'in', ['OPEN', 'BILLED'])
+      .executeTakeFirst();
+    if (live)
+      throw new AppError(
+        409,
+        'IN_USE',
+        `This dish is on an open order (#${live.order_no}) right now. Finish or cancel that order first.`,
+      );
+    // a dish that is part of a deal would break the deal
+    const inDeal = await trx
+      .selectFrom('deal_slot_options')
+      .innerJoin('item_variants', 'item_variants.id', 'deal_slot_options.variant_id')
+      .innerJoin('deal_slots', 'deal_slots.id', 'deal_slot_options.slot_id')
+      .innerJoin('items as deal', 'deal.id', 'deal_slots.deal_item_id')
+      .select('deal.name')
+      .where('item_variants.item_id', '=', id)
+      .where('deal.archived_at', 'is', null)
+      .executeTakeFirst();
+    if (inDeal)
+      throw new AppError(
+        409,
+        'IN_USE',
+        `This dish is part of the deal "${inDeal.name}". Take it out of the deal first.`,
+      );
     const sold = await trx
       .selectFrom('order_items')
       .select((eb) => eb.fn.countAll<string>().as('n'))
       .where('item_id', '=', id)
       .executeTakeFirstOrThrow();
-    if (Number(sold.n) > 0) throw inUse('This dish', `it is on ${sold.n} order line(s)`);
+    if (Number(sold.n) > 0) {
+      // it is on past bills: keep the row so they stay complete, but remove the dish from the shop for good
+      await trx
+        .updateTable('items')
+        .set({ is_active: false, is_available: false, archived_at: new Date() })
+        .where('id', '=', id)
+        .execute();
+      await trx
+        .updateTable('item_variants')
+        .set({ is_active: false, archived_at: new Date() })
+        .where('item_id', '=', id)
+        .execute();
+      await audit(trx, a, 'ITEM_ARCHIVE', 'item', id, before, { orderLines: Number(sold.n) });
+      return { id, archived: true };
+    }
     await orInUse('This dish', () => trx.deleteFrom('items').where('id', '=', id).execute());
     await audit(trx, a, 'ITEM_DELETE', 'item', id, before, null);
-    return { id };
+    return { id, archived: false };
   });
 }
 
@@ -498,6 +543,7 @@ export function deleteVariant(ctx: AppContext, a: Actor, id: string) {
       .selectFrom('item_variants')
       .select(['id', 'is_default'])
       .where('item_id', '=', before.item_id)
+      .where('archived_at', 'is', null)
       .orderBy('sort')
       .orderBy('name')
       .execute();
@@ -508,10 +554,33 @@ export function deleteVariant(ctx: AppContext, a: Actor, id: string) {
       .select((eb) => eb.fn.countAll<string>().as('n'))
       .where('variant_id', '=', id)
       .executeTakeFirstOrThrow();
-    if (Number(sold.n) > 0) throw inUse('This variant', `it is on ${sold.n} order line(s)`);
-    await orInUse('This variant', () =>
-      trx.deleteFrom('item_variants').where('id', '=', id).execute(),
-    );
+    const liveV = await trx
+      .selectFrom('order_items')
+      .innerJoin('orders', 'orders.id', 'order_items.order_id')
+      .select('orders.order_no')
+      .where('order_items.variant_id', '=', id)
+      .where('order_items.status', '!=', 'VOID')
+      .where('orders.status', 'in', ['OPEN', 'BILLED'])
+      .executeTakeFirst();
+    if (liveV)
+      throw new AppError(
+        409,
+        'IN_USE',
+        `This size is on an open order (#${liveV.order_no}) right now. Finish or cancel that order first.`,
+      );
+    let archived = false;
+    if (Number(sold.n) > 0) {
+      await trx
+        .updateTable('item_variants')
+        .set({ is_active: false, is_default: false, archived_at: new Date() })
+        .where('id', '=', id)
+        .execute();
+      archived = true;
+    } else {
+      await orInUse('This variant', () =>
+        trx.deleteFrom('item_variants').where('id', '=', id).execute(),
+      );
+    }
     if (before.is_default) {
       const next = siblings.find((x) => x.id !== id)!;
       await trx
@@ -520,8 +589,16 @@ export function deleteVariant(ctx: AppContext, a: Actor, id: string) {
         .where('id', '=', next.id)
         .execute();
     }
-    await audit(trx, a, 'VARIANT_DELETE', 'item_variant', id, before, null);
-    return { id };
+    await audit(
+      trx,
+      a,
+      archived ? 'VARIANT_ARCHIVE' : 'VARIANT_DELETE',
+      'item_variant',
+      id,
+      before,
+      null,
+    );
+    return { id, archived };
   });
 }
 

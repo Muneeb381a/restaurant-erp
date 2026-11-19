@@ -45,6 +45,7 @@ async function loadExisting(q: Queryable, branchId: string): Promise<ExistingMen
       .selectFrom('items')
       .selectAll()
       .where('branch_id', '=', branchId)
+      .where('archived_at', 'is', null)
       .where('code', 'is not', null)
       .execute(),
     q.selectFrom('stations').select(['id', 'code']).where('branch_id', '=', branchId).execute(),
@@ -232,6 +233,7 @@ async function applyOps(trx: Queryable, a: Actor, ops: readonly ImportOp[]): Pro
     .selectFrom('items')
     .select(['id', 'code'])
     .where('branch_id', '=', a.branchId)
+    .where('archived_at', 'is', null)
     .where('code', 'is not', null)
     .execute();
   const itemId = new Map(items.map((i) => [i.code as string, i.id]));

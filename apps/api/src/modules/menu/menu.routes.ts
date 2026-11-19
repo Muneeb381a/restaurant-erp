@@ -230,6 +230,7 @@ export function menuRouter(ctx: AppContext): Router {
         .selectFrom('items')
         .selectAll()
         .where('branch_id', '=', req.branchId!)
+        .where('archived_at', 'is', null)
         .orderBy('sort')
         .orderBy('name');
       if (q.includeInactive !== 'true') sel = sel.where('is_active', '=', true);
@@ -245,6 +246,7 @@ export function menuRouter(ctx: AppContext): Router {
               'in',
               items.map((i) => i.id),
             )
+            .where('archived_at', 'is', null)
             .orderBy('sort')
             .orderBy('name')
             .execute()
@@ -325,7 +327,8 @@ export function menuRouter(ctx: AppContext): Router {
     ...manage,
     asyncHandler(async (req, res) => {
       const { id } = idParam.parse(req.params);
-      await svc.deleteItem(ctx, actorOf(req), id);
+      const out = await svc.deleteItem(ctx, actorOf(req), id);
+      res.setHeader('X-Archived', String(out.archived)); // true: it is on past bills, so it was hidden for good
       res.status(204).end();
     }),
   );
@@ -402,7 +405,8 @@ export function menuRouter(ctx: AppContext): Router {
     ...manage,
     asyncHandler(async (req, res) => {
       const { id } = idParam.parse(req.params);
-      await svc.deleteVariant(ctx, actorOf(req), id);
+      const out = await svc.deleteVariant(ctx, actorOf(req), id);
+      res.setHeader('X-Archived', String(out.archived));
       res.status(204).end();
     }),
   );

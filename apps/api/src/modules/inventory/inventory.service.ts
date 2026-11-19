@@ -582,6 +582,7 @@ export async function recipeMargins(ctx: AppContext, branchId: string) {
       'items.kind as kind',
     ])
     .where('items.branch_id', '=', branchId)
+    .where('items.archived_at', 'is', null)
     .orderBy('items.name')
     .execute();
   const out = [];

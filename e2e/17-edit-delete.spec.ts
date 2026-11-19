@@ -11,7 +11,7 @@ async function loginOwner(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Tables' })).toBeVisible();
 }
 
-test('a table can be edited and deleted; one that had orders is refused with a clear reason', async ({
+test('a table can be edited and deleted; one with an open order is refused, one with only old orders is removed', async ({
   page,
 }) => {
   await loginOwner(page);
@@ -35,12 +35,46 @@ test('a table can be edited and deleted; one that had orders is refused with a c
   await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(row('Z10')).toHaveCount(0);
 
-  // T1 has had orders (earlier specs): it cannot be deleted, and the dialog says why
-  await page.getByRole('button', { name: 'Delete T1' }).click();
+  // a table with an OPEN order cannot be deleted, and the dialog says why
+  const token = await page.evaluate(() => {
+    const raw = localStorage.getItem('erp-auth');
+    return raw ? (JSON.parse(raw).state.tokens.accessToken as string) : '';
+  });
+  const headers = { authorization: `Bearer ${token}` };
+  const makeTable = async (code: string): Promise<string> => {
+    const res = await page.request.post('/api/v1/tables', { headers, data: { code, seats: 2 } });
+    return (await res.json()).id as string;
+  };
+  const openOrder = async (tableId: string): Promise<string> => {
+    const res = await page.request.post('/api/v1/orders', {
+      headers,
+      data: { type: 'DINE_IN', tableId },
+    });
+    return (await res.json()).id as string;
+  };
+  const cancel = async (orderId: string): Promise<void> => {
+    const cur = await (await page.request.get(`/api/v1/orders/${orderId}`, { headers })).json();
+    await page.request.post(`/api/v1/orders/${orderId}/cancel`, {
+      headers: { ...headers, 'if-match': String(cur.version) },
+      data: { reason: 'e2e' },
+    });
+  };
+  const busy = await makeTable('Z11');
+  const order = await openOrder(busy);
+  await page.reload();
+  await page.getByRole('button', { name: 'Delete Z11' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
-  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('Switch it off');
+  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('open order');
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
-  await expect(row('T1')).toBeVisible();
+
+  // once the order is over the table had history, yet it can be deleted: it disappears for good
+  await cancel(order);
+  await page.reload();
+  await page.getByRole('button', { name: 'Delete Z11' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(row('Z11')).toHaveCount(0);
+  await page.reload();
+  await expect(row('Z11')).toHaveCount(0);
 });
 
 test('an area can be renamed and deleted once it is empty', async ({ page }) => {

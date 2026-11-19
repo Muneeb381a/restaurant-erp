@@ -310,6 +310,7 @@ export async function getAdminMenu(ctx: AppContext, branchId: string, date?: str
       .selectFrom('items')
       .selectAll()
       .where('branch_id', '=', branchId)
+      .where('archived_at', 'is', null)
       .orderBy('sort')
       .orderBy('name')
       .execute(),
@@ -327,6 +328,7 @@ export async function getAdminMenu(ctx: AppContext, branchId: string, date?: str
         .selectFrom('item_variants')
         .selectAll()
         .where('item_id', 'in', ids)
+        .where('archived_at', 'is', null)
         .orderBy('sort')
         .orderBy('name')
         .execute()

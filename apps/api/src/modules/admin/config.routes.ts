@@ -28,6 +28,22 @@ export function configRouters(ctx: AppContext): Record<string, Router> {
       entity: 'dining_table',
       permission: perm,
       deletable: true,
+      archivable: {
+        liveCheck: async (trx, id) => {
+          const open = await trx
+            .selectFrom('orders')
+            .select('order_no')
+            .where('table_id', '=', id)
+            .where('status', 'in', ['OPEN', 'BILLED'])
+            .executeTakeFirst();
+          if (open)
+            throw new AppError(
+              409,
+              'IN_USE',
+              `This table has an open order (#${open.order_no}) right now. Finish or cancel it first.`,
+            );
+        },
+      },
       orderBy: ['code'],
       create: z.object({
         area_id: z.string().uuid().nullable().optional(),

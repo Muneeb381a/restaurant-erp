@@ -126,6 +126,7 @@ export async function getItemFull(q: Queryable, branchId: string, itemId: string
     .selectFrom('item_variants')
     .selectAll()
     .where('item_id', '=', itemId)
+    .where('archived_at', 'is', null)
     .orderBy('sort')
     .orderBy('name')
     .execute();
