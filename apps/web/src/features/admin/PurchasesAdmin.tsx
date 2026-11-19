@@ -5,7 +5,7 @@ import { api } from '../../lib/api';
 import { formatRs, ltr, parseRs } from '../../lib/money';
 import { can, useMe } from '../../lib/queries';
 import type { PurchaseRow, Supplier } from '../../lib/types';
-import { Dialog, EmptyRow, ErrorText, Field } from './ui';
+import { Dialog, EmptyRow, ErrorText, Field, Toggle } from './ui';
 import { useIngredients } from './StockAdmin';
 
 const SOURCES = ['DRAWER_CASH', 'OWNER_CASH', 'BANK'] as const;
@@ -40,6 +40,7 @@ export function PurchasesAdmin() {
   const [source, setSource] = useState<(typeof SOURCES)[number]>('BANK');
   const [message, setMessage] = useState<string | null>(null);
   const [paying, setPaying] = useState<Supplier | null>(null);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [newSupplier, setNewSupplier] = useState(false);
   const key = useRef(newKey());
 
@@ -267,7 +268,14 @@ export function PurchasesAdmin() {
                       <span className="sr-only">{t('purchasePage.owed')} </span>
                       {ltr(formatRs(s.owedPaisa))}
                     </td>
-                    <td className="text-end">
+                    <td className="whitespace-nowrap text-end">
+                      <button
+                        className="btn-secondary me-1"
+                        aria-label={`${t('admin.edit')} ${s.name}`}
+                        onClick={() => setEditingSupplier(s)}
+                      >
+                        {t('admin.edit')}
+                      </button>
                       {canPay && s.owedPaisa > 0 && (
                         <button className="btn-secondary" onClick={() => setPaying(s)}>
                           {t('purchasePage.pay')}
@@ -291,6 +299,13 @@ export function PurchasesAdmin() {
           onDone={() => void qc.invalidateQueries({ queryKey: ['suppliers'] })}
         />
       )}
+      {editingSupplier && (
+        <SupplierDialog
+          supplier={editingSupplier}
+          onClose={() => setEditingSupplier(null)}
+          onDone={() => void qc.invalidateQueries({ queryKey: ['suppliers'] })}
+        />
+      )}
       {paying && (
         <PayDialog
           supplier={paying}
@@ -306,23 +321,47 @@ export function PurchasesAdmin() {
   );
 }
 
-function SupplierDialog({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+function SupplierDialog({
+  supplier,
+  onClose,
+  onDone,
+}: {
+  /** given: edit this supplier; missing: make a new one */
+  supplier?: Supplier;
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const { t } = useTranslation();
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [name, setName] = useState(supplier?.name ?? '');
+  const [phone, setPhone] = useState(supplier?.phone ?? '');
+  const [notes, setNotes] = useState(supplier?.notes ?? '');
+  const [active, setActive] = useState(supplier?.isActive ?? true);
   const create = useMutation({
     mutationFn: () =>
-      api('/suppliers', {
-        method: 'POST',
-        body: { name: name.trim(), ...(phone.trim() ? { phone: phone.trim() } : {}) },
-      }),
+      supplier
+        ? api(`/suppliers/${supplier.id}`, {
+            method: 'PATCH',
+            body: {
+              name: name.trim(),
+              phone: phone.trim() || null,
+              notes: notes.trim() || null,
+              isActive: active,
+            },
+          })
+        : api('/suppliers', {
+            method: 'POST',
+            body: { name: name.trim(), ...(phone.trim() ? { phone: phone.trim() } : {}) },
+          }),
     onSuccess: () => {
       onDone();
       onClose();
     },
   });
   return (
-    <Dialog title={t('purchasePage.newSupplier')} onClose={onClose}>
+    <Dialog
+      title={supplier ? `${t('admin.edit')}: ${supplier.name}` : t('purchasePage.newSupplier')}
+      onClose={onClose}
+    >
       <div className="space-y-3">
         <Field label={t('purchasePage.name')}>
           <input
@@ -335,13 +374,24 @@ function SupplierDialog({ onClose, onDone }: { onClose: () => void; onDone: () =
         <Field label={t('purchasePage.phone')}>
           <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </Field>
+        {supplier && (
+          <>
+            <Field label={t('purchasePage.notes')}>
+              <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </Field>
+            <label className="flex items-center gap-3">
+              <Toggle on={active} label={t('admin.active')} onChange={setActive} />
+              <span>{t('admin.active')}</span>
+            </label>
+          </>
+        )}
         <ErrorText error={create.error} />
         <button
           className="btn-primary w-full"
           disabled={!name.trim() || create.isPending}
           onClick={() => create.mutate()}
         >
-          {t('purchasePage.add')}
+          {supplier ? t('admin.save') : t('purchasePage.add')}
         </button>
       </div>
     </Dialog>

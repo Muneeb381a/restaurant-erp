@@ -197,6 +197,30 @@ describe('purchases', () => {
     expect((await audit('PURCHASE_POST')).length).toBe(1);
   });
 
+  it('a supplier can be renamed and switched off; what is owed is untouched; a cashier cannot', async () => {
+    const edited = await api(store).patch(`/suppliers/${supplier}`, {
+      name: 'Butcher Ali & Sons',
+      phone: null,
+      notes: 'Delivers before 8',
+    });
+    expect(edited.status, JSON.stringify(edited.body)).toBe(200);
+    expect(edited.body).toMatchObject({
+      name: 'Butcher Ali & Sons',
+      phone: null,
+      notes: 'Delivers before 8',
+    });
+    const off = await api(store).patch(`/suppliers/${supplier}`, { isActive: false });
+    expect(off.body.is_active).toBe(false);
+    await api(store).patch(`/suppliers/${supplier}`, { isActive: true });
+    const row = ((await api(store).get('/suppliers')).body.items as Json[]).find(
+      (s) => s.id === supplier,
+    )!;
+    expect(row).toMatchObject({ name: 'Butcher Ali & Sons', owedPaisa: 920000, isActive: true });
+    expect((await audit('SUPPLIER_UPDATE')).length).toBeGreaterThanOrEqual(3);
+    expect((await api(store).patch(`/suppliers/${supplier}`, {})).status).toBe(400);
+    expect((await api(cashier).patch(`/suppliers/${supplier}`, { name: 'x' })).status).toBe(403);
+  });
+
   it('is idempotent, refuses a duplicate supplier invoice and bad lines', async () => {
     const k = key();
     const body = {

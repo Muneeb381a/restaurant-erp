@@ -110,6 +110,66 @@ describe('categories', () => {
     expect(list.some((c) => c.id === empty.id)).toBe(false);
   });
 
+  it('a category with dishes and sub-categories is deleted once the caller says where the dishes go', async () => {
+    const main = (await api(owner).post('/categories', { name: 'Grill' })).body;
+    const sub = (await api(owner).post('/categories', { name: 'Grill Special', parentId: main.id }))
+      .body;
+    const target = (await api(owner).post('/categories', { name: 'Everything else' })).body;
+    const d1 = await dish('Seekh', main.id);
+    const d2 = await dish('Boti', sub.id);
+
+    // without saying where, still refused
+    expect((await api(owner).delete(`/categories/${main.id}`)).status).toBe(409);
+    // moving to itself is nonsense
+    expect((await api(owner).delete(`/categories/${main.id}?moveItemsTo=${main.id}`)).status).toBe(
+      400,
+    );
+    // an unknown category is refused too
+    expect(
+      (
+        await api(owner).delete(
+          `/categories/${main.id}?moveItemsTo=00000000-0000-4000-8000-000000000000`,
+        )
+      ).status,
+    ).toBe(404);
+
+    const gone = await api(owner).delete(`/categories/${main.id}?moveItemsTo=${target.id}`);
+    expect(gone.status).toBe(204);
+    const item = async (id: string) =>
+      t.kdb
+        .selectFrom('items')
+        .select('category_id')
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+    expect((await item(d1.id)).category_id).toBe(target.id); // moved
+    expect((await item(d2.id)).category_id).toBe(sub.id); // the sub-category's own dish stays in it
+    const subNow = await t.kdb
+      .selectFrom('categories')
+      .select('parent_id')
+      .where('id', '=', sub.id)
+      .executeTakeFirstOrThrow();
+    expect(subNow.parent_id).toBeNull(); // it became a main category
+    const log = await t.kdb
+      .selectFrom('audit_log')
+      .select('after')
+      .where('action', '=', 'CATEGORY_DELETE')
+      .where('entity_id', '=', main.id)
+      .executeTakeFirstOrThrow();
+    expect(log.after).toMatchObject({ items: 1, subCategories: 1 });
+  });
+
+  it('"none" leaves the dishes without a category', async () => {
+    const cat = (await api(owner).post('/categories', { name: 'Temp' })).body;
+    const d = await dish('Orphan', cat.id);
+    expect((await api(owner).delete(`/categories/${cat.id}?moveItemsTo=none`)).status).toBe(204);
+    const row = await t.kdb
+      .selectFrom('items')
+      .select('category_id')
+      .where('id', '=', d.id)
+      .executeTakeFirstOrThrow();
+    expect(row.category_id).toBeNull();
+  });
+
   it('a captain cannot manage categories', async () => {
     const cat = (await api(owner).post('/categories', { name: 'Private' })).body;
     expect((await api(captain).delete(`/categories/${cat.id}`)).status).toBe(403);

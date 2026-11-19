@@ -133,10 +133,40 @@ export function updateCategory(
   });
 }
 
-/** Deletes a category nobody uses; one with dishes or sub-categories must be emptied first. */
-export function deleteCategory(ctx: AppContext, a: Actor, id: string) {
+/**
+ * Deletes a category. An unused one just goes. One that still has dishes or sub-categories is refused
+ * (IN_USE) unless the caller says where its dishes go: `moveItemsTo` is another category's id, or null
+ * for "no category". Then, in the same transaction, the dishes move there, the sub-categories become
+ * main categories, and the category is deleted (audited with what moved).
+ */
+export function deleteCategory(
+  ctx: AppContext,
+  a: Actor,
+  id: string,
+  opts: { moveItemsTo?: string | null | undefined } = {},
+) {
   return command(ctx, a, async (trx) => {
     const before = await requireCategory(trx, a.branchId, id, true);
+    let moved: { items: number; subCategories: number } | null = null;
+    if (opts.moveItemsTo !== undefined) {
+      if (opts.moveItemsTo === id) throw bad('Pick a different category to move the dishes to');
+      if (opts.moveItemsTo) await requireCategory(trx, a.branchId, opts.moveItemsTo);
+      const items = await trx
+        .updateTable('items')
+        .set({ category_id: opts.moveItemsTo })
+        .where('category_id', '=', id)
+        .where('branch_id', '=', a.branchId)
+        .returning('id')
+        .execute();
+      const subs = await trx
+        .updateTable('categories')
+        .set({ parent_id: null })
+        .where('parent_id', '=', id)
+        .where('branch_id', '=', a.branchId)
+        .returning('id')
+        .execute();
+      moved = { items: items.length, subCategories: subs.length };
+    }
     const [items, children] = await Promise.all([
       trx
         .selectFrom('items')
@@ -165,7 +195,7 @@ export function deleteCategory(ctx: AppContext, a: Actor, id: string) {
     await orInUse('This category', () =>
       trx.deleteFrom('categories').where('id', '=', id).execute(),
     );
-    await audit(trx, a, 'CATEGORY_DELETE', 'category', id, before, null);
+    await audit(trx, a, 'CATEGORY_DELETE', 'category', id, before, moved);
     return { id };
   });
 }

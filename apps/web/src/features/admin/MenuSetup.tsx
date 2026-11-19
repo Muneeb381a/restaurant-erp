@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api';
 import { categoryTree, parentChoices } from '../../lib/categories';
 import type { AdminMenu } from '../../lib/types';
-import { ConfirmDelete, Dialog, ErrorText, Field } from './ui';
+import { ConfirmDelete, Dialog, ErrorText, Field, Toggle } from './ui';
 
 type Tab = 'categories' | 'stations';
 
@@ -19,6 +19,7 @@ interface Row {
   depth?: number;
   parentId?: string | null;
   hasChildren?: boolean;
+  isActive?: boolean;
   /** dishes in the sub-categories below (a main category shows both numbers) */
   subDishes?: number;
 }
@@ -59,6 +60,7 @@ export function MenuSetupDialog({
             depth,
             parentId: c.parentId,
             hasChildren: below.length > 0,
+            isActive: c.isActive,
             subDishes: data.items.filter((i) => below.some((b) => b.id === i.categoryId)).length,
           };
         })
@@ -122,6 +124,9 @@ export function MenuSetupDialog({
                   <div className="truncate font-semibold">
                     {r.depth ? <span className="me-1.5 text-slate-400">↳</span> : null}
                     {r.title}
+                    {r.isActive === false && (
+                      <span className="chip-mute ms-2">{t('admin.menuPage.off')}</span>
+                    )}
                     {r.nameUr && (
                       <span className="ms-2 font-normal text-slate-500">{r.nameUr}</span>
                     )}
@@ -197,7 +202,15 @@ export function MenuSetupDialog({
           </button>
         </div>
       </div>
-      {deleting && (
+      {deleting && tab === 'categories' && (
+        <DeleteCategoryDialog
+          row={deleting}
+          data={data}
+          onDone={onDone}
+          onClose={() => setDeleting(null)}
+        />
+      )}
+      {deleting && tab !== 'categories' && (
         <ConfirmDelete
           name={deleting.title}
           run={() => api(`${path}/${deleting.id}`, { method: 'DELETE' })}
@@ -232,6 +245,7 @@ function RowForm({
   const [name, setName] = useState(row?.title ?? '');
   const [nameUr, setNameUr] = useState(row?.nameUr ?? '');
   const [code, setCode] = useState(row?.code ?? '');
+  const [active, setActive] = useState(row?.isActive ?? true);
   const [parentId, setParentId] = useState<string>(row ? (row.parentId ?? '') : (parentFor ?? ''));
   const choices = parentChoices(data.categories, row?.id ?? null);
   const [error, setError] = useState<unknown>(null);
@@ -239,7 +253,12 @@ function RowForm({
     mutationFn: () => {
       const body =
         tab === 'categories'
-          ? { name: name.trim(), nameUr: nameUr.trim() || null, parentId: parentId || null }
+          ? {
+              name: name.trim(),
+              nameUr: nameUr.trim() || null,
+              parentId: parentId || null,
+              ...(row ? { isActive: active } : {}),
+            }
           : { name: name.trim(), code: (code.trim() || name.trim()).toUpperCase().slice(0, 40) };
       return row
         ? api(`${path}/${row.id}`, { method: 'PATCH', body })
@@ -297,6 +316,15 @@ function RowForm({
           {row?.hasChildren && <p className="hint mt-1">{t('admin.menuPage.hasSubHint')}</p>}
         </Field>
       )}
+      {tab === 'categories' && row && (
+        <label className="flex items-center gap-3">
+          <Toggle on={active} label={t('admin.active')} onChange={setActive} />
+          <span>
+            {t('admin.active')}
+            <span className="hint block">{t('admin.menuPage.activeCategoryHint')}</span>
+          </span>
+        </label>
+      )}
       <ErrorText error={error} />
       <div className="flex justify-end gap-2">
         <button className="btn-secondary" onClick={onCancel}>
@@ -311,5 +339,78 @@ function RowForm({
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Delete a category. An empty one is simply deleted. If it still has dishes, they have to go somewhere
+ * (another category, or none), and its sub-categories become main categories: the server does all of it
+ * in one step, so nothing is left half done.
+ */
+function DeleteCategoryDialog({
+  row,
+  data,
+  onDone,
+  onClose,
+}: {
+  row: Row;
+  data: AdminMenu;
+  onDone: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const subs = data.categories.filter((c) => c.parentId === row.id).length;
+  const needsMove = row.dishes > 0 || subs > 0;
+  const [target, setTarget] = useState('none');
+  const [error, setError] = useState<unknown>(null);
+  const del = useMutation({
+    mutationFn: () =>
+      api(`/categories/${row.id}${needsMove ? `?moveItemsTo=${target}` : ''}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      onDone();
+      onClose();
+    },
+    onError: setError,
+  });
+  const choices = categoryTree(data.categories).filter((n) => n.cat.id !== row.id);
+  return (
+    <Dialog title={t('admin.deleteTitle', { name: row.title })} onClose={onClose}>
+      <div className="space-y-3">
+        {!needsMove && <p className="text-slate-700">{t('admin.deleteBody')}</p>}
+        {row.dishes > 0 && (
+          <>
+            <p className="text-slate-700">
+              {t('admin.menuPage.moveDishes', { count: row.dishes })}
+            </p>
+            <Field label={t('admin.menuPage.moveTo')}>
+              <select className="input" value={target} onChange={(e) => setTarget(e.target.value)}>
+                <option value="none">{t('admin.menuPage.noCategory')}</option>
+                {choices.map((n) => (
+                  <option key={n.cat.id} value={n.cat.id}>
+                    {n.path}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </>
+        )}
+        {subs > 0 && (
+          <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900">
+            {t('admin.menuPage.subsBecomeMain', { count: subs })}
+          </p>
+        )}
+        <ErrorText error={error} />
+        <div className="flex justify-end gap-2">
+          <button className="btn-secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button className="btn-danger" disabled={del.isPending} onClick={() => del.mutate()}>
+            {needsMove ? t('admin.menuPage.moveAndDelete') : t('admin.delete')}
+          </button>
+        </div>
+      </div>
+    </Dialog>
   );
 }

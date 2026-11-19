@@ -235,6 +235,13 @@
       "prices": "Prices",
       "statItems": "Dishes",
       "subCategory": "Sub-category",
+      "activeCategoryHint": "Switch off to hide this category and its dishes from the till without deleting anything.",
+      "off": "Off",
+      "moveDishes": "{{count}} dish(es) are in this category. Choose where they go; they are not deleted.",
+      "moveTo": "Move the dishes to",
+      "noCategory": "No category",
+      "subsBecomeMain": "{{count}} sub-category(ies) will become main categories.",
+      "moveAndDelete": "Move and delete",
       "addSub": "Add sub-category to",
       "insideCategory": "Inside",
       "mainCategory": "None (a main category)",
@@ -894,6 +901,7 @@
     "editHint": "The unit and the stock already counted do not change: every movement is on record. To stop using an ingredient, switch it off."
   },
   "purchasePage": {
+    "notes": "Notes",
     "title": "Purchases",
     "new": "New purchase",
     "supplier": "Supplier",

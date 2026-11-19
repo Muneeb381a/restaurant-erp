@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { formatRs } from '../../lib/money';
 import type { ReceiptDocView } from '../../lib/types';
@@ -35,11 +35,15 @@ export function ReceiptSheet({
   onDone: () => void;
 }) {
   const ur = language === 'ur';
+  // the callback may be a new function on every render of the page: the print must open ONCE per sheet,
+  // so the effect below does not depend on it (it used to re-run, cancel and re-open the dialog)
+  const done = useRef(onDone);
+  done.current = onDone;
   useEffect(() => {
     document.body.dataset.printing = 'receipt';
     const finish = (): void => {
       delete document.body.dataset.printing;
-      onDone();
+      done.current();
     };
     window.addEventListener('afterprint', finish, { once: true });
     // let the sheet paint, then open the print dialog
@@ -49,7 +53,7 @@ export function ReceiptSheet({
       window.removeEventListener('afterprint', finish);
       delete document.body.dataset.printing;
     };
-  }, [onDone]);
+  }, []);
 
   return createPortal(
     <div className="receipt-print" dir={ur ? 'rtl' : 'ltr'} data-testid="receipt-sheet">

@@ -201,7 +201,15 @@ export function menuRouter(ctx: AppContext): Router {
     ...manage,
     asyncHandler(async (req, res) => {
       const { id } = idParam.parse(req.params);
-      await svc.deleteCategory(ctx, actorOf(req), id);
+      // ?moveItemsTo=<category id> or "none": where the dishes go when the category is not empty
+      const q = z
+        .object({ moveItemsTo: z.union([uuid, z.literal('none')]).optional() })
+        .parse(req.query);
+      await svc.deleteCategory(ctx, actorOf(req), id, {
+        ...(q.moveItemsTo !== undefined && {
+          moveItemsTo: q.moveItemsTo === 'none' ? null : q.moveItemsTo,
+        }),
+      });
       res.status(204).end();
     }),
   );

@@ -12,6 +12,7 @@ import {
   createIngredient,
   createPurchase,
   createSupplier,
+  updateSupplier,
   foodCostReport,
   getPrepRecipe,
   getStocktake,
@@ -256,6 +257,25 @@ export function inventoryRouter(ctx: AppContext): Router {
         .strict()
         .parse(req.body);
       res.status(201).json(await createSupplier(ctx, await actor(req), body));
+    }),
+  );
+  r.patch(
+    '/suppliers/:id',
+    ...stock,
+    asyncHandler(async (req, res) => {
+      const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+      const body = z
+        .object({
+          name: text(120).optional(),
+          phone: z.string().trim().max(30).nullable().optional(),
+          notes: z.string().trim().max(300).nullable().optional(),
+          isActive: z.boolean().optional(),
+        })
+        .strict()
+        .parse(req.body);
+      if (Object.keys(body).length === 0)
+        throw new AppError(400, 'VALIDATION_FAILED', 'No fields to update');
+      res.json(await updateSupplier(ctx, await actor(req), id, body));
     }),
   );
   r.post(

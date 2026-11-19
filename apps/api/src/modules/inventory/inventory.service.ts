@@ -366,6 +366,43 @@ export function createSupplier(
   });
 }
 
+/** Rename a supplier, change its phone or notes, or switch it off. (What is owed lives in purchases and payments, untouched.) */
+export function updateSupplier(
+  ctx: AppContext,
+  a: Actor,
+  id: string,
+  input: {
+    name?: string | undefined;
+    phone?: string | null | undefined;
+    notes?: string | null | undefined;
+    isActive?: boolean | undefined;
+  },
+) {
+  return withTx(ctx.db, async (trx) => {
+    const before = await trx
+      .selectFrom('suppliers')
+      .selectAll()
+      .where('id', '=', id)
+      .where('branch_id', '=', a.branchId)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!before) throw new AppError(404, 'NOT_FOUND', 'supplier not found');
+    const row = await trx
+      .updateTable('suppliers')
+      .set({
+        ...(input.name !== undefined && { name: input.name }),
+        ...(input.phone !== undefined && { phone: input.phone }),
+        ...(input.notes !== undefined && { notes: input.notes }),
+        ...(input.isActive !== undefined && { is_active: input.isActive }),
+      })
+      .where('id', '=', id)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    await audit(trx, a, 'SUPPLIER_UPDATE', 'supplier', id, before, row);
+    return row;
+  });
+}
+
 // ──────────────────────────────────── recipes ────────────────────────────────────
 
 export interface RecipeInput {

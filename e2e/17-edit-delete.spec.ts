@@ -92,7 +92,7 @@ test('categories and stations are managed in the menu screen and chosen for a ne
   await expect(page.getByRole('row').filter({ hasText: 'Test Barfi' })).toContainText('Sweets');
 });
 
-test('a dish that was never sold is deleted, and a category that still has dishes is refused', async ({
+test('a dish that was never sold is deleted, and a category that still has dishes asks where they go', async ({
   page,
 }) => {
   await loginOwner(page);
@@ -109,19 +109,17 @@ test('a dish that was never sold is deleted, and a category that still has dishe
   await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(page.getByRole('row').filter({ hasText: 'Test Barfi' })).toHaveCount(0);
 
-  // a category with dishes cannot be deleted
+  // a category with dishes is not deleted blindly: it asks where the dishes should go
   await page.getByRole('button', { name: 'Categories', exact: true }).click();
   const used = page
     .getByRole('dialog')
     .getByRole('button', { name: /^Delete /i })
     .first();
   await used.click();
-  await page
-    .getByRole('dialog')
-    .last()
-    .getByRole('button', { name: 'Delete', exact: true })
-    .click();
-  await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible();
+  const ask = page.getByRole('dialog').last();
+  await expect(ask.getByText('Move the dishes to')).toBeVisible();
+  await expect(ask.getByRole('button', { name: 'Move and delete' })).toBeVisible();
+  await ask.getByRole('button', { name: 'Cancel' }).click(); // nothing was deleted
 });
 
 test('a user and an ingredient can be edited from their screens', async ({ page }) => {
