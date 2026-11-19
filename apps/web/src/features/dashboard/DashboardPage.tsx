@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon, type IconName } from '../../components/Icon';
 import { api } from '../../lib/api';
@@ -56,7 +56,7 @@ function Delta({ cur, prev, good = 'up' }: { cur: number; prev: number; good?: '
   const { t } = useTranslation();
   if (prev === 0 && cur === 0)
     return <span className="text-xs text-slate-600">{t('dash.noChange')}</span>;
-  if (prev === 0) return <span className="chip-info">{t('dash.new')}</span>;
+  if (prev === 0) return null; // nothing earlier to compare with: say nothing rather than repeat "no data"
   const change = ((cur - prev) / Math.abs(prev)) * 100;
   if (Math.abs(change) < 0.05)
     return <span className="text-xs text-slate-600">{t('dash.noChange')}</span>;
@@ -81,6 +81,21 @@ const NAV: { id: SectionId; key: string }[] = [
   { id: 'money', key: 'dash.navMoney' },
 ];
 
+const SECTION_TONE: Record<SectionId, string> = {
+  sales: 'bg-emerald-600',
+  profit: 'bg-amber-500',
+  kitchen: 'bg-orange-500',
+  controls: 'bg-sky-600',
+  money: 'bg-violet-500',
+};
+const SECTION_ICON: Record<SectionId, IconName> = {
+  sales: 'chart',
+  profit: 'cash',
+  kitchen: 'flame',
+  controls: 'sliders',
+  money: 'book',
+};
+
 const jump = (id: SectionId): void =>
   document.getElementById(`dash-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -101,7 +116,9 @@ function Section({
   return (
     <section id={`dash-${id}`} className="scroll-mt-16 space-y-3 pt-3">
       <div className="flex items-center gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white">
+        <span
+          className={`flex size-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm ${SECTION_TONE[id]}`}
+        >
           <Icon name={icon} size={20} />
         </span>
         <div className="min-w-0">
@@ -299,6 +316,25 @@ export function DashboardPage() {
 
 function Body({ d, lang }: { d: Dashboard; lang: string }) {
   const { t } = useTranslation();
+  // which chapter is on screen: lights up its button in the jump bar
+  const [reading, setReading] = useState<SectionId>('sales');
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const els = NAV.map((n) => document.getElementById(`dash-${n.id}`)).filter(
+      (e): e is HTMLElement => e !== null,
+    );
+    const io = new IntersectionObserver(
+      (entries) => {
+        const top = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (top) setReading(top.target.id.replace('dash-', '') as SectionId);
+      },
+      { rootMargin: '-15% 0px -70% 0px' },
+    );
+    els.forEach((e) => io.observe(e));
+    return () => io.disconnect();
+  }, [d]);
   const c = d.current;
   const p = d.previous;
   const empty = c.bills === 0 && c.expensesPaisa === 0;
@@ -393,7 +429,7 @@ function Body({ d, lang }: { d: Dashboard; lang: string }) {
       )}
 
       {/* the headline band: the two numbers an owner asks first, then the rest of the day */}
-      <section className="overflow-hidden rounded-2xl bg-slate-900 text-white shadow-sheet">
+      <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-900 text-white shadow-sheet">
         <div className="grid lg:grid-cols-2">
           <div className="space-y-2 p-5 sm:p-6">
             <div className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-300">
@@ -533,16 +569,22 @@ function Body({ d, lang }: { d: Dashboard; lang: string }) {
       {/* jump bar: stays under the top bar while you scroll */}
       <nav
         aria-label={t('dash.navLabel')}
-        className="sticky top-0 z-20 -mx-4 overflow-x-auto bg-slate-100/95 px-4 py-2 backdrop-blur"
+        className="sticky top-0 z-20 -mx-4 overflow-x-auto bg-slate-50/95 px-4 py-2 backdrop-blur"
       >
         <div className="flex gap-2">
           {NAV.map((n) => (
             <button
               key={n.id}
               type="button"
-              className="chip-info min-h-9 shrink-0 cursor-pointer px-3 text-sm hover:bg-sky-100"
+              aria-current={reading === n.id ? 'true' : undefined}
+              className={`inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors ${
+                reading === n.id
+                  ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+              }`}
               onClick={() => jump(n.id)}
             >
+              <Icon name={SECTION_ICON[n.id]} size={16} />
               {t(n.key)}
             </button>
           ))}

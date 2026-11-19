@@ -20,6 +20,23 @@ export function configRouters(ctx: AppContext): Record<string, Router> {
       entity: 'area',
       permission: perm,
       deletable: true,
+      archivable: {
+        noActiveColumn: true,
+        liveCheck: async (trx, id) => {
+          const n = await trx
+            .selectFrom('dining_tables')
+            .select((eb) => eb.fn.countAll<string>().as('n'))
+            .where('area_id', '=', id)
+            .where('archived_at', 'is', null)
+            .executeTakeFirstOrThrow();
+          if (Number(n.n) > 0)
+            throw new AppError(
+              409,
+              'IN_USE',
+              `${n.n} table(s) are in this area. Move or delete them first.`,
+            );
+        },
+      },
       orderBy: ['sort', 'name'],
       create: z.object({ name: text(), sort: z.number().int().min(0).max(10_000).optional() }),
     }),
@@ -59,6 +76,23 @@ export function configRouters(ctx: AppContext): Record<string, Router> {
       entity: 'station',
       permission: perm,
       deletable: true,
+      archivable: {
+        noActiveColumn: true,
+        liveCheck: async (trx, id) => {
+          const n = await trx
+            .selectFrom('items')
+            .select((eb) => eb.fn.countAll<string>().as('n'))
+            .where('station_id', '=', id)
+            .where('archived_at', 'is', null)
+            .executeTakeFirstOrThrow();
+          if (Number(n.n) > 0)
+            throw new AppError(
+              409,
+              'IN_USE',
+              `${n.n} dish(es) are cooked at this station. Move them to another station first.`,
+            );
+        },
+      },
       orderBy: ['code'],
       create: z.object({ code, name: text() }),
     }),
@@ -67,6 +101,7 @@ export function configRouters(ctx: AppContext): Record<string, Router> {
       entity: 'printer',
       permission: perm,
       deletable: true,
+      archivable: { liveCheck: async () => undefined },
       orderBy: ['name'],
       create: z.object({
         name: text(),

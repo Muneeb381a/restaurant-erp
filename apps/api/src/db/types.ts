@@ -32,6 +32,7 @@ export type Numeric = ColumnType<string, number | string, number | string>;
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface Areas {
+  archived_at: Timestamp | null;
   branch_id: string;
   id: Generated<string>;
   name: string;
@@ -575,6 +576,7 @@ export interface PriceLists {
 }
 
 export interface Printers {
+  archived_at: Timestamp | null;
   branch_id: string;
   conn_type: string;
   host: string | null;
@@ -709,6 +711,7 @@ export interface StationPrinters {
 }
 
 export interface Stations {
+  archived_at: Timestamp | null;
   branch_id: string;
   code: string;
   id: Generated<string>;

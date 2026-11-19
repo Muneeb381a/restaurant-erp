@@ -28,6 +28,8 @@ export interface CrudOptions {
    * right now (for a table: an open order), which no archive may hide.
    */
   archivable?: {
+    /** the table has no `is_active` column (areas, stations): archiving only sets `archived_at` */
+    noActiveColumn?: boolean;
     liveCheck: (trx: Kysely<Record<string, Record<string, unknown>>>, id: string) => Promise<void>;
   };
 }
@@ -170,7 +172,11 @@ export function crudRouter(ctx: AppContext, o: CrudOptions): Router {
               await sql`rollback to savepoint try_delete`.execute(trx);
               await t
                 .updateTable(o.table)
-                .set({ is_active: false, archived_at: new Date() })
+                .set(
+                  o.archivable.noActiveColumn
+                    ? { archived_at: new Date() }
+                    : { is_active: false, archived_at: new Date() },
+                )
                 .where('id', '=', id)
                 .execute();
               archived = true;

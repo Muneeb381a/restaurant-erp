@@ -296,6 +296,7 @@ export async function getPrinterHealth(ctx: AppContext, branchId: string) {
     .selectFrom('printers')
     .selectAll()
     .where('branch_id', '=', branchId)
+    .where('archived_at', 'is', null)
     .orderBy('name')
     .execute();
   const counts = await ctx.db

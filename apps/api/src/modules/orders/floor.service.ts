@@ -11,6 +11,7 @@ export async function getFloor(ctx: AppContext, branchId: string) {
       .selectFrom('areas')
       .selectAll()
       .where('branch_id', '=', branchId)
+      .where('archived_at', 'is', null)
       .orderBy('sort')
       .orderBy('name')
       .execute(),

@@ -297,6 +297,7 @@ export async function getAdminMenu(ctx: AppContext, branchId: string, date?: str
       .selectFrom('stations')
       .select(['id', 'code', 'name'])
       .where('branch_id', '=', branchId)
+      .where('archived_at', 'is', null)
       .orderBy('code')
       .execute(),
     db

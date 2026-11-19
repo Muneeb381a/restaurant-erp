@@ -67,10 +67,10 @@ export default {
         900: '#7a2e0e',
       },
       // accents for menu categories only (never a state colour)
-      violet: { 50: '#f4f3ff', 500: '#7a5af8' },
-      teal: { 50: '#f0fdf9', 500: '#15b79e' },
-      pink: { 50: '#fdf2fa', 500: '#ee46bc' },
-      orange: { 50: '#fff6ed', 500: '#fb6514' },
+      violet: { 50: '#f4f3ff', 100: '#ebe9fe', 500: '#7a5af8', 700: '#5925dc' },
+      teal: { 50: '#f0fdf9', 100: '#ccfbef', 500: '#15b79e', 700: '#0e7090' },
+      pink: { 50: '#fdf2fa', 100: '#fce7f6', 500: '#ee46bc', 700: '#c11574' },
+      orange: { 50: '#fff6ed', 100: '#ffead5', 500: '#fb6514', 700: '#c4320a' },
       sky: {
         50: '#eff8ff',
         100: '#d1e9ff',

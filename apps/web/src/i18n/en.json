@@ -324,6 +324,13 @@
       "editArea": "Edit area"
     },
     "usersPage": {
+      "statPeople": "People",
+      "statActive": "Active",
+      "statOff": "Switched off",
+      "statLocked": "Locked out",
+      "search": "Find a person",
+      "show": "Show",
+      "noMatch": "Nobody matches.",
       "newUser": "New user",
       "username": "Username",
       "fullName": "Full name",
@@ -765,6 +772,10 @@
     "mergeHint": "Pick the table whose order should be added to this one."
   },
   "rolesPage": {
+    "peopleN_one": "{{count}} person",
+    "peopleN_other": "{{count}} people",
+    "heldBy": "Held by",
+    "codeHint": "The code is a short name without spaces (for example SUPERVISOR). It cannot be changed later.",
     "pick": "Choose a role on the left.",
     "locked": "Fixed",
     "saved": "Saved",
@@ -996,6 +1007,7 @@
     "from": "From",
     "to": "To",
     "vs": "compared with {{from}} → {{to}}",
+    "noEarlier": "No earlier data",
     "noChange": "no change",
     "new": "new",
     "up": "up",

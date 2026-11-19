@@ -32,7 +32,12 @@ export interface ImportResult {
 async function loadContext(q: Queryable, branchId: string) {
   const [lists, stations, taxes] = await Promise.all([
     q.selectFrom('price_lists').select(['id', 'code']).where('branch_id', '=', branchId).execute(),
-    q.selectFrom('stations').select(['id', 'code']).where('branch_id', '=', branchId).execute(),
+    q
+      .selectFrom('stations')
+      .select(['id', 'code'])
+      .where('branch_id', '=', branchId)
+      .where('archived_at', 'is', null)
+      .execute(),
     q.selectFrom('tax_categories').select(['id', 'code']).execute(),
   ]);
   return { lists, stations, taxes };
@@ -48,7 +53,12 @@ async function loadExisting(q: Queryable, branchId: string): Promise<ExistingMen
       .where('archived_at', 'is', null)
       .where('code', 'is not', null)
       .execute(),
-    q.selectFrom('stations').select(['id', 'code']).where('branch_id', '=', branchId).execute(),
+    q
+      .selectFrom('stations')
+      .select(['id', 'code'])
+      .where('branch_id', '=', branchId)
+      .where('archived_at', 'is', null)
+      .execute(),
     q.selectFrom('price_lists').select(['id', 'code']).where('branch_id', '=', branchId).execute(),
   ]);
   const itemIds = items.map((i) => i.id);
@@ -461,7 +471,12 @@ export async function exportMenuCsv(
       .orderBy('code')
       .execute(),
     db.selectFrom('categories').selectAll().where('branch_id', '=', branchId).execute(),
-    db.selectFrom('stations').select(['id', 'code']).where('branch_id', '=', branchId).execute(),
+    db
+      .selectFrom('stations')
+      .select(['id', 'code'])
+      .where('branch_id', '=', branchId)
+      .where('archived_at', 'is', null)
+      .execute(),
     db.selectFrom('tax_categories').select(['id', 'code']).execute(),
     db
       .selectFrom('items')

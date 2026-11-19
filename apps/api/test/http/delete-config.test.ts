@@ -125,6 +125,77 @@ describe('tables and areas', () => {
   });
 });
 
+describe('areas, stations and printers that history points at are archived', () => {
+  it('an area whose tables were all archived can be archived too; one with live tables is refused', async () => {
+    const area = (await api(owner).post('/areas', { name: 'Old Terrace' })).body;
+    const table = (await api(owner).post('/tables', { code: 'OT1', seats: 2, area_id: area.id }))
+      .body;
+    const o = (await api(captain).post('/orders', { type: 'DINE_IN', tableId: table.id })).body;
+    expect(await cancelOrder(o.id)).toBe(200);
+
+    // a live table still sits in it
+    const refused = await api(owner).delete(`/areas/${area.id}`);
+    expect(refused.status).toBe(409);
+    expect(refused.body.title).toMatch(/table\(s\) are in this area/);
+
+    // the table had an order, so it is archived; then the area has nothing live in it
+    expect((await api(owner).delete(`/tables/${table.id}`)).headers['x-archived']).toBe('true');
+    const res = await api(owner).delete(`/areas/${area.id}`);
+    expect(res.status).toBe(204);
+    expect(res.headers['x-archived']).toBe('true');
+    const list = (await api(owner).get('/areas')).body.items as { id: string }[];
+    expect(list.some((a) => a.id === area.id)).toBe(false);
+  });
+
+  it('a printer with old print jobs is archived and disappears from the lists', async () => {
+    const printer = (
+      await api(owner).post('/printers', {
+        name: 'Old KOT',
+        kind: 'KOT',
+        conn_type: 'NETWORK',
+        host: '10.0.0.9',
+      })
+    ).body;
+    expect((await api(owner).post(`/printers/${printer.id}/test`, {})).status).toBe(202); // a job now points at it
+    const res = await api(owner).delete(`/printers/${printer.id}`);
+    expect(res.status).toBe(204);
+    expect(res.headers['x-archived']).toBe('true');
+    const list = (await api(owner).get('/printers')).body.items as { id: string }[];
+    expect(list.some((p) => p.id === printer.id)).toBe(false);
+    const health = (await api(owner).get('/printers/health')).body.items as { id: string }[];
+    expect(health.some((p) => p.id === printer.id)).toBe(false);
+  });
+
+  it('a station that old dishes and tickets point at is archived once no live dish is cooked there, and its code is free again', async () => {
+    const st = (await api(owner).post('/stations', { code: 'OLDGRILL', name: 'Old grill' })).body;
+    const made = await api(owner).post('/items', {
+      kind: 'STANDARD',
+      name: 'Grill thing',
+      stationId: st.id,
+    });
+    const variantId = made.body.variants[0].id;
+    for (const l of lists)
+      await api(owner).put(`/variants/${variantId}/prices/${l.id}`, { pricePaisa: 50000 });
+    const o = (await api(captain).post('/orders', { type: 'TAKEAWAY' })).body;
+    await api(captain).post(`/orders/${o.id}/items`, { itemId: made.body.id, variantId });
+    expect(await cancelOrder(o.id)).toBe(200);
+
+    const cooked = await api(owner).delete(`/stations/${st.id}`);
+    expect(cooked.status).toBe(409);
+    expect(cooked.body.title).toMatch(/dish\(es\) are cooked/);
+
+    expect((await api(owner).delete(`/items/${made.body.id}`)).status).toBe(204); // archived (it was ordered)
+    const res = await api(owner).delete(`/stations/${st.id}`);
+    expect(res.status).toBe(204);
+    expect(res.headers['x-archived']).toBe('true');
+    const list = (await api(owner).get('/stations')).body.items as { id: string }[];
+    expect(list.some((x) => x.id === st.id)).toBe(false);
+    expect(
+      (await api(owner).post('/stations', { code: 'OLDGRILL', name: 'New grill' })).status,
+    ).toBe(201);
+  });
+});
+
 describe('categories', () => {
   it('an empty category is deleted; one with dishes or sub-categories is refused', async () => {
     const cat = (await api(owner).post('/categories', { name: 'Desserts' })).body;

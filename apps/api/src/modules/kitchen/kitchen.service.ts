@@ -404,6 +404,7 @@ export async function kitchenBoard(ctx: AppContext, branchId: string, stationCod
     .selectFrom('stations')
     .select(['code', 'name'])
     .where('branch_id', '=', branchId)
+    .where('archived_at', 'is', null)
     .orderBy('name')
     .execute();
   return {
