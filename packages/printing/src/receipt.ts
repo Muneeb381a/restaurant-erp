@@ -1,4 +1,5 @@
 import { COLUMNS, EscPos, twoColumns, wrap, type PaperMm } from './escpos';
+import { tokenBanner } from './kot';
 
 export interface ReceiptLine {
   qty: number;
@@ -65,6 +66,8 @@ export interface ReceiptDoc {
   duplicate?: number;
   /** Open the cash drawer (cash tender). */
   openDrawer?: boolean;
+  /** The bill shown to the customer BEFORE payment: marked "not paid", no payment lines, no drawer. */
+  provisional?: boolean;
 }
 
 /** "Rs 1,250.50"-style amount without the currency, for the right-hand column. */
@@ -105,14 +108,16 @@ export function renderReceipt(doc: ReceiptDoc, paperMm: PaperMm = 80): Uint8Arra
     );
   if (doc.duplicate && doc.duplicate > 0)
     p.bold(true).line(`*** DUPLICATE #${doc.duplicate} ***`).bold(false);
+  if (doc.provisional) p.bold(true).line('*** BILL - NOT PAID ***').bold(false);
   p.align('left').rule(cols);
+  tokenBanner(p, doc.orderNo);
 
   p.line(twoColumns(`Bill #${doc.billNo}`, doc.dateTime, cols));
   const where =
     doc.orderType === 'DINE_IN' && doc.tableCode
       ? `Table ${doc.tableCode}`
       : TYPE_LABEL[doc.orderType];
-  p.line(twoColumns(where, `Order #${doc.orderNo}`, cols));
+  p.line(where);
   if (doc.waiter || doc.cashier) {
     p.line(
       twoColumns(
@@ -163,6 +168,10 @@ export function renderReceipt(doc: ReceiptDoc, paperMm: PaperMm = 80): Uint8Arra
   } else if (doc.fiscalPending) {
     p.rule(cols).align('center').line('Fiscal invoice: pending').align('left');
   }
-  p.rule(cols).align('center').line('Thank you! Visit again').feed(3).cut();
+  p.rule(cols)
+    .align('center')
+    .line(doc.provisional ? 'Please pay at the counter' : 'Thank you! Visit again')
+    .feed(3)
+    .cut();
   return p.build();
 }

@@ -8,7 +8,7 @@ async function loginOwner(page: Page): Promise<void> {
   await page.getByLabel('Username').fill('owner');
   for (const digit of '1234') await page.getByRole('button', { name: digit, exact: true }).click();
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('heading', { name: 'Tables' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tables', exact: true })).toBeVisible();
 }
 
 test('a category that still has a dish is deleted by moving the dish out; the dish is kept', async ({

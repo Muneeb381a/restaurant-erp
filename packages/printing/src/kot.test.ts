@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { describe as describeBytes } from './escpos';
-import { renderKot, type KotDoc } from './kot';
+import { renderCombinedKot, renderKot, type CombinedKotDoc, type KotDoc } from './kot';
 
 const base: KotDoc = {
   kind: 'KOT',
@@ -22,9 +22,10 @@ const text = (doc: KotDoc, mm: 58 | 80 = 80): string => describeBytes(renderKot(
 describe('KOT ticket (80 mm)', () => {
   it('prints station, table, order, waiter, time, lines, modifiers and notes', () => {
     expect(text(base)).toMatchInlineSnapshot(`
-      "<INIT><ALIGN:left><BOLD:1><SIZE:2x2>KOT #12              BBQ
-      <SIZE:1x1><BOLD:0><BOLD:1>Table T1                                Order #7
-      <BOLD:0>Waiter: Dev CAPTAIN                        19:42
+      "<INIT><ALIGN:center><BOLD:1><SIZE:3x3>TOKEN 7
+      <SIZE:1x1><BOLD:0><ALIGN:left><ALIGN:left><BOLD:1><SIZE:2x2>KOT #12              BBQ
+      <SIZE:1x1><BOLD:0><BOLD:1>Table T1                                   19:42
+      <BOLD:0>Waiter: Dev CAPTAIN
       ------------------------------------------------
       <BOLD:1><SIZE:1x2>3 x Chicken Tikka (Leg)
       <SIZE:1x1><BOLD:0>    "less spicy"
@@ -51,9 +52,10 @@ describe('KOT ticket (80 mm)', () => {
       ],
     });
     expect(out).toMatchInlineSnapshot(`
-      "<INIT><ALIGN:left><BOLD:1><SIZE:2x2>KOT #12              BBQ
-      <SIZE:1x1><BOLD:0><BOLD:1>Table T1                                Order #7
-      <BOLD:0>Waiter: Dev CAPTAIN                        19:42
+      "<INIT><ALIGN:center><BOLD:1><SIZE:3x3>TOKEN 7
+      <SIZE:1x1><BOLD:0><ALIGN:left><ALIGN:left><BOLD:1><SIZE:2x2>KOT #12              BBQ
+      <SIZE:1x1><BOLD:0><BOLD:1>Table T1                                   19:42
+      <BOLD:0>Waiter: Dev CAPTAIN
       ------------------------------------------------
       <BOLD:1><SIZE:1x2>750 g Mutton Chops
       <SIZE:1x1><BOLD:0><BOLD:1><SIZE:1x2>4 x Naan
@@ -112,9 +114,10 @@ describe('cancel ticket', () => {
       ),
     ).toMatchInlineSnapshot(`
       "<INIT><ALIGN:center><INVERT:1><BOLD:1><SIZE:2x2> *** CANCEL *** 
-      <SIZE:1x1><INVERT:0><BOLD:0><ALIGN:left><BOLD:1><SIZE:2x2>KOT #12      BBQ
-      <SIZE:1x1><BOLD:0><BOLD:1>Table T1                Order #7
-      <BOLD:0>Waiter: Dev CAPTAIN        19:42
+      <SIZE:1x1><INVERT:0><BOLD:0><ALIGN:center><BOLD:1><SIZE:3x3>TOKEN 7
+      <SIZE:1x1><BOLD:0><ALIGN:left><ALIGN:left><BOLD:1><SIZE:2x2>KOT #12      BBQ
+      <SIZE:1x1><BOLD:0><BOLD:1>Table T1                   19:42
+      <BOLD:0>Waiter: Dev CAPTAIN
       --------------------------------
       <BOLD:1><SIZE:1x2>3 x Chicken Tikka (Leg)
       <SIZE:1x1><BOLD:0>    "less spicy"
@@ -138,5 +141,79 @@ describe('58 mm paper', () => {
   it('uses the narrower 32-column layout', () => {
     const lines = text(base, 58).split('\n');
     expect(Math.max(...lines.map((l) => l.replace(/<[^>]+>/g, '').length))).toBeLessThanOrEqual(32);
+  });
+});
+
+describe('the token', () => {
+  it('is printed huge at the top of every kitchen ticket, even on 58 mm paper', () => {
+    for (const mm of [58, 80] as const) {
+      const t = text({ ...base, orderNo: 123 }, mm);
+      expect(t).toContain('<SIZE:3x3>TOKEN 123');
+      expect(t.indexOf('TOKEN 123')).toBeLessThan(t.indexOf('KOT #12')); // above everything else
+    }
+    // 4 digits still fit in one line at triple width (10 chars x 3 = 30 <= 32 columns)
+    expect('TOKEN 1234'.length * 3).toBeLessThanOrEqual(32);
+  });
+});
+
+describe('one combined ticket for a single printer', () => {
+  const combined: CombinedKotDoc = {
+    orderNo: 17,
+    orderType: 'TAKEAWAY',
+    waiter: 'Sara',
+    time: '19:42',
+    sections: [
+      {
+        station: 'BBQ',
+        kotNo: 4,
+        lines: [{ qty: 2, name: 'Chicken Tikka', modifiers: [], note: 'less spicy' }],
+      },
+      { station: 'TANDOOR', kotNo: 5, lines: [{ qty: 4, name: 'Naan', modifiers: [] }] },
+      {
+        station: 'DRINKS',
+        kotNo: 6,
+        lines: [
+          { qty: 1, name: 'Cola', modifiers: [] },
+          { qty: 1, name: 'Lassi', modifiers: ['Sweet'] },
+        ],
+      },
+    ],
+  };
+  const t = describeBytes(renderCombinedKot(combined, 80));
+  it('has the token on top, every station under its own heading, and the item count', () => {
+    expect(t.indexOf('TOKEN 17')).toBeLessThan(t.indexOf('BBQ'));
+    for (const s of ['BBQ  (KOT #4)', 'TANDOOR  (KOT #5)', 'DRINKS  (KOT #6)'])
+      expect(t).toContain(s);
+    expect(t.indexOf('BBQ')).toBeLessThan(t.indexOf('TANDOOR'));
+    expect(t).toContain('2 x Chicken Tikka');
+    expect(t).toContain('"less spicy"');
+    expect(t).toContain('+ Sweet');
+    expect(t).toMatch(/ITEMS\s+8\n/); // 2 + 4 + 1 + 1
+    expect(t).toContain('TAKEAWAY');
+  });
+  it('marks a rush and a reprint, and cuts once', () => {
+    const r = describeBytes(renderCombinedKot({ ...combined, rush: true, reprint: 2 }, 58));
+    expect(r).toContain('*** RUSH ***');
+    expect(r).toContain('** REPRINT #2 **');
+    expect(r.match(/<CUT/g) ?? []).toHaveLength(1);
+  });
+  it('a weighed line counts as one item', () => {
+    const w = describeBytes(
+      renderCombinedKot(
+        {
+          ...combined,
+          sections: [
+            {
+              station: 'BBQ',
+              kotNo: 1,
+              lines: [{ qty: 1, weightG: 750, name: 'Mutton Chops', modifiers: [] }],
+            },
+          ],
+        },
+        80,
+      ),
+    );
+    expect(w).toContain('750 g Mutton Chops');
+    expect(w).toMatch(/ITEMS\s+1\n/);
   });
 });

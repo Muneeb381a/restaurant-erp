@@ -403,7 +403,18 @@ export function createBill(
   orderId: string,
   ifMatch: number | undefined,
 ) {
-  return withTx(ctx.db, async (trx) => {
+  return withTx(ctx.db, (trx) => createBillTx(trx, ctx, a, orderId, ifMatch));
+}
+
+/** The pre-bill inside a transaction the caller already holds (the "print bill" shortcut bills and prints atomically). */
+async function createBillTx(
+  trx: Queryable,
+  ctx: AppContext,
+  a: Actor,
+  orderId: string,
+  ifMatch: number | undefined,
+) {
+  {
     const order = await lockOrder(trx, a.branchId, orderId);
     assertEditable(order);
     checkVersion(order, ifMatch, false);
@@ -477,7 +488,7 @@ export function createBill(
     await trx.updateTable('orders').set({ status: 'BILLED' }).where('id', '=', orderId).execute();
     await bumpVersion(trx, orderId);
     return getBillView(trx, a.branchId, bill.id);
-  });
+  }
 }
 
 // ──────────────────────────────── discounts ────────────────────────────────
@@ -701,6 +712,8 @@ export interface SettleResult {
   bill: BillView;
   changeDuePaisa: number;
   receipts: number;
+  /** AUTO: the receipt comes out by itself after payment. MANUAL: the bill was printed before payment; print a receipt only on request. */
+  printPolicy: 'AUTO' | 'MANUAL';
   replayed: boolean;
 }
 
@@ -710,6 +723,7 @@ async function receiptDoc(
   branchId: string,
   bill: BillView,
   duplicate: number,
+  opts: { provisional?: boolean } = {},
 ): Promise<{ doc: ReceiptDoc; branchTz: string }> {
   const [branch, order, cashier] = await Promise.all([
     q
@@ -815,7 +829,36 @@ async function receiptDoc(
     duplicate,
     openDrawer: duplicate === 0 && bill.payments.some((p) => p.tenderedPaisa !== null),
   };
+  if (opts.provisional) {
+    // the bill shown to the customer before they pay: amounts due, nothing about payment
+    doc.provisional = true;
+    doc.payments = [];
+    doc.tipPaisa = 0;
+    doc.khataCustomer = null;
+    doc.cashier = null;
+    doc.openDrawer = false;
+  }
   return { doc, branchTz: branch.timezone };
+}
+
+/** Active receipt printers; a helper's printer counts only while the helper is online (see queueReceipts). */
+async function receiptPrinters(q: Queryable, branchId: string, at: Date) {
+  return q
+    .selectFrom('printers')
+    .leftJoin('print_agents', 'print_agents.id', 'printers.agent_id')
+    .select(['printers.id as id', 'printers.paper_mm as paper_mm'])
+    .where('printers.branch_id', '=', branchId)
+    .where('printers.kind', '=', 'RECEIPT')
+    .where('printers.is_active', '=', true)
+    .where('printers.archived_at', 'is', null)
+    .where((eb) =>
+      eb.or([
+        eb('printers.conn_type', '!=', 'AGENT'),
+        eb('print_agents.last_seen_at', '>', new Date(at.getTime() - 90_000)),
+      ]),
+    )
+    .orderBy('printers.name')
+    .execute();
 }
 
 async function queueReceipts(
@@ -825,24 +868,7 @@ async function queueReceipts(
   duplicate: number,
   at: Date,
 ): Promise<number> {
-  const printers = await q
-    .selectFrom('printers')
-    .leftJoin('print_agents', 'print_agents.id', 'printers.agent_id')
-    .select(['printers.id as id', 'printers.paper_mm as paper_mm'])
-    .where('printers.branch_id', '=', a.branchId)
-    .where('printers.kind', '=', 'RECEIPT')
-    .where('printers.is_active', '=', true)
-    .where('printers.archived_at', 'is', null)
-    // a helper's printer counts only while the helper is online: otherwise nothing would ever print
-    // and the till would not know to open the browser's print dialog instead
-    .where((eb) =>
-      eb.or([
-        eb('printers.conn_type', '!=', 'AGENT'),
-        eb('print_agents.last_seen_at', '>', new Date(at.getTime() - 90_000)),
-      ]),
-    )
-    .orderBy('printers.name')
-    .execute();
+  const printers = await receiptPrinters(q, a.branchId, at);
   if (printers.length === 0) return 0;
   const { doc } = await receiptDoc(q, a.branchId, bill, duplicate);
   const lang = await q
@@ -912,7 +938,13 @@ export async function settleBill(
     if (bill.status === 'SETTLED') {
       if (mine.length > 0) {
         const view = await getBillView(trx, a.branchId, billId);
-        return { bill: view, changeDuePaisa: view.changeDuePaisa, receipts: 0, replayed: true };
+        return {
+          bill: view,
+          changeDuePaisa: view.changeDuePaisa,
+          receipts: 0,
+          printPolicy: await printAfterPayment(trx, a.branchId),
+          replayed: true,
+        };
       }
       throw new AppError(409, 'BILL_ALREADY_SETTLED', 'This bill was already paid');
     }
@@ -1048,7 +1080,9 @@ export async function settleBill(
     // reported to the tax authority later by the fiscal worker; the sale never waits for it
     await enqueueFiscal(trx, a.branchId, 'BILL', billId, now);
     const view = await getBillView(trx, a.branchId, billId);
-    const receipts = await queueReceipts(trx, a, view, 0, now);
+    // "print the bill first, then take the money": the owner can switch off the second print after payment
+    const printPolicy = await printAfterPayment(trx, a.branchId);
+    const receipts = printPolicy === 'AUTO' ? await queueReceipts(trx, a, view, 0, now) : 0;
     if (receipts > 0)
       await trx.updateTable('bills').set({ print_count: 1 }).where('id', '=', billId).execute();
     await audit(
@@ -1073,6 +1107,7 @@ export async function settleBill(
       bill: { ...view, printCount: receipts > 0 ? 1 : 0 },
       changeDuePaisa: result.changeDuePaisa,
       receipts,
+      printPolicy,
       replayed: false,
     };
   });
@@ -1188,3 +1223,153 @@ export function browserReceipt(ctx: AppContext, a: Actor, billId: string, reason
 }
 
 export type { Paisa };
+
+async function printAfterPayment(q: Queryable, branchId: string): Promise<'AUTO' | 'MANUAL'> {
+  const r = await q
+    .selectFrom('settings')
+    .select('value')
+    .where('branch_id', '=', branchId)
+    .where('key', '=', 'receipt.print_after_payment')
+    .executeTakeFirst();
+  return r?.value === false ? 'MANUAL' : 'AUTO';
+}
+
+// ─────────────────────────── the bill, printed before payment ───────────────────────────
+
+/**
+ * The counter prints the customer's bill (token, items, amount due; marked NOT PAID) BEFORE taking the money.
+ * It is not a receipt: it changes no count, needs no reason and can be printed again, but each print is
+ * audited. On a thermal printer it is queued (idempotent per click); with none set up the data comes back so the
+ * browser can print it.
+ */
+export function printPreBill(ctx: AppContext, a: Actor, billId: string, key: string) {
+  return withTx(ctx.db, (trx) => printPreBillTx(trx, ctx, a, billId, key));
+}
+
+async function printPreBillTx(
+  trx: Queryable,
+  ctx: AppContext,
+  a: Actor,
+  billId: string,
+  key: string,
+) {
+  {
+    const bill = await trx
+      .selectFrom('bills')
+      .select(['id', 'status', 'bill_no'])
+      .where('id', '=', billId)
+      .where('branch_id', '=', a.branchId)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!bill) throw new AppError(404, 'NOT_FOUND', 'bill not found');
+    if (bill.status !== 'PRE_BILLED')
+      throw new AppError(
+        409,
+        'BILL_NOT_PAYABLE',
+        'Only a bill that is waiting for payment can be printed before payment',
+      );
+    const now = ctx.clock.now();
+    const view = await getBillView(trx, a.branchId, billId);
+    const { doc } = await receiptDoc(trx, a.branchId, view, 0, { provisional: true });
+    const lang = await trx
+      .selectFrom('settings')
+      .select('value')
+      .where('branch_id', '=', a.branchId)
+      .where('key', '=', 'receipt.language')
+      .executeTakeFirst();
+    const urdu = lang?.value === 'ur';
+    const printers = await receiptPrinters(trx, a.branchId, now);
+    for (const p of printers)
+      await enqueuePrintJob(trx, {
+        branchId: a.branchId,
+        printerId: p.id,
+        kind: 'RECEIPT',
+        refType: 'bill',
+        refId: billId,
+        title: `Bill #${bill.bill_no} (token ${view.orderNo}) - not paid`,
+        payload: urdu
+          ? renderReceiptBitmap(doc, p.paper_mm as 58 | 80)
+          : renderReceipt(doc, p.paper_mm as 58 | 80),
+        idempotencyKey: `prebill:${billId}:${key}:${p.id}`,
+        createdBy: a.userId,
+        at: now,
+      });
+    await audit(trx, a, 'BILL_PRINT_PREBILL', billId, null, {
+      printers: printers.length,
+      token: view.orderNo,
+    });
+
+    if (printers.length > 0) return { printers: printers.length, browser: null };
+    // no thermal printer: the browser prints it (the logo goes as a picture, not as printer dots)
+    const { logo, ...plain } = doc;
+    const shown = logo
+      ? await trx
+          .selectFrom('branch_logo')
+          .select(['content_type', 'display'])
+          .where('branch_id', '=', a.branchId)
+          .executeTakeFirst()
+      : undefined;
+    return {
+      printers: 0,
+      browser: {
+        doc: plain,
+        logoUrl: shown
+          ? `data:${shown.content_type};base64,${shown.display.toString('base64')}`
+          : null,
+        language: urdu ? ('ur' as const) : ('en' as const),
+      },
+    };
+  }
+}
+
+/**
+ * "Print the bill for this table" in ONE tap: the order is billed (frozen) if it is not yet, and the bill is
+ * printed for the customer, who pays later. Safe to press again: a bill that exists is reused and the same
+ * key never prints twice.
+ */
+export function printBillForOrder(
+  ctx: AppContext,
+  a: Actor,
+  orderId: string,
+  key: string,
+  ifMatch: number | undefined,
+) {
+  return withTx(ctx.db, async (trx) => {
+    const order = await trx
+      .selectFrom('orders')
+      .select(['id', 'status'])
+      .where('id', '=', orderId)
+      .where('branch_id', '=', a.branchId)
+      .executeTakeFirst();
+    if (!order) throw new AppError(404, 'NOT_FOUND', 'order not found');
+    if (order.status === 'SETTLED')
+      throw new AppError(409, 'BILL_ALREADY_SETTLED', 'This order is already paid');
+    let billId: string;
+    let created = false;
+    if (order.status === 'BILLED') {
+      const existing = await trx
+        .selectFrom('bills')
+        .select('id')
+        .where('order_id', '=', orderId)
+        .where('status', '=', 'PRE_BILLED')
+        .executeTakeFirst();
+      if (!existing)
+        throw new AppError(409, 'BILL_NOT_PAYABLE', 'This order has no bill waiting for payment');
+      billId = existing.id;
+    } else {
+      billId = (await createBillTx(trx, ctx, a, orderId, ifMatch)).id;
+      created = true;
+    }
+    const printed = await printPreBillTx(trx, ctx, a, billId, key);
+    const view = await getBillView(trx, a.branchId, billId);
+    return {
+      billId,
+      billNo: view.billNo,
+      token: view.orderNo,
+      tableCode: view.tableCode,
+      totalPaisa: view.totalPaisa,
+      created,
+      ...printed,
+    };
+  });
+}

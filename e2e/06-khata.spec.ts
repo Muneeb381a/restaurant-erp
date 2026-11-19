@@ -9,7 +9,7 @@ async function login(page: Page, username: string): Promise<void> {
   await page.getByLabel('Username').fill(username);
   for (const digit of PIN) await page.getByRole('button', { name: digit, exact: true }).click();
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('heading', { name: 'Tables' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tables', exact: true })).toBeVisible();
 }
 
 /** One Chicken Tikka (Rs 400) at T4, sent to the kitchen, then on to the payment screen. */
@@ -56,7 +56,7 @@ test('credit sales run up the balance until the limit stops the next one', async
   await login(page, 'cashier');
   await page.getByRole('button', { name: /^Day / }).click();
   await page.getByRole('button', { name: 'Open shift' }).first().click();
-  await page.getByRole('textbox').fill('5000');
+  await page.getByRole('dialog').getByRole('textbox').fill('5000');
   await page.getByRole('button', { name: 'Open shift' }).last().click();
   await expect(page.getByText('Shift open')).toBeVisible();
 

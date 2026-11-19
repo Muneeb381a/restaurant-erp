@@ -36,6 +36,12 @@ export const SETTING_SCHEMAS: Record<string, z.ZodType> = {
   'billing.round_to_rupee': z.boolean(),
   'billing.service_charge_bps': z.number().int().min(0).max(10_000),
   'kot.print_on_send': z.boolean(),
+  /** One printer at the counter: a Send comes out as ONE kitchen ticket (token on top) instead of one slip per station. */
+  'kot.single_ticket': z.boolean(),
+  /** Show the Kitchen screen (the board the cooks use). A counter-only restaurant switches it off: the printed ticket is the kitchen. */
+  'kitchen.screen_enabled': z.boolean(),
+  /** Print the receipt by itself after payment. Off when the bill is printed first and then paid. */
+  'receipt.print_after_payment': z.boolean(),
   /** The customer menu behind the QR code: off until switched on; a short note for today; the address the QR points to. */
   /** Where the end-of-day summary is sent: a mobile number with country code, digits only; empty = ask each time. */
   'report.owner_phone': z

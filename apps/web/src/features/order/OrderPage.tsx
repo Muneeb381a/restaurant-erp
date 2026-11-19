@@ -14,7 +14,7 @@ import { formatRs, ltr } from '../../lib/money';
 import { topOf as topOfCat } from '../../lib/categories';
 import { useOutbox } from '../../lib/outbox';
 import { mode } from '../../lib/tenant';
-import { can, useMe, useMenu, useOrder } from '../../lib/queries';
+import { can, useKitchenScreen, useMe, useMenu, useOrder } from '../../lib/queries';
 import type { MenuItem, Order, OrderLine, SendResult } from '../../lib/types';
 import { ItemSheet, QUICK_NOTES, type AddBody } from './ItemSheet';
 import { OrderActions } from './OrderActions';
@@ -176,6 +176,7 @@ export function OrderPage() {
   });
 
   const [rush, setRush] = useState(false);
+  const kitchenScreen = useKitchenScreen();
   const send = useMutation({
     mutationFn: async (): Promise<SendResult | null> => {
       const body = rush ? { rush: true } : {};
@@ -199,9 +200,15 @@ export function OrderPage() {
       apply(out.order);
       setRush(false);
       const stations = out.kots.map((k) => k.station).join(', ');
-      toast(t('order.sentOk', { stations }));
-      // in the cloud the kitchen works from its screen, so "no printer" is not a problem to report
-      if (out.unprinted.length && mode.kind !== 'tenant')
+      const printed = out.kots.some((k) => k.printers > 0);
+      toast(
+        printed
+          ? t('order.sentOkPrinted', { stations, token: out.order.orderNo })
+          : t('order.sentOk', { stations }),
+      );
+      // in the cloud the kitchen works from its screen, so "no printer" is not a problem to report;
+      // without that screen the printed ticket IS the kitchen, so it must be reported
+      if (out.unprinted.length && (mode.kind !== 'tenant' || !kitchenScreen))
         setMessage(t('order.noPrinter', { stations: out.unprinted.join(', ') }));
     },
     onError: (e) => {
@@ -215,6 +222,34 @@ export function OrderPage() {
 
   const nav = useNavigate();
   const me = useMe();
+  // "Print bill": the table's bill comes out for the customer, who pays later; the table stays taken until then
+  const printBill = useMutation({
+    mutationFn: () =>
+      api<{ billId: string; token: number; tableCode: string | null; printers: number }>(
+        `/orders/${id}/print-bill`,
+        {
+          method: 'POST',
+          body: {},
+          ifMatch: order.data?.version,
+          headers: { 'idempotency-key': `ui-${crypto.randomUUID()}` },
+        },
+      ),
+    onSuccess: (out) => {
+      void qc.invalidateQueries({ queryKey: ['order', id] });
+      qc.removeQueries({ queryKey: ['floor'] });
+      if (out.printers === 0) {
+        // no thermal printer here (a cloud shop): the pay screen prints the bill from the browser
+        nav(`/order/${id}/pay`);
+        return;
+      }
+      toast(t('order.billPrinted', { token: out.token }));
+      nav('/');
+    },
+    onError: (e) => {
+      if (e instanceof ApiError && e.code === 'UNSENT_ITEMS') setMessage(t('bill.unsent'));
+      else onError(e);
+    },
+  });
   const makeBill = useMutation({
     mutationFn: () =>
       api<{ id: string }>(`/orders/${id}/bill`, {
@@ -561,7 +596,9 @@ export function OrderPage() {
             <div className="me-auto min-w-0">
               <h1 className="flex flex-wrap items-baseline gap-x-2 truncate text-2xl font-semibold leading-tight">
                 {title}
-                <span className="text-base font-medium text-slate-400">{ltr(`#${o.orderNo}`)}</span>
+                <span className="rounded-md bg-white/10 px-2 py-0.5 text-lg font-bold text-emerald-300">
+                  {t('order.token')} {ltr(String(o.orderNo))}
+                </span>
               </h1>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <span
@@ -881,13 +918,23 @@ export function OrderPage() {
             pending.length === 0 &&
             liveLines.length > 0 &&
             can(me.data, 'bill.create') && (
-              <button
-                className="btn-bill btn-lg w-full"
-                disabled={makeBill.isPending}
-                onClick={() => makeBill.mutate()}
-              >
-                {t('order.billIt')} · {ltr(formatRs(o.subtotalPaisa))}
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  className={`btn-lg ${o.type === 'DINE_IN' ? 'btn-secondary' : 'btn-bill flex-1'}`}
+                  disabled={makeBill.isPending || printBill.isPending}
+                  onClick={() => makeBill.mutate()}
+                >
+                  {t('order.billIt')} · {ltr(formatRs(o.subtotalPaisa))}
+                </button>
+                <button
+                  className={`btn-lg ${o.type === 'DINE_IN' ? 'btn-bill flex-1' : 'btn-secondary'}`}
+                  disabled={makeBill.isPending || printBill.isPending}
+                  onClick={() => printBill.mutate()}
+                >
+                  <Icon name="printer" size={20} />
+                  {t('order.printBill')}
+                </button>
+              </div>
             )}
           {(o.status === 'BILLED' || o.status === 'SETTLED') && (
             <Link to={`/order/${id}/pay`} className="btn-primary btn-lg w-full">

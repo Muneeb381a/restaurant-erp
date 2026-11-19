@@ -183,6 +183,15 @@ export function ordersRouter(ctx: AppContext): Router {
       });
     }),
   );
+  // the token printed on the ticket and the bill: before /orders/:id so it is not read as an id
+  r.get(
+    '/orders/by-token/:token',
+    ...read,
+    asyncHandler(async (req, res) => {
+      const token = z.coerce.number().int().min(1).max(99_999).parse(req.params.token);
+      res.json(await svc.findOrderByToken(ctx, req.branchId!, token));
+    }),
+  );
   r.get(
     '/orders/:id',
     ...read,

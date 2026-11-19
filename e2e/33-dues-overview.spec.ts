@@ -7,7 +7,7 @@ async function loginOwner(page: Page): Promise<void> {
   await page.getByLabel('Username').fill('owner');
   for (const digit of '1234') await page.getByRole('button', { name: digit, exact: true }).click();
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('heading', { name: 'Tables' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tables', exact: true })).toBeVisible();
 }
 
 test('a fine is recorded against a person, shown as owed, paused and written off with a reason; the overview shows the team', async ({

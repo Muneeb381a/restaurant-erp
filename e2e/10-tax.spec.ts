@@ -10,7 +10,7 @@ async function login(page: Page, username: string): Promise<void> {
   await page.getByLabel('Username').fill(username);
   for (const digit of PIN) await page.getByRole('button', { name: digit, exact: true }).click();
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('heading', { name: 'Tables' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tables', exact: true })).toBeVisible();
 }
 
 test.beforeAll(async () => {
@@ -80,7 +80,7 @@ test('the bill total follows how it is paid: 16 % for cash, 8 % for card', async
   if (!hasShift) {
     await page.getByRole('button', { name: /^Day / }).click();
     await page.getByRole('button', { name: 'Open shift' }).first().click();
-    await page.getByRole('textbox').fill('5000');
+    await page.getByRole('dialog').getByRole('textbox').fill('5000');
     await page.getByRole('button', { name: 'Open shift' }).last().click();
     await expect(page.getByText('Shift open')).toBeVisible();
   }

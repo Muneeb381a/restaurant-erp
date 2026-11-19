@@ -7,7 +7,7 @@ test('a page file that cannot be loaded shows a message, not a blank screen', as
   await page.getByLabel('Username').fill('owner');
   for (const digit of '1234') await page.getByRole('button', { name: digit, exact: true }).click();
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('heading', { name: 'Tables' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tables', exact: true })).toBeVisible();
 
   await page.route(/SettingsAdmin/, (route) => route.abort());
   await page.goto('/admin/settings');

@@ -18,7 +18,7 @@ async function login(page: Page, username: string): Promise<void> {
   await page.getByLabel('Username').fill(username);
   for (const digit of PIN) await page.getByRole('button', { name: digit, exact: true }).click();
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('heading', { name: 'Tables' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tables', exact: true })).toBeVisible();
 }
 
 test.beforeAll(async () => {
@@ -100,7 +100,7 @@ test('cashier opens the day and a shift, then takes an order at table T1', async
   await expect(page.getByText(/Day open/)).toBeVisible();
   await page.getByRole('button', { name: /^Day / }).click();
   await page.getByRole('button', { name: 'Open shift' }).first().click();
-  await page.getByRole('textbox').fill('5000');
+  await page.getByRole('dialog').getByRole('textbox').fill('5000');
   await page.getByRole('button', { name: 'Open shift' }).last().click();
   await expect(page.getByText('Shift open')).toBeVisible();
 

@@ -245,7 +245,9 @@ export function OrderActions({
                       onClick={() => merge.mutate(x.order!.id)}
                     >
                       <span className="me-auto font-semibold">{ltr(x.code)}</span>
-                      <span className="text-sm text-slate-600">{ltr(`#${x.order!.orderNo}`)}</span>
+                      <span className="text-sm text-slate-600">
+                        {t('order.token')} {ltr(String(x.order!.orderNo))}
+                      </span>
                       <span className="money">{ltr(formatRs(x.order!.subtotalPaisa))}</span>
                     </button>
                   </li>

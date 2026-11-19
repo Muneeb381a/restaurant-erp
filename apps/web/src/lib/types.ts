@@ -53,6 +53,8 @@ export interface ReceiptDocView {
   }[];
   khataCustomer?: string | null;
   duplicate?: number;
+  /** The bill shown before payment: marked "not paid", no payment lines. */
+  provisional?: boolean;
 }
 
 export interface BusinessDay {
@@ -349,6 +351,8 @@ export interface Bill {
   billNo: number;
   orderId: string;
   orderNo: number;
+  orderType?: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
+  tableCode?: string | null;
   status: 'PRE_BILLED' | 'SETTLED' | 'VOID' | 'DRAFT';
   subtotalPaisa: number;
   discountPaisa: number;
@@ -378,6 +382,8 @@ export interface SettleResult {
   bill: Bill;
   changeDuePaisa: number;
   receipts: number;
+  /** AUTO: the receipt prints by itself after payment; MANUAL: the bill was printed first, a receipt only on request. */
+  printPolicy?: 'AUTO' | 'MANUAL';
   replayed: boolean;
 }
 

@@ -7,7 +7,8 @@ import { toast } from '../../components/Toast';
 import { ApiError, api } from '../../lib/api';
 import { ltr } from '../../lib/money';
 import { pollMs } from '../../lib/live';
-import { can, useMe } from '../../lib/queries';
+import { Navigate } from 'react-router-dom';
+import { can, useKitchenScreen, useMe } from '../../lib/queries';
 
 export type KotStatus = 'NEW' | 'PREPARING' | 'READY' | 'DONE';
 
@@ -89,7 +90,14 @@ function beep(kind: 'new' | 'ready'): void {
   }
 }
 
+/** The Kitchen screen, unless the owner switched it off: then the printed ticket is the kitchen and this goes back to the tables. */
 export function KitchenPage() {
+  const on = useKitchenScreen();
+  if (!on) return <Navigate to="/" replace />;
+  return <KitchenBoardPage />;
+}
+
+function KitchenBoardPage() {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const me = useMe();
@@ -318,7 +326,7 @@ export function KitchenPage() {
 const where = (x: Ticket, t: (k: string) => string): string =>
   x.orderType === 'DINE_IN'
     ? `${t('order.table')} ${ltr(x.tableCode ?? '')}`
-    : `${t(x.orderType === 'TAKEAWAY' ? 'order.takeaway' : 'order.delivery')} ${ltr(`#${x.orderNo}`)}`;
+    : `${t(x.orderType === 'TAKEAWAY' ? 'order.takeaway' : 'order.delivery')} ${ltr(`${t('order.token')} ${x.orderNo}`)}`;
 
 function TicketCard({
   x,

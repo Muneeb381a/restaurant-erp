@@ -57,6 +57,9 @@ export function ReceiptSheet({
 
   return createPortal(
     <div className="receipt-print" dir={ur ? 'rtl' : 'ltr'} data-testid="receipt-sheet">
+      {doc.provisional ? (
+        <div className="rc-banner">{ur ? 'بل — ادائیگی باقی' : 'BILL - NOT PAID'}</div>
+      ) : null}
       {doc.duplicate ? (
         <div className="rc-banner">
           {ur ? `نقل نمبر ${doc.duplicate}` : `DUPLICATE #${doc.duplicate}`}
@@ -74,11 +77,11 @@ export function ReceiptSheet({
         </div>
       )}
       <hr />
+      <div className="rc-token">
+        {ur ? 'ٹوکن' : 'TOKEN'} {doc.orderNo}
+      </div>
       <Row left={`Bill #${doc.billNo}`} right={doc.dateTime} />
-      <Row
-        left={`${TYPE[doc.orderType]}${doc.tableCode ? ` · ${doc.tableCode}` : ''}`}
-        right={`Order #${doc.orderNo}`}
-      />
+      <Row left={`${TYPE[doc.orderType]}${doc.tableCode ? ` · ${doc.tableCode}` : ''}`} right="" />
       {(doc.cashier || doc.waiter) && (
         <div className="rc-small">
           {doc.cashier ? `Cashier: ${doc.cashier}` : ''}
@@ -125,7 +128,13 @@ export function ReceiptSheet({
       {doc.fiscalNo && <div className="rc-center rc-small">Fiscal invoice {doc.fiscalNo}</div>}
       <hr />
       <div className="rc-center">
-        {ur ? 'شکریہ، دوبارہ تشریف لائیے' : 'Thank you, please visit again'}
+        {doc.provisional
+          ? ur
+            ? 'براہ کرم کاؤنٹر پر ادائیگی کریں'
+            : 'Please pay at the counter'
+          : ur
+            ? 'شکریہ، دوبارہ تشریف لائیے'
+            : 'Thank you, please visit again'}
       </div>
     </div>,
     document.body,

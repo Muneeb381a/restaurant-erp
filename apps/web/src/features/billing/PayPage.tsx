@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
+import { toast } from '../../components/Toast';
 import { splitByDishes, splitEqually, type Owner } from '../../lib/split';
 import { Modal } from '../../components/Modal';
 import { ApiError, api } from '../../lib/api';
@@ -34,6 +35,8 @@ interface TenderRow {
 const QUICK_CASH = [500, 1000, 5000];
 
 /** Pre-bill review → discount → tenders → settle → change due. All totals come from the server. */
+const newKey = (): string => `ui-${crypto.randomUUID()}`;
+
 export function PayPage() {
   const { id = '' } = useParams();
   const { t } = useTranslation();
@@ -141,7 +144,8 @@ export function PayPage() {
       setMessage(null);
       // no receipt printer is set up (a cloud shop, or none yet): the receipt opens for printing by
       // itself, so nobody has to remember a button. On a computer started with auto-print it prints at once.
-      if (out.receipts === 0 && !out.replayed) browserPrint.mutate(undefined);
+      if (out.receipts === 0 && !out.replayed && out.printPolicy !== 'MANUAL')
+        browserPrint.mutate(undefined);
     },
     onError: (e) => {
       if (e instanceof ApiError && e.code === 'KHATA_LIMIT_EXCEEDED')
@@ -181,6 +185,29 @@ export function PayPage() {
         logoUrl: out.logoUrl,
       });
       await qc.invalidateQueries({ queryKey: ['bill'] });
+    },
+    onError: fail,
+  });
+  // the bill printed for the customer BEFORE payment (token, items, amount due)
+  const printBill = useMutation({
+    mutationFn: () =>
+      api<{
+        printers: number;
+        browser: { doc: ReceiptDocView; language: 'en' | 'ur'; logoUrl: string | null } | null;
+      }>(`/bills/${b!.id}/print-bill`, {
+        method: 'POST',
+        body: {},
+        headers: { 'idempotency-key': newKey() },
+      }),
+    onSuccess: (out) => {
+      if (out.browser)
+        setSheet({
+          n: ++printSeq.current,
+          doc: out.browser.doc,
+          language: out.browser.language,
+          logoUrl: out.browser.logoUrl,
+        });
+      else toast(t('bill.billSent'));
     },
     onError: fail,
   });
@@ -292,6 +319,11 @@ export function PayPage() {
             <Icon name="check" size={32} />
           </span>
           <h1 className="text-2xl font-semibold">{t('bill.settled')}</h1>
+          {b.tableCode && (
+            <p className="font-medium text-emerald-700" data-testid="table-free">
+              {t('bill.tableFree', { table: b.tableCode })}
+            </p>
+          )}
           <p className="text-slate-700">
             {t('bill.billNo')} {ltr(`#${b.billNo}`)} ·{' '}
             <span className="money">{ltr(formatRs(b.totalPaisa))}</span>
@@ -393,6 +425,12 @@ export function PayPage() {
           <h1 className="me-auto text-xl font-semibold">
             {t('bill.billNo')} {ltr(`#${b.billNo}`)}
           </h1>
+          <span
+            data-testid="token"
+            className="rounded-lg bg-slate-900 px-3 py-1 text-xl font-bold text-emerald-300"
+          >
+            {t('order.token')} {ltr(String(b.orderNo))}
+          </span>
         </div>
         <ul className="divide-y divide-slate-200">
           {groupLines(b.lines).map((l) => (
@@ -433,6 +471,14 @@ export function PayPage() {
 
         {payable && (
           <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-200 pt-3">
+            <button
+              className="btn-secondary"
+              disabled={printBill.isPending}
+              onClick={() => printBill.mutate()}
+            >
+              <Icon name="printer" size={18} />
+              {t('bill.printBill')}
+            </button>
             {can(me.data, 'bill.discount') && (
               <button className="btn-secondary" onClick={() => setDiscounting(true)}>
                 {b.discountPaisa > 0 ? t('bill.changeDiscount') : t('bill.addDiscount')}
@@ -703,6 +749,15 @@ export function PayPage() {
               approver: { username, pin },
             })
           }
+        />
+      )}
+      {sheet && (
+        <ReceiptSheet
+          key={sheet.n}
+          doc={sheet.doc}
+          language={sheet.language}
+          logoUrl={sheet.logoUrl}
+          onDone={() => setSheet(null)}
         />
       )}
       {voiding && (

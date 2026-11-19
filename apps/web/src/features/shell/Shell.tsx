@@ -17,7 +17,15 @@ import { OutboxBar } from './OutboxBar';
 import { Sidebar, type NavItem } from './Sidebar';
 import { BrandMark } from '../../components/BrandLogo';
 import { formatRs, ltr } from '../../lib/money';
-import { can, useDay, useFloor, useMe, usePrinterHealth, useShift } from '../../lib/queries';
+import {
+  can,
+  useDay,
+  useFloor,
+  useKitchenScreen,
+  useMe,
+  usePrinterHealth,
+  useShift,
+} from '../../lib/queries';
 import type { Shift } from '../../lib/types';
 import { ADMIN_SECTIONS } from '../admin/AdminLayout';
 import { useKitchenBoard } from '../kitchen/KitchenPage';
@@ -66,7 +74,8 @@ function SignedIn() {
   const shift = useShift();
   const printers = usePrinterHealth();
   const floor = useFloor();
-  const kitchen = useKitchenBoard(undefined, can(me.data, 'kitchen.view'));
+  const kitchenScreen = useKitchenScreen();
+  const kitchen = useKitchenBoard(undefined, can(me.data, 'kitchen.view') && kitchenScreen);
   const cooks = can(me.data, 'kitchen.update');
   const kitchenN = (kitchen.data?.tickets ?? []).filter(
     (x) => x.status === (cooks ? 'NEW' : 'READY'),
@@ -161,7 +170,7 @@ function SignedIn() {
           }
         : undefined,
   });
-  if (can(me.data, 'kitchen.view'))
+  if (can(me.data, 'kitchen.view') && kitchenScreen)
     items.push({
       to: '/kitchen',
       icon: 'flame',

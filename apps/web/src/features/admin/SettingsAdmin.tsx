@@ -133,6 +133,45 @@ export function SettingsAdmin() {
         <PrintHelp />
       </Section>
 
+      <Section icon="printer" title={t('counterPrinter.title')} hint={t('counterPrinter.hint')}>
+        <Row title={t('counterPrinter.one')} hint={t('counterPrinter.oneHint')}>
+          <Toggle
+            on={
+              s['kot.single_ticket'] === true &&
+              s['receipt.print_after_payment'] === false &&
+              s['kitchen.screen_enabled'] === false
+            }
+            label={t('counterPrinter.one')}
+            onChange={async (v) => {
+              await setSetting.mutateAsync({ key: 'kot.single_ticket', value: v });
+              await setSetting.mutateAsync({ key: 'receipt.print_after_payment', value: !v });
+              await setSetting.mutateAsync({ key: 'kitchen.screen_enabled', value: !v });
+            }}
+          />
+        </Row>
+        <Row title={t('counterPrinter.singleTicket')} hint={t('counterPrinter.singleTicketHint')}>
+          <Toggle
+            on={s['kot.single_ticket'] === true}
+            label={t('counterPrinter.singleTicket')}
+            onChange={(v) => setSetting.mutate({ key: 'kot.single_ticket', value: v })}
+          />
+        </Row>
+        <Row title={t('counterPrinter.kitchenScreen')} hint={t('counterPrinter.kitchenScreenHint')}>
+          <Toggle
+            on={s['kitchen.screen_enabled'] !== false}
+            label={t('counterPrinter.kitchenScreen')}
+            onChange={(v) => setSetting.mutate({ key: 'kitchen.screen_enabled', value: v })}
+          />
+        </Row>
+        <Row title={t('counterPrinter.afterPay')} hint={t('counterPrinter.afterPayHint')}>
+          <Toggle
+            on={s['receipt.print_after_payment'] !== false}
+            label={t('counterPrinter.afterPay')}
+            onChange={(v) => setSetting.mutate({ key: 'receipt.print_after_payment', value: v })}
+          />
+        </Row>
+      </Section>
+
       <Section icon="receipt" title={t('logo.title')} hint={t('logo.sectionHint')}>
         <LogoControls version={branch.data?.logoVersion ?? null} />
       </Section>

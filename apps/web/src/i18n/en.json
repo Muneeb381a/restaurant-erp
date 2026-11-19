@@ -209,7 +209,14 @@
     "onTables": "On tables",
     "otherTables": "Other tables",
     "foodReady": "Food ready",
-    "hint": "Tap a free table to start an order. Tap a busy table to see or add to its order."
+    "hint": "Tap a free table to start an order. Tap a busy table to see or add to its order.",
+    "findToken": "Find token",
+    "tokenPlaceholder": "Token no.",
+    "tokenNotFound": "No order with that token today",
+    "printBill": "Print bill",
+    "takePayment": "Take payment",
+    "billPrinted": "Bill printed for {{table}} · Token {{token}}",
+    "sendFirst": "Table {{table}} has items not sent to the kitchen yet. Open the table and send them first."
   },
   "admin": {
     "title": "Admin",
@@ -470,7 +477,11 @@
       "wellDone": "Well done",
       "serveHot": "Serve hot",
       "pack": "Pack it"
-    }
+    },
+    "token": "Token",
+    "printBill": "Print bill",
+    "billPrinted": "Bill printed · Token {{token}}. The table stays taken until it is paid.",
+    "sentOkPrinted": "Sent to the kitchen: {{stations}} · Token {{token}} · ticket printed"
   },
   "bill": {
     "bill": "Bill",
@@ -553,7 +564,10 @@
     "splitApply": "Make the payments",
     "splitHint": "Each person pays an equal share; the shares add up to the bill exactly. Change a person’s method or amount afterwards if they pay differently.",
     "addMethods": "Add payment methods",
-    "askOwnerMethods": "Ask the owner to add payment methods (Admin, Payments)."
+    "askOwnerMethods": "Ask the owner to add payment methods (Admin, Payments).",
+    "printBill": "Print bill",
+    "billSent": "Bill sent to the printer",
+    "tableFree": "Table {{table}} is free again"
   },
   "cash": {
     "drawer": "Cash drawer",
@@ -1951,5 +1965,17 @@
     "labourHint": "Approved pay runs ending this month against settled bills.",
     "owed": "Owed by staff",
     "peopleOwe": "{{count}} person(s)"
+  },
+  "counterPrinter": {
+    "title": "One printer at the counter",
+    "hint": "For a restaurant with a single printer at the counter: kitchen tickets and bills come out of it, and every order gets a token number.",
+    "one": "One printer at the counter",
+    "oneHint": "Switches on all three: one kitchen ticket per order with the token, the bill printed before payment (no second print after paying), and the Kitchen screen hidden.",
+    "singleTicket": "One kitchen ticket for the whole order",
+    "singleTicketHint": "A Send comes out as ONE ticket with the token number on top and every station under its own heading, instead of one small slip per station.",
+    "afterPay": "Print the receipt by itself after payment",
+    "afterPayHint": "Switch off when the counter prints the bill first and then takes payment. A receipt can still be printed on request.",
+    "kitchenScreen": "Show the Kitchen screen",
+    "kitchenScreenHint": "Switch off when nobody uses the Kitchen board: the printed ticket is the kitchen. The Kitchen link disappears and Send to kitchen only prints."
   }
 }

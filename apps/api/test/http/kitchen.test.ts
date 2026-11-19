@@ -173,7 +173,7 @@ describe('send to kitchen', () => {
     expect(ticket).toContain('KOT #1');
     expect(ticket).toContain('BBQ');
     expect(ticket).toContain('Table T1');
-    expect(ticket).toContain('Order #1');
+    expect(ticket).toContain('TOKEN 1');
     expect(ticket).toContain('Waiter: CAPTAIN');
     expect(ticket).toContain('2 x Chicken Tikka (Leg)');
     expect(ticket).toContain('"less spicy"');

@@ -144,3 +144,17 @@ export const useKhataAccount = (id: string, entries = 100) =>
       ),
     placeholderData: (prev) => prev,
   });
+
+export type Settings = Record<string, unknown>;
+
+/** The restaurant's settings (the same call the Settings screen uses, so the two never disagree). */
+export const useSettings = () =>
+  useQuery({
+    queryKey: ['settings'],
+    queryFn: () => api<Settings>('/settings'),
+    staleTime: 30_000,
+  });
+
+/** false when the owner switched the Kitchen screen off (a counter-only restaurant: the printed ticket is the kitchen). */
+export const useKitchenScreen = (): boolean =>
+  useSettings().data?.['kitchen.screen_enabled'] !== false;

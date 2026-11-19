@@ -6,6 +6,9 @@ import { money, type ReceiptDoc } from './receipt';
 export const UR = {
   bill: 'بل',
   order: 'آرڈر',
+  token: 'ٹوکن',
+  notPaid: 'بل — ادائیگی باقی',
+  payAtCounter: 'براہ کرم کاؤنٹر پر ادائیگی کریں',
   table: 'ٹیبل',
   DINE_IN: 'ڈائن اِن',
   TAKEAWAY: 'ٹیک اوے',
@@ -57,14 +60,17 @@ export function renderReceiptBitmap(doc: ReceiptDoc, paperMm: PaperMm = 80): Uin
       { size: 28, bold: true, rtl: true },
       'center',
     );
+  if (doc.provisional)
+    b.text(`*** ${UR.notPaid} ***`, { size: 28, bold: true, rtl: true }, 'center');
   b.rule();
+  b.text(`${UR.token} ${lri(doc.orderNo)}`, { size: 72, bold: true, rtl: true }, 'center');
 
   b.row(`${UR.bill} ${lri(doc.billNo)}`, doc.dateTime, R);
   const where =
     doc.orderType === 'DINE_IN' && doc.tableCode
       ? `${UR.table} ${lri(doc.tableCode)}`
       : UR[doc.orderType];
-  b.row(where, `${UR.order} ${lri(doc.orderNo)}`, R);
+  b.row(where, '', R);
   if (doc.waiter) b.row(`${UR.waiter}: ${doc.waiter}`, '', { ...R, size: 22 });
   if (doc.cashier) b.row(`${UR.cashier}: ${doc.cashier}`, '', { ...R, size: 22 });
   b.rule();
@@ -99,6 +105,10 @@ export function renderReceiptBitmap(doc: ReceiptDoc, paperMm: PaperMm = 80): Uin
 
   if (doc.fiscalNo) b.rule().text(`Fiscal invoice: ${doc.fiscalNo}`, { size: 22 }, 'center');
   else if (doc.fiscalPending) b.rule().text('Fiscal invoice: pending', { size: 22 }, 'center');
-  b.rule().text(UR.thanks, { size: 28, bold: true, rtl: true }, 'center');
+  b.rule().text(
+    doc.provisional ? UR.payAtCounter : UR.thanks,
+    { size: 28, bold: true, rtl: true },
+    'center',
+  );
   return b.toEscPos({ openDrawer: !!doc.openDrawer && !(doc.duplicate && doc.duplicate > 0) });
 }

@@ -47,8 +47,9 @@ describe('receipt (80 mm)', () => {
       <SIZE:1x1><BOLD:0>Main Boulevard, Gulberg, Lahore
       Tel: 042-1234567
       <ALIGN:left>------------------------------------------------
-      Bill #12                        01/08/2026 19:42
-      Table T1                                Order #7
+      <ALIGN:center><BOLD:1><SIZE:3x3>TOKEN 7
+      <SIZE:1x1><BOLD:0><ALIGN:left>Bill #12                        01/08/2026 19:42
+      Table T1
       Waiter: Ali                        Cashier: Sara
       ------------------------------------------------
       3 x Chicken Tikka (Leg)                    1,080
@@ -249,5 +250,24 @@ describe('logo', () => {
     );
     expect(t).toContain('Desi Dera');
     expect(t).toContain('TOTAL');
+  });
+});
+
+describe('token and the bill shown before payment', () => {
+  it('the paid receipt carries the token huge, right under the header', () => {
+    const t = text({ ...base, orderNo: 17 });
+    expect(t).toContain('<SIZE:3x3>TOKEN 17');
+    expect(t.indexOf('TOKEN 17')).toBeLessThan(t.indexOf('Bill #12'));
+    expect(t).not.toContain('Order #');
+  });
+  it('a provisional bill says NOT PAID, shows no payments, asks to pay, and never opens the drawer', () => {
+    const t = text({ ...base, provisional: true, payments: [], openDrawer: false });
+    expect(t).toContain('*** BILL - NOT PAID ***');
+    expect(t).toContain('Please pay at the counter');
+    expect(t).not.toContain('Thank you');
+    expect(t).not.toContain('Change');
+    expect(t).not.toContain('<DRAWER');
+    expect(t).toContain('TOKEN 7');
+    expect(t).toContain('Rs 6,690'); // the amount due is still printed
   });
 });

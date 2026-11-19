@@ -9,7 +9,7 @@ async function login(page: Page, username: string): Promise<void> {
   await page.getByLabel('Username').fill(username);
   for (const digit of PIN) await page.getByRole('button', { name: digit, exact: true }).click();
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('heading', { name: 'Tables' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tables', exact: true })).toBeVisible();
 }
 
 test('the owner turns on tax and the test reporting provider', async ({ page }) => {
@@ -45,7 +45,7 @@ test('a sale shows "pending" at once and the fiscal number a few seconds later',
   if (!hasShift) {
     await page.getByRole('button', { name: /^Day / }).click();
     await page.getByRole('button', { name: 'Open shift' }).first().click();
-    await page.getByRole('textbox').fill('5000');
+    await page.getByRole('dialog').getByRole('textbox').fill('5000');
     await page.getByRole('button', { name: 'Open shift' }).last().click();
     await expect(page.getByText('Shift open')).toBeVisible();
   }

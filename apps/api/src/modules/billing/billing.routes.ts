@@ -15,6 +15,8 @@ import {
   listBills,
   quoteBill,
   browserReceipt,
+  printBillForOrder,
+  printPreBill,
   reprintBill,
   settleBill,
   voidBill,
@@ -138,6 +140,31 @@ export function billingRouter(ctx: AppContext): Router {
       res.status(dryRun || out.replayed ? 200 : 201).json(out);
     }),
   );
+  r.post(
+    '/orders/:id/print-bill',
+    ...read,
+    requirePermission(ctx, 'bill.create'),
+    asyncHandler(async (req, res) => {
+      const k = req.header('idempotency-key');
+      if (!k || !/^[A-Za-z0-9._:-]{8,80}$/.test(k))
+        throw new AppError(
+          400,
+          'VALIDATION_FAILED',
+          'Send an Idempotency-Key header (8–80 characters: letters, digits, . _ : -)',
+        );
+      res
+        .status(201)
+        .json(
+          await printBillForOrder(
+            ctx,
+            await actor(req),
+            idParam.parse(req.params).id,
+            k,
+            ifMatch(req),
+          ),
+        );
+    }),
+  );
   r.get(
     '/orders/:id/bill',
     ...read,
@@ -226,6 +253,24 @@ export function billingRouter(ctx: AppContext): Router {
       res
         .status(201)
         .json(await reprintBill(ctx, await actor(req), idParam.parse(req.params).id, body.reason));
+    }),
+  );
+
+  r.post(
+    '/bills/:id/print-bill',
+    ...read,
+    requirePermission(ctx, 'bill.create'),
+    asyncHandler(async (req, res) => {
+      const k = req.header('idempotency-key');
+      if (!k || !/^[A-Za-z0-9._:-]{8,80}$/.test(k))
+        throw new AppError(
+          400,
+          'VALIDATION_FAILED',
+          'Send an Idempotency-Key header (8–80 characters: letters, digits, . _ : -)',
+        );
+      res
+        .status(201)
+        .json(await printPreBill(ctx, await actor(req), idParam.parse(req.params).id, k));
     }),
   );
 

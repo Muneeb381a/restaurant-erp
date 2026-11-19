@@ -1,4 +1,10 @@
-import { renderKot, type KotDoc } from '@erp/printing';
+import {
+  renderCombinedKot,
+  renderKot,
+  type CombinedKotDoc,
+  type KotDoc,
+  type KotLine,
+} from '@erp/printing';
 import type { AppContext } from '../../http/context';
 import { AppError } from '../../http/errors';
 import { withTx, type Queryable } from '../../shared/tx';
@@ -20,6 +26,28 @@ export interface SentKot {
   station: string;
   lineCount: number;
   printers: number;
+}
+
+/**
+ * "One printer at the counter": a whole Send comes out as ONE ticket (token on top, the stations as sections)
+ * instead of one small slip per station. Off by default; the kitchen display still gets one KOT per station.
+ */
+export async function singleTicket(q: Queryable, branchId: string): Promise<boolean> {
+  const s = await q
+    .selectFrom('settings')
+    .select('value')
+    .where('branch_id', '=', branchId)
+    .where('key', '=', 'kot.single_ticket')
+    .executeTakeFirst();
+  return s?.value === true;
+}
+
+/** The distinct printers that serve any of these stations (one physical printer is listed once). */
+async function ticketPrinters(q: Queryable, branchId: string, stationIds: readonly string[]) {
+  const seen = new Map<string, { id: string; paper_mm: number }>();
+  for (const sid of stationIds)
+    for (const p of await stationPrinters(q, branchId, sid)) if (!seen.has(p.id)) seen.set(p.id, p);
+  return [...seen.values()];
 }
 
 async function printOnSend(q: Queryable, branchId: string): Promise<boolean> {
@@ -109,8 +137,16 @@ export function sendToKitchen(
     const now = ctx.clock.now();
     const info = await loadTicketContext(trx, orderId, a.userId);
     const printing = await printOnSend(trx, a.branchId);
+    const single = await singleTicket(trx, a.branchId);
     const sent: SentKot[] = [];
     const unprinted: string[] = [];
+    const sections: {
+      station: string;
+      stationId: string;
+      kotNo: number;
+      kotId: string;
+      lines: KotLine[];
+    }[] = [];
 
     for (const [stationId, lines] of byStation) {
       const station = await trx
@@ -143,6 +179,24 @@ export function sendToKitchen(
         )
         .execute();
 
+      if (single) {
+        // printed together after the loop: one ticket for the whole Send
+        sections.push({
+          station: station.code,
+          stationId,
+          kotNo,
+          kotId: kot.id,
+          lines: await toKotLines(trx, lines),
+        });
+        sent.push({
+          id: kot.id,
+          kotNo,
+          station: station.code,
+          lineCount: lines.length,
+          printers: 0,
+        });
+        continue;
+      }
       const printers = printing ? await stationPrinters(trx, a.branchId, stationId) : [];
       if (printing && printers.length === 0) unprinted.push(station.code);
       const doc: KotDoc = {
@@ -182,6 +236,53 @@ export function sendToKitchen(
       });
     }
 
+    if (single && sections.length) {
+      const printers = printing
+        ? await ticketPrinters(
+            trx,
+            a.branchId,
+            sections.map((x) => x.stationId),
+          )
+        : [];
+      if (printing && printers.length === 0) unprinted.push(...sections.map((x) => x.station));
+      const doc: CombinedKotDoc = {
+        orderNo: info.orderNo,
+        orderType: info.orderType,
+        tableCode: info.tableCode,
+        waiter: info.waiter,
+        time: clockTime(now, info.timeZone),
+        rush: !!input.rush,
+        sections: sections.map((x) => ({ station: x.station, kotNo: x.kotNo, lines: x.lines })),
+      };
+      const first = sections[0]!;
+      for (const p of printers) {
+        await enqueuePrintJob(trx, {
+          branchId: a.branchId,
+          printerId: p.id,
+          kind: 'KOT',
+          refType: 'kot',
+          refId: first.kotId,
+          title: `Token ${info.orderNo} KOT ${sections.map((x) => `#${x.kotNo}`).join(' ')}`,
+          payload: renderCombinedKot(doc, p.paper_mm as 58 | 80),
+          idempotencyKey: `kot:${first.kotId}:combined:p0:${p.id}`,
+          createdBy: a.userId,
+          at: now,
+        });
+      }
+      if (printers.length) {
+        await trx
+          .updateTable('kots')
+          .set({ print_count: 1 })
+          .where(
+            'id',
+            'in',
+            sections.map((x) => x.kotId),
+          )
+          .execute();
+        for (const k of sent) k.printers = printers.length;
+      }
+    }
+
     if (parents.length)
       await trx
         .updateTable('order_items')
@@ -210,6 +311,7 @@ export function reprintKot(ctx: AppContext, a: Actor, kotId: string, reason: str
         'kots.station_id as station_id',
         'kots.is_rush as is_rush',
         'kots.print_count as print_count',
+        'kots.created_at as created_at',
         'stations.code as station',
       ])
       .where('kots.id', '=', kotId)
@@ -217,6 +319,8 @@ export function reprintKot(ctx: AppContext, a: Actor, kotId: string, reason: str
       .forUpdate('kots')
       .executeTakeFirst();
     if (!kot) throw new AppError(404, 'NOT_FOUND', 'KOT not found');
+
+    if (await singleTicket(trx, a.branchId)) return reprintCombined(ctx, a, trx, kot, reason);
 
     const lines = await trx
       .selectFrom('order_items')
@@ -493,4 +597,120 @@ export function setKotStatus(ctx: AppContext, a: Actor, kotId: string, to: KotSt
       .execute();
     return { id: kot.id, status: to };
   });
+}
+
+/**
+ * Single-ticket mode: a reprint brings back the WHOLE ticket of that Send (every KOT created in the same moment
+ * for the same order), not one station's part of it.
+ */
+async function reprintCombined(
+  ctx: AppContext,
+  a: Actor,
+  trx: Queryable,
+  kot: {
+    id: string;
+    kot_no: number;
+    order_id: string;
+    print_count: number;
+    created_at: Date;
+    is_rush: boolean;
+    station: string;
+  },
+  reason: string,
+) {
+  const siblings = await trx
+    .selectFrom('kots')
+    .innerJoin('stations', 'stations.id', 'kots.station_id')
+    .select([
+      'kots.id as id',
+      'kots.kot_no as kot_no',
+      'kots.station_id as station_id',
+      'stations.code as station',
+    ])
+    .where('kots.order_id', '=', kot.order_id)
+    .where('kots.created_at', '=', kot.created_at)
+    .orderBy('kots.kot_no')
+    .execute();
+  const sections: { station: string; kotNo: number; lines: KotLine[] }[] = [];
+  for (const k of siblings) {
+    const lines = await trx
+      .selectFrom('order_items')
+      .selectAll()
+      .where('kot_id', '=', k.id)
+      .where('status', '!=', 'VOID')
+      .orderBy('created_at')
+      .orderBy('id')
+      .execute();
+    if (lines.length)
+      sections.push({ station: k.station, kotNo: k.kot_no, lines: await toKotLines(trx, lines) });
+  }
+  if (sections.length === 0)
+    throw new AppError(409, 'NOTHING_TO_SEND', 'Every line of this ticket was voided');
+  const printers = await ticketPrinters(
+    trx,
+    a.branchId,
+    siblings.map((k) => k.station_id),
+  );
+  if (printers.length === 0)
+    throw new AppError(409, 'NO_PRINTER', 'No kitchen printer is configured');
+  const now = ctx.clock.now();
+  const reprintNo = Math.max(1, kot.print_count);
+  const info = await loadTicketContext(trx, kot.order_id, a.userId);
+  const doc: CombinedKotDoc = {
+    orderNo: info.orderNo,
+    orderType: info.orderType,
+    tableCode: info.tableCode,
+    waiter: info.waiter,
+    time: clockTime(now, info.timeZone),
+    rush: kot.is_rush,
+    reprint: reprintNo,
+    sections,
+  };
+  const first = siblings[0]!;
+  for (const p of printers)
+    await enqueuePrintJob(trx, {
+      branchId: a.branchId,
+      printerId: p.id,
+      kind: 'KOT',
+      refType: 'kot',
+      refId: first.id,
+      title: `REPRINT #${reprintNo} Token ${info.orderNo}`,
+      payload: renderCombinedKot(doc, p.paper_mm as 58 | 80),
+      idempotencyKey: `kot:${first.id}:combined:p${reprintNo}:${p.id}`,
+      createdBy: a.userId,
+      at: now,
+    });
+  await trx
+    .updateTable('kots')
+    .set({ print_count: kot.print_count + 1 })
+    .where(
+      'id',
+      'in',
+      siblings.map((k) => k.id),
+    )
+    .execute();
+  await writeAudit(trx, {
+    branchId: a.branchId,
+    userId: a.userId,
+    deviceId: a.deviceId,
+    action: 'KOT_REPRINT',
+    entity: 'kot',
+    entityId: kot.id,
+    before: { printCount: kot.print_count },
+    after: {
+      printCount: kot.print_count + 1,
+      reprint: reprintNo,
+      printers: printers.length,
+      combined: true,
+    },
+    reason,
+    ip: a.ip,
+  });
+  return {
+    id: kot.id,
+    kotNo: kot.kot_no,
+    station: kot.station,
+    reprint: reprintNo,
+    printers: printers.length,
+  };
 }

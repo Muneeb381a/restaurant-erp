@@ -1007,3 +1007,53 @@ export function cancelOrder(
     return getOrderFull(trx, a.branchId, orderId);
   });
 }
+
+/**
+ * The token is the day's order number printed on the kitchen ticket and the bill. The counter types it to find the
+ * order again: today's order of the open business day (or, when the day is closed, of the last one).
+ */
+export async function findOrderByToken(ctx: AppContext, branchId: string, token: number) {
+  const day =
+    (await openBusinessDay(ctx.db, branchId)) ??
+    (await ctx.db
+      .selectFrom('business_days')
+      .selectAll()
+      .where('branch_id', '=', branchId)
+      .orderBy('business_date', 'desc')
+      .limit(1)
+      .executeTakeFirst());
+  if (!day) throw new AppError(404, 'NOT_FOUND', 'There is no business day yet');
+  const order = await ctx.db
+    .selectFrom('orders')
+    .leftJoin('dining_tables', 'dining_tables.id', 'orders.table_id')
+    .select([
+      'orders.id as id',
+      'orders.order_no as order_no',
+      'orders.status as status',
+      'orders.type as type',
+      'dining_tables.code as table_code',
+    ])
+    .where('orders.branch_id', '=', branchId)
+    .where('orders.business_day_id', '=', day.id)
+    .where('orders.order_no', '=', token)
+    .executeTakeFirst();
+  if (!order)
+    throw new AppError(404, 'NOT_FOUND', `No order with token ${token} on ${day.business_date}`);
+  const bill = await ctx.db
+    .selectFrom('bills')
+    .select(['id', 'status', 'total_paisa'])
+    .where('order_id', '=', order.id)
+    .where('status', '!=', 'VOID')
+    .orderBy('bill_no', 'desc')
+    .limit(1)
+    .executeTakeFirst();
+  return {
+    id: order.id,
+    token: order.order_no,
+    status: order.status,
+    type: order.type,
+    tableCode: order.table_code,
+    businessDate: day.business_date,
+    bill: bill ? { id: bill.id, status: bill.status, totalPaisa: bill.total_paisa } : null,
+  };
+}

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useSetupStatus } from '../admin/SetupAdmin';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
+import { toast } from '../../components/Toast';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
 import { can, useCounterOrders, useDay, useFloor, useMe, useShift } from '../../lib/queries';
@@ -130,11 +131,39 @@ export function FloorPage() {
     },
   });
 
+  const printBill = useMutation({
+    mutationFn: (table: FloorTable) =>
+      api<{ token: number; printers: number }>(`/orders/${table.order!.id}/print-bill`, {
+        method: 'POST',
+        body: {},
+        ifMatch: table.order!.version,
+        headers: { 'idempotency-key': `ui-${crypto.randomUUID()}` },
+      }),
+    onSuccess: (out, table) => {
+      void qc.invalidateQueries({ queryKey: ['floor'] });
+      if (out.printers === 0) {
+        nav(`/order/${table.order!.id}/pay`); // no thermal printer: print it from the pay screen
+        return;
+      }
+      toast(t('floor.billPrinted', { table: table.code, token: out.token }));
+    },
+    onError: (e, table) =>
+      setError(
+        e instanceof ApiError && e.code === 'UNSENT_ITEMS'
+          ? t('floor.sendFirst', { table: table.code })
+          : e instanceof ApiError
+            ? e.message
+            : t('common.error'),
+      ),
+  });
+
   const dayClosed = day.isSuccess && !day.data;
   const statusLabel = (s: FloorTable['status']): string => t(`floor.${s.toLowerCase()}`);
 
   function open(table: FloorTable): void {
-    if (table.order) nav(`/order/${table.order.id}`);
+    // a table whose bill is printed is waiting for payment: go straight to it
+    if (table.order)
+      nav(table.status === 'BILLED' ? `/order/${table.order.id}/pay` : `/order/${table.order.id}`);
     else create.mutate({ type: 'DINE_IN', tableId: table.id });
   }
 
@@ -196,6 +225,7 @@ export function FloorPage() {
           <h1 className="page-title">{t('floor.title')}</h1>
           <p className="hint">{t('floor.hint')}</p>
         </div>
+        <TokenFinder />
         <button
           className="btn-primary"
           disabled={dayClosed || create.isPending}
@@ -306,76 +336,122 @@ export function FloorPage() {
                     ? 'font-bold text-amber-200'
                     : 'font-semibold text-rose-700';
                 return (
-                  <button
-                    key={table.id}
-                    // cached data from before this visit may be out of date (a table just paid and freed):
-                    // only fresh data can be tapped
-                    disabled={dayClosed || create.isPending || !floor.isFetchedAfterMount}
-                    onClick={() => open(table)}
-                    aria-label={`${table.code} ${statusLabel(table.status)}`}
-                    className={`group flex flex-col items-center gap-1.5 rounded-2xl p-1 text-center outline-offset-4 transition disabled:opacity-50 ${flash.has(table.id) ? 'animate-flash' : ''}`}
-                  >
-                    <ChairRow n={Math.ceil(Math.max(table.seats, 1) / 2)} className={tile.chair} />
-                    <span
-                      className={`relative flex flex-col items-center justify-center gap-0.5 px-3 transition group-hover:-translate-y-0.5 group-active:translate-y-0 ${shapeOf(table.seats)} ${tile.surface} ${table.order?.ticketsReady ? 'ring-4 ring-emerald-500/60' : ''}`}
+                  <div key={table.id} className="flex flex-col items-center gap-2">
+                    <button
+                      // cached data from before this visit may be out of date (a table just paid and freed):
+                      // only fresh data can be tapped
+                      disabled={dayClosed || create.isPending || !floor.isFetchedAfterMount}
+                      onClick={() => open(table)}
+                      aria-label={`${table.code} ${statusLabel(table.status)}`}
+                      className={`group flex flex-col items-center gap-1.5 rounded-2xl p-1 text-center outline-offset-4 transition disabled:opacity-50 ${flash.has(table.id) ? 'animate-flash' : ''}`}
                     >
+                      <ChairRow
+                        n={Math.ceil(Math.max(table.seats, 1) / 2)}
+                        className={tile.chair}
+                      />
                       <span
-                        className={`text-[0.65rem] font-bold uppercase tracking-wider ${tile.label}`}
+                        className={`relative flex flex-col items-center justify-center gap-0.5 px-3 transition group-hover:-translate-y-0.5 group-active:translate-y-0 ${shapeOf(table.seats)} ${tile.surface} ${table.order?.ticketsReady ? 'ring-4 ring-emerald-500/60' : ''}`}
                       >
-                        {table.status === 'BILLED'
-                          ? t('floor.billReady')
-                          : statusLabel(table.status)}
-                      </span>
-                      <span className="text-3xl font-semibold leading-none">{ltr(table.code)}</span>
-                      {table.order ? (
-                        <>
-                          <span className="money text-base font-semibold leading-tight">
-                            {ltr(formatRs(table.order.subtotalPaisa))}
+                        <span
+                          className={`text-[0.65rem] font-bold uppercase tracking-wider ${tile.label}`}
+                        >
+                          {table.status === 'BILLED'
+                            ? t('floor.billReady')
+                            : statusLabel(table.status)}
+                        </span>
+                        <span className="text-3xl font-semibold leading-none">
+                          {ltr(table.code)}
+                        </span>
+                        {table.order ? (
+                          <>
+                            <span className="money text-base font-semibold leading-tight">
+                              {ltr(formatRs(table.order.subtotalPaisa))}
+                            </span>
+                            <span
+                              className={`flex items-center gap-1 text-xs ${slow ? lateInk : tile.soft}`}
+                            >
+                              <Icon name="clock" size={12} />
+                              {formatAge(mins, t)}
+                            </span>
+                          </>
+                        ) : (
+                          <span className={`flex items-center gap-1 text-xs ${tile.soft}`}>
+                            <Icon name="user" size={12} />
+                            {t('floor.seats', { count: table.seats })}
                           </span>
+                        )}
+                        {table.order?.ticketsReady ? (
                           <span
-                            className={`flex items-center gap-1 text-xs ${slow ? lateInk : tile.soft}`}
+                            className="absolute -end-2 -top-2 flex size-7 items-center justify-center rounded-full bg-emerald-600 text-white shadow-md"
+                            title={t('floor.foodReady')}
                           >
-                            <Icon name="clock" size={12} />
-                            {formatAge(mins, t)}
+                            <Icon name="check" size={16} />
+                            <span className="sr-only">{t('floor.foodReady')}</span>
                           </span>
-                        </>
-                      ) : (
-                        <span className={`flex items-center gap-1 text-xs ${tile.soft}`}>
-                          <Icon name="user" size={12} />
-                          {t('floor.seats', { count: table.seats })}
-                        </span>
-                      )}
-                      {table.order?.ticketsReady ? (
-                        <span
-                          className="absolute -end-2 -top-2 flex size-7 items-center justify-center rounded-full bg-emerald-600 text-white shadow-md"
-                          title={t('floor.foodReady')}
-                        >
-                          <Icon name="check" size={16} />
-                          <span className="sr-only">{t('floor.foodReady')}</span>
-                        </span>
-                      ) : null}
-                      {table.order?.held && (
-                        <span className="absolute -start-2 -top-2 flex size-7 items-center justify-center rounded-full bg-slate-700 text-white shadow-md">
-                          <Icon name="pause" size={14} />
-                          <span className="sr-only">{t('order.held')}</span>
-                        </span>
-                      )}
-                    </span>
-                    <ChairRow n={Math.floor(Math.max(table.seats, 1) / 2)} className={tile.chair} />
-                    {table.order?.waiterName ? (
-                      <span className="flex max-w-full items-center gap-1.5 text-xs text-slate-600">
-                        <span
-                          aria-hidden="true"
-                          className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-bold ${tile.avatar}`}
-                        >
-                          {initials(table.order.waiterName)}
-                        </span>
-                        <span className="truncate">{table.order.waiterName}</span>
+                        ) : null}
+                        {table.order?.held && (
+                          <span className="absolute -start-2 -top-2 flex size-7 items-center justify-center rounded-full bg-slate-700 text-white shadow-md">
+                            <Icon name="pause" size={14} />
+                            <span className="sr-only">{t('order.held')}</span>
+                          </span>
+                        )}
                       </span>
-                    ) : (
-                      <span className="h-5" aria-hidden="true" />
+                      <ChairRow
+                        n={Math.floor(Math.max(table.seats, 1) / 2)}
+                        className={tile.chair}
+                      />
+                      {table.order?.waiterName ? (
+                        <span className="flex max-w-full items-center gap-1.5 text-xs text-slate-600">
+                          <span
+                            aria-hidden="true"
+                            className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-bold ${tile.avatar}`}
+                          >
+                            {initials(table.order.waiterName)}
+                          </span>
+                          <span className="truncate">{table.order.waiterName}</span>
+                        </span>
+                      ) : (
+                        <span className="h-5" aria-hidden="true" />
+                      )}
+                    </button>
+                    {table.order && !dayClosed && (
+                      <div className="flex w-full flex-wrap justify-center gap-1.5">
+                        {table.status === 'OCCUPIED' &&
+                          table.order.itemCount > 0 &&
+                          can(me.data, 'bill.create') && (
+                            <button
+                              className="btn-secondary min-h-10 px-3 text-sm"
+                              disabled={printBill.isPending}
+                              onClick={() => printBill.mutate(table)}
+                            >
+                              <Icon name="printer" size={16} />
+                              {t('floor.printBill')}
+                            </button>
+                          )}
+                        {table.status === 'BILLED' && (
+                          <>
+                            <button
+                              className="btn-bill min-h-10 px-3 text-sm"
+                              onClick={() => nav(`/order/${table.order!.id}/pay`)}
+                            >
+                              {t('floor.takePayment')}
+                            </button>
+                            {can(me.data, 'bill.create') && (
+                              <button
+                                className="btn-secondary min-h-10 px-3"
+                                aria-label={t('floor.printBill')}
+                                title={t('floor.printBill')}
+                                disabled={printBill.isPending}
+                                onClick={() => printBill.mutate(table)}
+                              >
+                                <Icon name="printer" size={16} />
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -410,7 +486,7 @@ export function FloorPage() {
                   <span className="me-auto min-w-0">
                     <span className="block font-semibold">
                       {t(o.type === 'TAKEAWAY' ? 'order.takeaway' : 'order.delivery')}{' '}
-                      {ltr(`#${o.orderNo}`)}
+                      {t('order.token')} {ltr(String(o.orderNo))}
                     </span>
                     <span className="text-sm text-slate-600">
                       {t('floor.items', { count: o.itemCount })} ·{' '}
@@ -432,5 +508,67 @@ export function FloorPage() {
         )}
       </section>
     </div>
+  );
+}
+
+/**
+ * The token printed on the kitchen ticket and the bill. The customer comes to the counter holding it: type the
+ * number and land on that order (to add, to bill, or to see the paid bill).
+ */
+function TokenFinder() {
+  const { t } = useTranslation();
+  const nav = useNavigate();
+  const [value, setValue] = useState('');
+  const [problem, setProblem] = useState<string | null>(null);
+  const find = useMutation({
+    mutationFn: (n: number) =>
+      api<{ id: string; status: string; bill: { id: string; status: string } | null }>(
+        `/orders/by-token/${n}`,
+      ),
+    onSuccess: (o) => {
+      setProblem(null);
+      setValue('');
+      // a bill waiting for payment, or a paid one, opens on the payment screen; otherwise the order itself
+      nav(o.bill && o.bill.status !== 'VOID' ? `/order/${o.id}/pay` : `/order/${o.id}`);
+    },
+    onError: (e) =>
+      setProblem(
+        e instanceof ApiError && e.status === 404 ? t('floor.tokenNotFound') : t('common.error'),
+      ),
+  });
+  const n = Number(value);
+  const valid = /^\d{1,5}$/.test(value) && n > 0;
+  return (
+    <form
+      className="flex items-center gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (valid) find.mutate(n);
+      }}
+    >
+      <label className="sr-only" htmlFor="token-find">
+        {t('floor.findToken')}
+      </label>
+      <input
+        id="token-find"
+        className="input w-32"
+        dir="ltr"
+        inputMode="numeric"
+        placeholder={t('floor.tokenPlaceholder')}
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value.replace(/\D/g, '').slice(0, 5));
+          setProblem(null);
+        }}
+      />
+      <button type="submit" className="btn-secondary" disabled={!valid || find.isPending}>
+        {t('floor.findToken')}
+      </button>
+      {problem && (
+        <span role="alert" className="text-sm font-medium text-rose-700">
+          {problem}
+        </span>
+      )}
+    </form>
   );
 }

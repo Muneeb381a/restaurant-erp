@@ -16,7 +16,7 @@ async function login(page: Page, username: string): Promise<void> {
   await page.getByLabel('Username').fill(username);
   for (const digit of PIN) await page.getByRole('button', { name: digit, exact: true }).click();
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('heading', { name: 'Tables' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tables', exact: true })).toBeVisible();
 }
 
 test.beforeAll(async () => {
