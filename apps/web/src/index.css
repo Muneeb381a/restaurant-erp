@@ -578,3 +578,18 @@ html[lang='ur'] body {
   object-fit: contain;
   filter: grayscale(1) contrast(1.25);
 }
+
+/* ── printing a payslip: only the slip, in ink, at the top of the page */
+@media print {
+  .payslip-print,
+  .payslip-print * {
+    visibility: visible;
+  }
+  .payslip-print {
+    position: fixed;
+    inset: 0 0 auto 0;
+    padding: 12mm;
+    background: #fff;
+    color: #000;
+  }
+}

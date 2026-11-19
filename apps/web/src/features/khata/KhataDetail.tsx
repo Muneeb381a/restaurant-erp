@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader } from '../../components/Loader';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -80,7 +81,7 @@ export function KhataDetail() {
     return out;
   }, [entries, filter]);
 
-  if (acct.isPending) return <p className="p-4">{t('common.loading')}</p>;
+  if (acct.isPending) return <Loader />;
   if (acct.isError || !acct.data) return <p className="p-4 text-rose-700">{t('common.error')}</p>;
   const a = acct.data;
   const manager = can(me.data, 'customer.manage');

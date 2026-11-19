@@ -1358,7 +1358,23 @@ export function createExpense(
   },
   key: string,
 ) {
-  return withTx(ctx.db, async (trx) => {
+  return withTx(ctx.db, (trx) => createExpenseTx(trx, ctx, a, input, key));
+}
+
+/** The same, inside a transaction the caller already holds (payroll posts salary this way). */
+export async function createExpenseTx(
+  trx: Queryable,
+  ctx: AppContext,
+  a: Actor,
+  input: {
+    category: string;
+    amountPaisa: number;
+    paidFrom: 'DRAWER_CASH' | 'OWNER_CASH' | 'BANK';
+    note?: string | undefined;
+  },
+  key: string,
+) {
+  {
     const dup = await trx
       .selectFrom('expenses')
       .select('id')
@@ -1402,7 +1418,7 @@ export function createExpense(
       input.note,
     );
     return { id: row.id, replayed: false as const };
-  });
+  }
 }
 
 export async function listExpenses(ctx: AppContext, branchId: string, from: string, to: string) {

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader } from '../../components/Loader';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api';
@@ -205,7 +206,7 @@ function RecipeDialog({
   return (
     <Dialog title={`${t('recipePage.edit')}: ${row.item} ${row.variant}`} onClose={onClose}>
       {!lines ? (
-        <p>{t('common.loading')}</p>
+        <Loader />
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-slate-600">{t('recipePage.lines')}</p>

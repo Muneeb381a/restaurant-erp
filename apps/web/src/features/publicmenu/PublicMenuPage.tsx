@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Loader } from '../../components/Loader';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -197,9 +198,7 @@ export function PublicMenuPage() {
           )}
         </header>
 
-        {menu.isPending && (
-          <p className="py-12 text-center text-[var(--ink-2)]">{t('common.loading')}</p>
-        )}
+        {menu.isPending && <Loader className="text-[var(--ink-2)]" />}
 
         {menu.isError && (
           <div className="mx-auto flex max-w-sm flex-col items-center gap-3 py-12 text-center">

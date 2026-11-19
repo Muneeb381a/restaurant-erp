@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
+import { Loader } from '../../components/Loader';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon, type IconName } from '../../components/Icon';
@@ -103,12 +104,23 @@ export function EmptyRow({
   icon,
   text,
   children,
+  loading = false,
 }: {
   cols: number;
   icon: IconName;
   text: string;
   children?: ReactNode;
+  /** the rows are still being fetched: show the loader instead of "nothing here" */
+  loading?: boolean;
 }) {
+  if (loading)
+    return (
+      <tr>
+        <td colSpan={cols} className="!py-6">
+          <Loader />
+        </td>
+      </tr>
+    );
   return (
     <tr>
       <td colSpan={cols} className="!py-10 text-center">

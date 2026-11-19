@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Loader } from '../../components/Loader';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon, type IconName } from '../../components/Icon';
@@ -248,9 +249,11 @@ export function DashboardPage() {
         <div className="me-auto">
           <h1 className="page-title">{t('dash.title')}</h1>
           <p className="hint">
-            {d
-              ? `${ltr(d.range.from)}${d.range.from === d.range.to ? '' : ` → ${ltr(d.range.to)}`} · ${t('dash.vs', { from: ltr(d.previousRange.from), to: ltr(d.previousRange.to) })}`
-              : t('common.loading')}
+            {d ? (
+              `${ltr(d.range.from)}${d.range.from === d.range.to ? '' : ` → ${ltr(d.range.to)}`} · ${t('dash.vs', { from: ltr(d.previousRange.from), to: ltr(d.previousRange.to) })}`
+            ) : (
+              <Loader size="sm" inline />
+            )}
           </p>
         </div>
         {d && d.range.from === d.range.to && (
@@ -302,7 +305,7 @@ export function DashboardPage() {
           {t('common.error')}
         </p>
       )}
-      {!d && !q.isError && <p className="p-6 text-center text-slate-600">{t('common.loading')}</p>}
+      {!d && !q.isError && <Loader />}
 
       {d && <Body d={d} lang={lang} />}
       {sharing && (

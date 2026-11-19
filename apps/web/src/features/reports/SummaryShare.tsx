@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Loader } from '../../components/Loader';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../../components/Icon';
@@ -42,7 +43,7 @@ export function SummaryShare({ date }: { date: string }) {
         dir="auto"
         className="max-h-72 overflow-auto whitespace-pre-wrap rounded-xl border border-slate-300 bg-slate-50 p-3 font-sans text-sm leading-relaxed"
       >
-        {summary.isPending ? t('common.loading') : text}
+        {summary.isPending ? <Loader size="sm" inline /> : text}
       </pre>
       <div className="flex flex-wrap gap-2">
         <a

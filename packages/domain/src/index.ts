@@ -18,3 +18,4 @@ export * from './menu/guest-labels';
 export * from './reports/day-summary';
 export * from './hr/attendance';
 export * from './hr/leave';
+export * from './hr/payroll';

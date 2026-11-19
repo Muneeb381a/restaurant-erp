@@ -370,5 +370,7 @@ describe('scale', () => {
       pricesSet: 0,
       itemsUnchanged: 1500,
     });
-  });
+    // the whole test (two imports) gets a longer ceiling than the default: a slow disk must not fail it,
+    // while the first import is still held to its own 30 s budget above
+  }, 90_000);
 });

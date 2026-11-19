@@ -65,8 +65,8 @@ test('the owner uploads the restaurant logo: it shows in the top bar and can be 
   await page.getByRole('button', { name: 'Save logo' }).click();
 
   await expect(page.getByRole('img', { name: 'Your logo' })).toBeVisible();
-  // the top bar now carries the logo instead of the app mark
-  await expect(page.locator('header img').first()).toBeVisible();
+  // the side menu (the top bar on a phone) now carries the logo instead of the app mark
+  await expect(page.locator('a[href="/"] img:visible').first()).toBeVisible();
 
   await page.getByRole('button', { name: 'Remove logo' }).click();
   await expect(page.getByText('No logo yet')).toBeVisible();

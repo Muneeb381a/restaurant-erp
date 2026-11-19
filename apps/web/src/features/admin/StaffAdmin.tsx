@@ -190,11 +190,7 @@ export function EmployeesAdmin() {
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <EmptyRow
-                cols={7}
-                icon="user"
-                text={t(list.isPending ? 'common.loading' : 'hr.noStaff')}
-              />
+              <EmptyRow cols={7} icon="user" loading={list.isPending} text={t('hr.noStaff')} />
             )}
             {rows.map((e) => (
               <tr key={e.id}>
@@ -477,6 +473,8 @@ function EmployeeDialog({
         )}
       </div>
 
+      {e && <PayItems employeeId={e.id} />}
+
       <h3 className="mt-6 mb-2 font-semibold">{t('hr.workingTime')}</h3>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t('hr.shiftStart')}>
@@ -708,7 +706,8 @@ function DaySheet() {
               <EmptyRow
                 cols={6}
                 icon="user"
-                text={t(sheet.isPending ? 'common.loading' : 'hr.noStaffThatDay')}
+                loading={sheet.isPending}
+                text={t('hr.noStaffThatDay')}
               />
             )}
             {rows.map((r) => {
@@ -1020,7 +1019,8 @@ function MonthView() {
               <EmptyRow
                 cols={days.length + 7}
                 icon="user"
-                text={t(data.isPending ? 'common.loading' : 'hr.noStaff')}
+                loading={data.isPending}
+                text={t('hr.noStaff')}
               />
             )}
             {(data.data?.employees ?? []).map((e) => (
@@ -1247,5 +1247,108 @@ export function ClockScreen() {
         </Dialog>
       )}
     </div>
+  );
+}
+
+/** Recurring allowances and deductions (transport, meal, a loan instalment) added to every pay run of this person. */
+function PayItems({ employeeId }: { employeeId: string }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const items = useQuery({
+    queryKey: ['pay-items', employeeId],
+    queryFn: async () =>
+      (
+        await api<{
+          items: {
+            id: string;
+            kind: 'ALLOWANCE' | 'DEDUCTION';
+            name: string;
+            amountPaisa: number;
+            isActive: boolean;
+          }[];
+        }>(`/employees/${employeeId}/pay-items`)
+      ).items,
+  });
+  const [kind, setKind] = useState<'ALLOWANCE' | 'DEDUCTION'>('ALLOWANCE');
+  const [name, setName] = useState('');
+  const [amount, setAmount] = useState('');
+  const paisa = parseRs(amount);
+  const refresh = (): Promise<void> =>
+    qc.invalidateQueries({ queryKey: ['pay-items', employeeId] });
+  const add = useMutation({
+    mutationFn: () =>
+      api(`/employees/${employeeId}/pay-items`, {
+        method: 'POST',
+        body: { kind, name: name.trim(), amountPaisa: paisa },
+      }),
+    onSuccess: async () => {
+      setName('');
+      setAmount('');
+      await refresh();
+    },
+  });
+  const toggle = useMutation({
+    mutationFn: (v: { id: string; on: boolean }) =>
+      api(`/pay-items/${v.id}`, { method: 'PATCH', body: { isActive: v.on } }),
+    onSuccess: refresh,
+  });
+  return (
+    <>
+      <h3 className="mt-6 mb-2 font-semibold">{t('hr.payItems')}</h3>
+      <p className="hint mb-2">{t('hr.payItemsHint')}</p>
+      <ul className="space-y-1 text-sm">
+        {(items.data ?? []).map((i) => (
+          <li key={i.id} className={`flex items-center gap-3 ${i.isActive ? '' : 'opacity-50'}`}>
+            <span
+              className={`w-5 text-center font-bold ${i.kind === 'ALLOWANCE' ? 'text-emerald-700' : 'text-rose-700'}`}
+            >
+              {i.kind === 'ALLOWANCE' ? '+' : '−'}
+            </span>
+            <span className="me-auto">{i.name}</span>
+            <span dir="ltr">{formatRs(i.amountPaisa)}</span>
+            <button
+              className="btn-secondary min-h-8 px-2 text-xs"
+              onClick={() => toggle.mutate({ id: i.id, on: !i.isActive })}
+            >
+              {t(i.isActive ? 'admin.deactivate' : 'admin.activate')}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-2 flex flex-wrap items-end gap-2">
+        <select
+          className="input w-auto"
+          aria-label={t('payroll.kindLabel')}
+          value={kind}
+          onChange={(x) => setKind(x.target.value as typeof kind)}
+        >
+          <option value="ALLOWANCE">{t('payroll.kind.EARNING')}</option>
+          <option value="DEDUCTION">{t('payroll.kind.DEDUCTION')}</option>
+        </select>
+        <input
+          className="input w-44"
+          placeholder={t('hr.payItemName')}
+          value={name}
+          onChange={(x) => setName(x.target.value)}
+        />
+        <input
+          className="input w-32"
+          dir="ltr"
+          inputMode="decimal"
+          placeholder="Rs"
+          value={amount}
+          onChange={(x) => setAmount(x.target.value)}
+        />
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={!name.trim() || !paisa || add.isPending}
+          onClick={() => add.mutate()}
+        >
+          {t('admin.add')}
+        </button>
+      </div>
+      <ErrorText error={add.error ?? toggle.error} />
+    </>
   );
 }

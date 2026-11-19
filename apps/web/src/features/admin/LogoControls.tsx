@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader } from '../../components/Loader';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api';
@@ -98,7 +99,7 @@ export function LogoControls({ version }: { version: number | null }) {
       <ErrorText error={error} />
       <div className="flex flex-wrap items-center gap-2">
         <button className="btn-secondary" disabled={busy} onClick={() => input.current?.click()}>
-          {busy ? t('common.loading') : saved.data ? t('logo.change') : t('logo.upload')}
+          {busy ? <Loader size="sm" inline /> : saved.data ? t('logo.change') : t('logo.upload')}
         </button>
         <input
           ref={input}

@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ComponentType, type ReactElement } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Loader } from '../components/Loader';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { isStaleChunk, reloadOnce } from '../components/ErrorBoundary';
 import { FloorPage } from '../features/floor/FloorPage';
@@ -28,16 +28,7 @@ function page<T extends object>(load: () => Promise<T>, name: keyof T): ReactEle
 }
 
 function PageLoading() {
-  const { t } = useTranslation();
-  return (
-    <div className="flex h-40 items-center justify-center" role="status" aria-live="polite">
-      <span
-        aria-hidden="true"
-        className="size-6 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-600 motion-reduce:animate-none"
-      />
-      <span className="sr-only">{t('common.loading')}</span>
-    </div>
-  );
+  return <Loader className="h-40" />;
 }
 
 // created once at module load: a new lazy() on every render would reload the page each time
@@ -72,6 +63,7 @@ const EmployeesAdmin = page(() => import('../features/admin/StaffAdmin'), 'Emplo
 const AttendanceAdmin = page(() => import('../features/admin/StaffAdmin'), 'AttendanceAdmin');
 const ClockScreen = page(() => import('../features/admin/StaffAdmin'), 'ClockScreen');
 const LeaveAdmin = page(() => import('../features/admin/LeaveAdmin'), 'LeaveAdmin');
+const PayrollAdmin = page(() => import('../features/admin/PayrollAdmin'), 'PayrollAdmin');
 const SetupAdmin = page(() => import('../features/admin/SetupAdmin'), 'SetupAdmin');
 
 export function App() {
@@ -107,6 +99,7 @@ export function App() {
           <Route path="employees" element={EmployeesAdmin} />
           <Route path="attendance" element={AttendanceAdmin} />
           <Route path="leave" element={LeaveAdmin} />
+          <Route path="payroll" element={PayrollAdmin} />
           <Route path="clock" element={ClockScreen} />
           <Route path="setup" element={SetupAdmin} />
         </Route>

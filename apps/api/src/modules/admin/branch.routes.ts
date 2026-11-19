@@ -53,6 +53,13 @@ export const SETTING_SCHEMAS: Record<string, z.ZodType> = {
   /** Customer receipt language: English text mode, or Urdu as a bitmap. */
   'receipt.language': z.enum(['en', 'ur']),
   /** Staff: minutes after the shift start before someone counts as late; minutes after the end before overtime starts. */
+  /** Payroll: nothing legal is built in. Each is typed by the owner; overtime is off until switched on (OPEN-QUESTIONS #46). */
+  'payroll.divisor': z.enum(['CALENDAR', 'THIRTY']),
+  'payroll.overtime_enabled': z.boolean(),
+  'payroll.overtime_multiplier_bps': z.number().int().min(10_000).max(50_000),
+  'payroll.lates_per_deduction_day': z.number().int().min(0).max(31),
+  'payroll.daily_paid_off_days': z.boolean(),
+  'payroll.default_shift_minutes': z.number().int().min(60).max(1440),
   'hr.late_grace_minutes': z.number().int().min(0).max(240),
   'hr.overtime_after_minutes': z.number().int().min(0).max(240),
 };

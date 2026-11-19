@@ -1751,7 +1751,10 @@
       "LEAVE": "Leave",
       "WEEKLY_OFF": "Weekly off",
       "HOLIDAY": "Holiday"
-    }
+    },
+    "payItems": "Allowances and deductions",
+    "payItemsHint": "Added to every pay run of this person (transport, meals, a loan instalment).",
+    "payItemName": "What for"
   },
   "leave": {
     "title": "Leave",
@@ -1803,5 +1806,85 @@
     "allowance": "Days per year",
     "noLimit": "No limit",
     "mayGoNegative": "May go below zero"
+  },
+  "payroll": {
+    "title": "Payroll",
+    "hint": "Work out everybody’s pay for a period, fix it, approve it (that locks it), then record the payments.",
+    "tab": {
+      "runs": "Pay runs",
+      "rules": "Rules"
+    },
+    "newRun": "New pay run",
+    "noRuns": "No pay runs yet. Start one for last month.",
+    "period": "Period",
+    "people": "People",
+    "net": "Net pay",
+    "paid": "Paid",
+    "open": "Open",
+    "back": "Back",
+    "frequency": "Pay run for",
+    "freq": {
+      "MONTHLY": "A month",
+      "WEEKLY": "A week",
+      "DAILY": "A day"
+    },
+    "month": "Month",
+    "weekFrom": "First day of the week",
+    "newHint": "Everybody employed in that period whose pay is set to this frequency is included. A monthly salary only fits a monthly run.",
+    "calculate": "Calculate",
+    "st": {
+      "DRAFT": "Draft",
+      "APPROVED": "Approved",
+      "CANCELLED": "Cancelled"
+    },
+    "recalc": "Recalculate",
+    "cancelRun": "Cancel this pay run",
+    "approve": "Approve",
+    "draftHint": "This is a draft. Check each person, add bonuses or fines where needed, then approve. Approving locks the pay run and the attendance of its days.",
+    "lockedHint": "Approved: nothing here can change. A mistake is fixed as a line in the next pay run.",
+    "days": "Days",
+    "gross": "Earnings",
+    "deductions": "Deductions",
+    "noSlips": "Nobody is in this pay run.",
+    "addLine": "Add a line",
+    "kind": {
+      "EARNING": "Addition",
+      "DEDUCTION": "Deduction"
+    },
+    "kindLabel": "Kind",
+    "lineWhy": "What is it for",
+    "lineExample": "Eid bonus, fine, advance recovery…",
+    "amount": "Amount (Rs)",
+    "lineHint": "Written down with your name. It stays in this pay run only.",
+    "pay": "Pay",
+    "owed": "Still to pay: {{amount}}",
+    "paidFrom": "Paid from",
+    "source": {
+      "OWNER_CASH": "Owner’s cash",
+      "BANK": "Bank",
+      "DRAWER_CASH": "Till drawer (open shift needed)"
+    },
+    "payHint": "This is recorded once as a salary expense. Pressing twice does not pay twice.",
+    "recordPayment": "Record payment",
+    "payslip": "Payslip",
+    "draftSlip": "Draft: the figures can still change.",
+    "print": "Print",
+    "whatsapp": "Send on WhatsApp",
+    "warn": {
+      "UNMARKED_DAYS": "Some days are not marked",
+      "NO_WORKED_TIME": "No worked time recorded",
+      "OVERTIME_NEEDS_RATE": "Overtime needs a rate"
+    },
+    "rulesNote": "No legal rate is built in. Type what you have confirmed with your accountant (Open Questions #46). Until then overtime stays off and lateness costs nothing.",
+    "rule": {
+      "divisor": "A day’s pay is the monthly salary divided by",
+      "thirty": "30 (every month the same)",
+      "calendar": "the days in that month",
+      "overtime": "Pay overtime",
+      "multiplier": "Overtime is paid at",
+      "lates": "Late arrivals that cost one day’s pay",
+      "latesHint": "0 = being late never costs pay.",
+      "offDays": "Daily-wage staff are paid for weekly offs and holidays"
+    }
   }
 }

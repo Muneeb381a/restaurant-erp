@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader } from '../../components/Loader';
 import { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -276,7 +277,7 @@ export function OrderPage() {
     );
   }, [menu.data, category, search, popularIds]);
 
-  if (order.isPending) return <p className="p-4">{t('common.loading')}</p>;
+  if (order.isPending) return <Loader />;
   if (order.isError || !order.data) return <p className="p-4 text-rose-700">{t('common.error')}</p>;
   const o = order.data;
   const editable = o.status === 'OPEN' && !o.held;

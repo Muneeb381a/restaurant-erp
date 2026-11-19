@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader } from '../../components/Loader';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -211,7 +212,7 @@ export function PayPage() {
     onError: fail,
   });
 
-  if (bill.isPending || methods.isPending) return <p className="p-4">{t('common.loading')}</p>;
+  if (bill.isPending || methods.isPending) return <Loader />;
   if (!b || bill.isError) return <p className="p-4 text-rose-700">{t('common.error')}</p>;
 
   const settled = b.status === 'SETTLED';

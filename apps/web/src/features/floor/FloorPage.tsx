@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Loader } from '../../components/Loader';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSetupStatus } from '../admin/SetupAdmin';
@@ -241,7 +242,7 @@ export function FloorPage() {
           {error}
         </p>
       )}
-      {floor.isPending && <p className="text-slate-600">{t('common.loading')}</p>}
+      {floor.isPending && <Loader />}
 
       {all.length > 0 && (
         <div

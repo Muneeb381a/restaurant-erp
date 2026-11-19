@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { Loader } from '../../components/Loader';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../../components/Icon';
@@ -128,7 +129,7 @@ export function DealEditor({
   return (
     <Dialog title={`${t('admin.dealEditor.title')}: ${item.name}`} onClose={onClose} wide>
       {current.isPending || !slots ? (
-        <p>{t('common.loading')}</p>
+        <Loader />
       ) : (
         <div className="space-y-4">
           <p className="hint">{t('admin.dealEditor.help')}</p>

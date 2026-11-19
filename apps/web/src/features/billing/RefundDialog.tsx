@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader } from '../../components/Loader';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal as SharedModal } from '../../components/Modal';
@@ -101,7 +102,7 @@ export function RefundDialog({ bill, onClose }: { bill: Bill; onClose: () => voi
         </p>
       )}
       {!list ? (
-        <p>{t('common.loading')}</p>
+        <Loader />
       ) : (
         <>
           <ul className="divide-y divide-slate-100">

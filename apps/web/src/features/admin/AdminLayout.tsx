@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Loader } from '../../components/Loader';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Icon, type IconName } from '../../components/Icon';
 import { can, useMe } from '../../lib/queries';
@@ -43,6 +44,12 @@ export const ADMIN_SECTIONS = [
     group: 'admin.groupStaff',
   },
   { path: 'leave', label: 'leave.title', permission: 'leave.view', group: 'admin.groupStaff' },
+  {
+    path: 'payroll',
+    label: 'payroll.title',
+    permission: 'payroll.view',
+    group: 'admin.groupStaff',
+  },
   {
     path: 'clock',
     label: 'hr.clockTitle',
@@ -99,7 +106,7 @@ export function AdminLayout() {
   const { t } = useTranslation();
   const me = useMe();
   const { pathname } = useLocation();
-  if (me.isPending) return <p className="p-4">{t('common.loading')}</p>;
+  if (me.isPending) return <Loader />;
   // in the cloud the browser prints (nothing to set up), so the printer screens would only confuse
   const allowed = ADMIN_SECTIONS.filter(
     (s) => can(me.data, s.permission) && !(s.path === 'printers' && mode.kind === 'tenant'),

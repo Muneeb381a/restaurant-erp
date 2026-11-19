@@ -274,6 +274,16 @@ async function applyOps(trx: Queryable, a: Actor, ops: readonly ImportOp[]): Pro
     .executeTakeFirst();
   let itemSort = (maxSort?.m ?? -1) + 1;
   const variantSort = new Map<string, number>();
+  // one lookup per tax category code for the whole import, not one per item
+  const taxIds = new Map<string, string>();
+  const taxId = async (code: string): Promise<string> => {
+    let id = taxIds.get(code);
+    if (id === undefined) {
+      id = await taxCategoryIdByCode(trx, code);
+      taxIds.set(code, id);
+    }
+    return id;
+  };
   for (const v of vs) variantSort.set(v.item_id, (variantSort.get(v.item_id) ?? 0) + 1);
 
   for (const op of ops) {
@@ -310,10 +320,7 @@ async function applyOps(trx: Queryable, a: Actor, ops: readonly ImportOp[]): Pro
             station_id: it.stationCode
               ? need(stationId.get(it.stationCode.toUpperCase()), 'station')
               : null,
-            tax_category_id: await taxCategoryIdByCode(
-              trx,
-              it.taxCategoryCode ?? DEFAULT_TAX_CATEGORY,
-            ),
+            tax_category_id: await taxId(it.taxCategoryCode ?? DEFAULT_TAX_CATEGORY),
             search_terms: it.searchTerms,
             is_available: it.available ?? true,
             sort: itemSort++,

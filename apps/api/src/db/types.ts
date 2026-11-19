@@ -924,6 +924,78 @@ export interface LeaveAdjustments {
   year: number;
 }
 
+export interface EmployeePayItems {
+  amount_paisa: Int8;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  employee_id: string;
+  id: Generated<string>;
+  is_active: Generated<boolean>;
+  kind: string;
+  name: string;
+}
+
+export interface PayrollRuns {
+  approved_at: Timestamp | null;
+  approved_by: string | null;
+  branch_id: string;
+  cancel_reason: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  frequency: string;
+  id: Generated<string>;
+  note: string | null;
+  period_from: DateString;
+  period_to: DateString;
+  run_no: number;
+  status: Generated<string>;
+}
+
+export interface Payslips {
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  deductions_paisa: Generated<Int8>;
+  employee_id: string;
+  gross_paisa: Generated<Int8>;
+  id: Generated<string>;
+  late_count: Generated<number>;
+  late_minutes: Generated<number>;
+  net_paisa: Generated<Int8>;
+  overtime_minutes: Generated<number>;
+  pay_type: string;
+  rate_paisa: Int8;
+  run_id: string;
+  tally: Json;
+  warnings: Generated<string[]>;
+  worked_minutes: Generated<number>;
+}
+
+export interface PayslipLines {
+  amount_paisa: Int8;
+  code: string;
+  created_by: string | null;
+  detail: string | null;
+  id: Generated<string>;
+  kind: string;
+  label: string;
+  payslip_id: string;
+  sort_no: Generated<number>;
+  source: string;
+}
+
+export interface PayrollPayments {
+  amount_paisa: Int8;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  expense_id: string;
+  id: Generated<string>;
+  idempotency_key: string;
+  note: string | null;
+  paid_by: string;
+  paid_from: string;
+  payslip_id: string;
+}
+
 export interface Holidays {
   branch_id: string;
   holiday_date: DateString;
@@ -962,6 +1034,11 @@ export interface DB {
   user_avatars: UserAvatars;
   item_variants: ItemVariants;
   holidays: Holidays;
+  employee_pay_items: EmployeePayItems;
+  payroll_payments: PayrollPayments;
+  payroll_runs: PayrollRuns;
+  payslip_lines: PayslipLines;
+  payslips: Payslips;
   leave_adjustments: LeaveAdjustments;
   leave_requests: LeaveRequests;
   leave_types: LeaveTypes;

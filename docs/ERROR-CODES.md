@@ -69,6 +69,21 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 | `PROVISIONING_FAILED`        | 502     | (cloud) creating the restaurant's database or setting it up stopped; the restaurant is saved as FAILED and can be retried                                                                         |
 | `LIVE_DISABLED`              | 501     | The server runs without a live stream; screens poll instead                                                                                                                                       |
 | `INTERNAL_ERROR`             | 500     | Unexpected error (details only in server logs, correlate with `requestId`)                                                                                                                        |
+| `EMPLOYEE_CODE_TAKEN` | 409 | That staff number (or the linked sign-in) already belongs to someone |
+| `NOT_EMPLOYED_ON_DATE` | 409 | The person was not employed on that day (before joining, after leaving) |
+| `ALREADY_CLOCKED_OUT` | 409 | They already clocked out today; a manager must correct the day |
+| `PIN_WRONG` | 400 | Wrong clock-in PIN (never 401: the web app treats 401 as an expired session); `triesLeft` says how many remain |
+| `PIN_LOCKED` | 429 | Five wrong PINs: that person is locked out of the clock screen for 5 minutes |
+| `HOLIDAY_EXISTS` | 409 | That date is already a holiday |
+| `LEAVE_OVERLAP` | 409 | The person already has leave on some of those days |
+| `LEAVE_BALANCE_EXCEEDED` | 409 | Not enough leave of that kind is left (`remainingHalfDays`, `requestedHalfDays`) |
+| `LEAVE_OVERLAPS_ATTENDANCE` | 409 | Approval refused: they are marked present on a day of the leave (`date`) |
+| `LEAVE_ATTENDANCE_LOCKED` | 409 | That day belongs to an approved leave; cancel the leave first |
+| `PAYROLL_PERIOD_LOCKED` | 409 | The day is inside an approved pay run (attendance, leave and holidays there are frozen); correct it in the next pay run |
+| `PAYROLL_RUN_EXISTS` | 409 | There is already a live pay run for that period and frequency |
+| `PAYROLL_NOT_READY` | 409 | A pay run cannot be approved yet (`problems`: UNMARKED_DAYS, NEGATIVE_NET, PERIOD_NOT_FINISHED, NO_PAYSLIPS) |
+| `PAYROLL_NOT_EDITABLE` | 409 | The pay run is not a draft any more (or is not yet approved, for payments) |
+| `PAYROLL_OVERPAYMENT` | 409 | The payment is more than is still owed on the payslip (`remainingPaisa`), or nothing is owed |
 
 Domain rule violations (bad deal pick, modifier min/max, missing weight, …) return `VALIDATION_FAILED` (400) with a `reason` such as `DEAL_SLOT_COUNT`, `MODIFIER_GROUP_MIN`, `LINE_WEIGHT_REQUIRED`, `TENDER_SUM_MISMATCH` or `DRAWER_INSUFFICIENT_CASH` (paid-out/drop or cash refund larger than the cash in the drawer) or `REFUND_QTY_EXCEEDS` / `REFUND_UNKNOWN_LINE` (credit notes).
 

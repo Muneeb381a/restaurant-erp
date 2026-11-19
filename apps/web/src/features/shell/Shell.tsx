@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '../../components/Avatar';
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Mark } from '../../components/Brand';
 import { Icon, type IconName } from '../../components/Icon';
 import { Modal } from '../../components/Modal';
 import { Toaster } from '../../components/Toast';
@@ -15,6 +14,8 @@ import { useOnline } from '../../lib/online';
 import { useOutboxSync } from '../../lib/sync';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { OutboxBar } from './OutboxBar';
+import { Sidebar, type NavItem } from './Sidebar';
+import { BrandMark } from '../../components/BrandLogo';
 import { formatRs, ltr } from '../../lib/money';
 import { can, useDay, useFloor, useMe, usePrinterHealth, useShift } from '../../lib/queries';
 import type { Shift } from '../../lib/types';
@@ -53,18 +54,6 @@ function PasswordGate({ children }: { children: ReactNode }) {
       </div>
     );
   return <>{children}</>;
-}
-
-interface NavItem {
-  to?: string;
-  icon: IconName;
-  label: string;
-  onClick?: () => void;
-  end?: boolean;
-  /** One plain line saying what the place is for, shown under the name. */
-  hint?: string;
-  /** Small count on the icon, e.g. busy tables. */
-  badge?: { n: number; title: string };
 }
 
 function SignedIn() {
@@ -244,68 +233,6 @@ function SignedIn() {
       (x) => x.to && x.to !== '/' && (pathname === x.to || pathname.startsWith(`${x.to}/`)),
     ) ?? all.find((x) => x.to === '/');
 
-  const sideItem = (it: NavItem): ReactNode => {
-    const cls = ({ isActive }: { isActive?: boolean }): string =>
-      `group relative flex min-h-10 w-full items-center gap-3 rounded-lg text-sm font-medium transition-colors ${
-        expanded ? 'px-3' : 'justify-center px-0'
-      } ${
-        isActive
-          ? 'bg-white/10 text-white before:absolute before:inset-y-2 before:start-0 before:w-1 before:rounded-full before:bg-emerald-400'
-          : 'text-slate-400 hover:bg-white/5 hover:text-white'
-      }`;
-    const body = (active: boolean): ReactNode => (
-      <>
-        <span className="relative shrink-0">
-          <Icon
-            name={it.icon}
-            size={20}
-            className={active ? 'text-emerald-300' : 'text-slate-500 group-hover:text-slate-200'}
-          />
-          {it.badge && !expanded && (
-            <span className="absolute -end-1.5 -top-1.5 flex min-w-[1rem] items-center justify-center rounded-full bg-amber-400 px-1 text-[0.62rem] font-bold leading-4 text-slate-900">
-              {it.badge.n}
-            </span>
-          )}
-        </span>
-        <span className={expanded ? 'min-w-0 flex-1 truncate text-start' : 'sr-only'}>
-          {it.label}
-        </span>
-        {it.badge && expanded && (
-          <span
-            title={it.badge.title}
-            className="ms-auto flex min-w-[1.4rem] items-center justify-center rounded-full bg-amber-400 px-1.5 text-xs font-bold leading-[1.4rem] text-slate-900"
-          >
-            {it.badge.n}
-          </span>
-        )}
-      </>
-    );
-    const title = expanded ? it.hint : it.badge ? `${it.label}: ${it.badge.title}` : it.label;
-    return it.to ? (
-      <NavLink
-        key={it.label}
-        to={it.to}
-        end={it.end}
-        className={cls}
-        title={title}
-        aria-label={it.label}
-      >
-        {({ isActive }) => body(isActive)}
-      </NavLink>
-    ) : (
-      <button
-        key={it.label}
-        type="button"
-        className={cls({})}
-        onClick={it.onClick}
-        title={title}
-        aria-label={it.label}
-      >
-        {body(false)}
-      </button>
-    );
-  };
-
   const tabItem = (it: NavItem): ReactNode => {
     const cls = ({ isActive }: { isActive?: boolean }): string =>
       `relative flex min-h-[3.5rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[0.72rem] font-medium ${
@@ -336,129 +263,106 @@ function SignedIn() {
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-2 bg-slate-900 px-3 text-slate-100 sm:gap-3 sm:px-4">
-        <div className="flex min-w-0 items-center gap-3 me-auto">
-          {wide && (
-            <button
-              type="button"
-              onClick={toggleRail}
-              aria-label={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
-              aria-expanded={!folded}
-              title={folded ? t('shell.expandMenu') : t('shell.foldMenu')}
-              className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+    <div className="flex h-full flex-col md:flex-row">
+      <Sidebar
+        groups={groups}
+        expanded={expanded}
+        canFold={wide}
+        folded={folded}
+        onToggle={toggleRail}
+        restaurant={restaurant}
+        subtitle={me.data?.role ?? ''}
+        logoVersion={branch.data?.logoVersion ?? null}
+        live={live}
+        polling={polling}
+        onHelp={() => setHelpOpen(true)}
+      />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="flex h-12 shrink-0 items-center gap-2 bg-slate-900 px-3 text-slate-100 sm:gap-3 sm:px-4">
+          <div className="flex min-w-0 items-center gap-3 me-auto">
+            <Link
+              to="/"
+              aria-label={t('app.title')}
+              className="flex min-w-0 items-center gap-2.5 rounded-md md:hidden"
             >
-              <Icon name="sidebar" size={18} data-flip />
-            </button>
-          )}
-          <Link
-            to="/"
-            aria-label={t('app.title')}
-            className="flex min-w-0 items-center gap-2.5 rounded-md"
-          >
-            <BrandMark version={branch.data?.logoVersion ?? null} />
-            <span className="hidden max-w-[16rem] truncate text-sm font-semibold tracking-tight text-white sm:block">
-              {restaurant || t('app.title')}
-            </span>
-          </Link>
-          <span aria-hidden="true" className="h-4 w-px shrink-0 bg-white/20" />
-          <div className="truncate text-sm font-medium text-slate-300">
-            {current?.label || restaurant || t('app.title')}
-          </div>
-        </div>
-        <ClockLive live={live} lang={i18n.language} />
-        <DayShiftControl
-          dayDate={day.data?.businessDate}
-          dayOpenedAt={day.data?.openedAt}
-          shiftOpen={!!shift.data}
-          shiftOpenedAt={shift.data?.openedAt}
-          floatPaisa={shift.data?.openingFloatPaisa}
-          cashier={me.data?.fullName ?? ''}
-          lang={i18n.language}
-          canOpenDay={can(me.data, 'day.open')}
-          canOpenShift={can(me.data, 'shift.open')}
-          canCloseDay={can(me.data, 'day.close')}
-          busy={openDay.isPending}
-          onOpenDay={() => openDay.mutate()}
-          onOpenShift={() => setFloatOpen(true)}
-          onDrawer={() => setDrawerShift(shift.data ?? null)}
-          onCloseDay={() => {
-            setClosingDate(day.data?.businessDate);
-            setClosingDay(true);
-          }}
-        />
-        <AccountMenu
-          name={me.data?.fullName ?? ''}
-          role={me.data?.role ?? ''}
-          lang={i18n.language as Lang}
-          live={live}
-          polling={polling}
-          userId={me.data?.id}
-          avatarVersion={me.data?.avatarVersion ?? null}
-          onPhoto={() => setPhotoOpen(true)}
-          onLang={setLanguage}
-          onPassword={() => setPasswordOpen(true)}
-          onHelp={() => setHelpOpen(true)}
-          onLogout={() => void logout()}
-        />
-      </header>
-      <div className="flex min-h-0 flex-1 flex-col-reverse md:flex-row">
-        {/* tablets and desktops: the side menu */}
-        <div
-          className={`hidden shrink-0 flex-col border-t border-white/10 bg-slate-900 text-slate-300 transition-[width] duration-200 md:flex ${expanded ? 'w-60' : 'w-[4.25rem]'}`}
-        >
-          <nav
-            aria-label={t('shell.mainNav')}
-            className="min-h-0 flex-1 space-y-6 overflow-y-auto px-3 py-4"
-          >
-            {groups.map((g, i) => (
-              <div key={g.label} className="space-y-0.5">
-                {expanded ? (
-                  <div className="px-3 pb-2 text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-500">
-                    {g.label}
-                  </div>
-                ) : (
-                  i > 0 && <div className="mx-2 mb-4 border-t border-white/10" />
-                )}
-                {g.items.map((it) => sideItem(it))}
-              </div>
-            ))}
-          </nav>
-          <div className="space-y-1 border-t border-white/10 p-3">
-            <button
-              type="button"
-              onClick={() => setHelpOpen(true)}
-              title={t('help.open')}
-              aria-label={t('help.open')}
-              className={`group flex min-h-10 w-full items-center gap-3 rounded-lg text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white ${expanded ? 'px-3' : 'justify-center'}`}
-            >
-              <Icon name="info" size={20} className="text-slate-500 group-hover:text-slate-200" />
-              {expanded && t('help.open')}
-            </button>
-            <div
-              className={`flex min-h-9 items-center gap-2.5 rounded-lg bg-white/5 text-xs font-medium text-slate-300 ${expanded ? 'px-3' : 'justify-center'}`}
-              title={
-                polling
-                  ? t('shell.pollingHint')
-                  : live
-                    ? t('shell.liveHint')
-                    : t('shell.offlineHint')
-              }
-            >
-              <span
-                aria-hidden="true"
-                className={`size-2 rounded-full ${live ? 'bg-emerald-500' : 'animate-pulse bg-amber-500'}`}
-              />
-              {expanded &&
-                (polling
-                  ? t('shell.autoRefresh')
-                  : live
-                    ? t('shell.live')
-                    : t('shell.reconnecting'))}
+              <BrandMark version={branch.data?.logoVersion ?? null} size={28} />
+              <span className="hidden max-w-[16rem] truncate text-sm font-semibold tracking-tight text-white sm:block">
+                {restaurant || t('app.title')}
+              </span>
+            </Link>
+            <span aria-hidden="true" className="h-4 w-px shrink-0 bg-white/20 md:hidden" />
+            <div className="flex min-w-0 items-center gap-2.5 truncate text-sm font-medium text-slate-300 md:text-base md:font-semibold md:text-white">
+              {current && (
+                <Icon name={current.icon} size={18} className="hidden text-emerald-300 md:block" />
+              )}
+              <span className="truncate">{current?.label || restaurant || t('app.title')}</span>
             </div>
           </div>
-        </div>
+          <ClockLive live={live} lang={i18n.language} />
+          <DayShiftControl
+            dayDate={day.data?.businessDate}
+            dayOpenedAt={day.data?.openedAt}
+            shiftOpen={!!shift.data}
+            shiftOpenedAt={shift.data?.openedAt}
+            floatPaisa={shift.data?.openingFloatPaisa}
+            cashier={me.data?.fullName ?? ''}
+            lang={i18n.language}
+            canOpenDay={can(me.data, 'day.open')}
+            canOpenShift={can(me.data, 'shift.open')}
+            canCloseDay={can(me.data, 'day.close')}
+            busy={openDay.isPending}
+            onOpenDay={() => openDay.mutate()}
+            onOpenShift={() => setFloatOpen(true)}
+            onDrawer={() => setDrawerShift(shift.data ?? null)}
+            onCloseDay={() => {
+              setClosingDate(day.data?.businessDate);
+              setClosingDay(true);
+            }}
+          />
+          <AccountMenu
+            name={me.data?.fullName ?? ''}
+            role={me.data?.role ?? ''}
+            lang={i18n.language as Lang}
+            live={live}
+            polling={polling}
+            userId={me.data?.id}
+            avatarVersion={me.data?.avatarVersion ?? null}
+            onPhoto={() => setPhotoOpen(true)}
+            onLang={setLanguage}
+            onPassword={() => setPasswordOpen(true)}
+            onHelp={() => setHelpOpen(true)}
+            onLogout={() => void logout()}
+          />
+        </header>
+        {offline.length > 0 && (
+          <div
+            role="alert"
+            className="flex items-center justify-center gap-2 border-b border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-800"
+          >
+            <Icon name="printer" size={18} />
+            {t('shell.printerOffline', {
+              names: offline.map((p) => `${p.name} (${p.queued})`).join(', '),
+            })}
+          </div>
+        )}
 
+        {!online && (
+          <div
+            role="status"
+            className="flex items-center gap-2 bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-900"
+          >
+            <Icon name="alert" size={18} />
+            {t('offline.banner')}
+          </div>
+        )}
+
+        <OutboxBar online={online} />
+
+        <main className="min-h-0 flex-1 overflow-auto">
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
+        </main>
         {/* phones: a bar at the bottom with the four main places and "More" */}
         <nav
           aria-label={t('shell.mainNav')}
@@ -538,38 +442,6 @@ function SignedIn() {
             </div>
           </div>
         )}
-
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {offline.length > 0 && (
-            <div
-              role="alert"
-              className="flex items-center justify-center gap-2 border-b border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-800"
-            >
-              <Icon name="printer" size={18} />
-              {t('shell.printerOffline', {
-                names: offline.map((p) => `${p.name} (${p.queued})`).join(', '),
-              })}
-            </div>
-          )}
-
-          {!online && (
-            <div
-              role="status"
-              className="flex items-center gap-2 bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-900"
-            >
-              <Icon name="alert" size={18} />
-              {t('offline.banner')}
-            </div>
-          )}
-
-          <OutboxBar online={online} />
-
-          <main className="min-h-0 flex-1 overflow-auto">
-            <ErrorBoundary>
-              <Outlet />
-            </ErrorBoundary>
-          </main>
-        </div>
       </div>
 
       {helpOpen && <HelpDialog page={helpPage} onClose={() => setHelpOpen(false)} />}
@@ -653,29 +525,6 @@ function MenuItem({
 
 /** "21:42" style clock with the live-connection dot: the till shows the time staff actually read. */
 /** The top-bar badge: the restaurant's own logo when it has uploaded one, else the app mark. */
-function BrandMark({ version }: { version: number | null }) {
-  const logo = useQuery({
-    queryKey: ['logo', version],
-    enabled: version != null,
-    staleTime: Infinity,
-    gcTime: 30 * 60_000,
-    retry: false,
-    queryFn: async () =>
-      URL.createObjectURL(await api<Blob>('/branch/logo', { responseType: 'blob' })),
-  });
-  if (logo.data)
-    return (
-      <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white">
-        <img src={logo.data} alt="" aria-hidden="true" className="size-full object-contain" />
-      </span>
-    );
-  return (
-    <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-emerald-600 text-white">
-      <Mark size={18} />
-    </span>
-  );
-}
-
 function ClockLive({ live, lang }: { live: boolean; lang: string }) {
   const { t } = useTranslation();
   const [now, setNow] = useState(() => new Date());

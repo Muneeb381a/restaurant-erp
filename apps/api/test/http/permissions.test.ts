@@ -50,8 +50,19 @@ const ALL_PERMISSIONS = [
   'attendance.clock',
   'leave.view',
   'leave.manage',
+  'payroll.view',
+  'payroll.manage',
+  'payroll.approve',
+  'payroll.pay',
 ];
-const NOT_MANAGER = ['user.manage', 'tax.manage', 'settings.manage', 'device.manage'];
+const NOT_MANAGER = [
+  'user.manage',
+  'tax.manage',
+  'settings.manage',
+  'device.manage',
+  'payroll.approve',
+  'payroll.pay',
+];
 
 const GRANTS: Record<RoleCode, string[]> = {
   OWNER: ALL_PERMISSIONS,
@@ -94,6 +105,9 @@ const GRANTS: Record<RoleCode, string[]> = {
     'employee.view',
     'attendance.view',
     'leave.view',
+    'payroll.view',
+    'payroll.manage',
+    'payroll.pay',
   ],
 };
 

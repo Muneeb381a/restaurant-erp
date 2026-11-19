@@ -1,4 +1,5 @@
 import { asPaisa, formatPaisa, parseRupees } from '@erp/domain';
+import { Loader } from '../../components/Loader';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -86,7 +87,7 @@ export function MenuAdmin() {
     );
   }, [menu.data, search, category, status]);
 
-  if (menu.isPending) return <p className="p-4">{t('common.loading')}</p>;
+  if (menu.isPending) return <Loader />;
   if (menu.isError || !menu.data) return <ErrorText error={menu.error} />;
   const data = menu.data;
   // channels in the order a restaurant thinks of them: dine-in first

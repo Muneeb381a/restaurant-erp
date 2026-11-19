@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader } from '../../components/Loader';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -78,7 +79,7 @@ export function TenantDetailPage() {
     onError: fail,
   });
 
-  if (tenant.isPending) return <p className="p-6">{t('common.loading')}</p>;
+  if (tenant.isPending) return <Loader />;
   if (tenant.isError || !tenant.data)
     return <p className="p-6 text-rose-700">{t('common.error')}</p>;
   const x = tenant.data;
@@ -167,7 +168,7 @@ export function TenantDetailPage() {
               {t('platform.checkNow')}
             </button>
           </div>
-          {!h && <p className="hint">{health.isFetching ? t('common.loading') : '–'}</p>}
+          {!h && <p className="hint">{health.isFetching ? <Loader size="sm" inline /> : '–'}</p>}
           {h && (
             <div className="grid grid-cols-2 gap-2">
               <Stat

@@ -5,6 +5,7 @@ import { AppError } from '../../http/errors';
 import { withTx, type Queryable } from '../../shared/tx';
 import { writeAudit } from '../audit/audit.service';
 import { getEmployee, type Actor } from './hr.service';
+import { assertPeriodOpen } from './locks';
 
 const act = (a: Actor) => ({
   branchId: a.branchId,
@@ -583,6 +584,7 @@ async function decide(
       weeklyOff: emp.weekly_off,
       holidays,
     });
+    await assertPeriodOpen(trx, a.branchId, req.employee_id, dates);
     const existing = await trx
       .selectFrom('attendance')
       .select(['id', 'work_date', 'status', 'leave_request_id'])
@@ -684,6 +686,17 @@ export function cancelLeave(ctx: AppContext, a: Actor, id: string, note: string)
       throw new AppError(409, 'CONFLICT', 'Only a waiting or approved leave can be cancelled');
     let removed = 0;
     if (req.status === 'APPROVED') {
+      const days = await trx
+        .selectFrom('attendance')
+        .select('work_date')
+        .where('leave_request_id', '=', id)
+        .execute();
+      await assertPeriodOpen(
+        trx,
+        a.branchId,
+        req.employee_id,
+        days.map((d) => d.work_date),
+      );
       const gone = await trx
         .deleteFrom('attendance')
         .where('leave_request_id', '=', id)

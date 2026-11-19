@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Loader } from '../../components/Loader';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Jali, Mark } from '../../components/Brand';
@@ -275,7 +276,7 @@ export function LoginPage() {
               disabled={busy || !ready}
               onClick={() => void submit(usePassword ? password : pin)}
             >
-              {busy ? t('common.loading') : t('login.submit')}
+              {busy ? <Loader size="sm" inline tone="light" /> : t('login.submit')}
             </button>
             <button
               type="button"

@@ -15,6 +15,7 @@ import type { AppContext } from '../../http/context';
 import { AppError } from '../../http/errors';
 import { withTx, type Queryable } from '../../shared/tx';
 import { writeAudit } from '../audit/audit.service';
+import { assertPeriodOpen } from './locks';
 
 /** Who is acting, for audit rows. */
 export interface Actor {
@@ -564,6 +565,7 @@ export function markAttendance(
     const emp = await getEmployee(trx, a.branchId, employeeId, true);
     if (!employedOn(emp, date))
       throw new AppError(409, 'NOT_EMPLOYED_ON_DATE', 'They were not employed on that day');
+    await assertPeriodOpen(trx, a.branchId, employeeId, [date]);
     const tz = await branchTimezone(trx, a.branchId);
     const settings = await hrSettings(trx, a.branchId);
     const working = input.status === 'PRESENT' || input.status === 'HALF_DAY';
@@ -680,6 +682,7 @@ export function markMany(
     let marked = 0;
     for (const e of emps) {
       if (have.has(e.id) || !employedOn(e as unknown as EmployeeRow, date)) continue;
+      await assertPeriodOpen(trx, a.branchId, e.id, [date]);
       await trx
         .insertInto('attendance')
         .values({
@@ -803,6 +806,7 @@ export async function clock(ctx: AppContext, a: Actor, employeeId: string, pin: 
       .executeTakeFirst();
 
     if (open) {
+      await assertPeriodOpen(trx, a.branchId, employeeId, [open.work_date]);
       const f = dayFigures(emp, open.work_date, tz, settings, open.clock_in, now);
       await trx
         .updateTable('attendance')
@@ -832,6 +836,7 @@ export async function clock(ctx: AppContext, a: Actor, employeeId: string, pin: 
     }
 
     const today = localParts(now, tz).date;
+    await assertPeriodOpen(trx, a.branchId, employeeId, [today]);
     const existing = await trx
       .selectFrom('attendance')
       .selectAll()
@@ -981,6 +986,7 @@ export async function listHolidays(ctx: AppContext, branchId: string, year: stri
 
 export function addHoliday(ctx: AppContext, a: Actor, date: string, name: string) {
   return withTx(ctx.db, async (trx) => {
+    await assertPeriodOpen(trx, a.branchId, null, [date]);
     try {
       const row = await trx
         .insertInto('holidays')
@@ -1004,6 +1010,13 @@ export function addHoliday(ctx: AppContext, a: Actor, date: string, name: string
 
 export function removeHoliday(ctx: AppContext, a: Actor, id: string) {
   return withTx(ctx.db, async (trx) => {
+    const hol = await trx
+      .selectFrom('holidays')
+      .select('holiday_date')
+      .where('id', '=', id)
+      .where('branch_id', '=', a.branchId)
+      .executeTakeFirst();
+    if (hol) await assertPeriodOpen(trx, a.branchId, null, [hol.holiday_date]);
     const row = await trx
       .deleteFrom('holidays')
       .where('id', '=', id)

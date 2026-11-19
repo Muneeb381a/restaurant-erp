@@ -160,11 +160,7 @@ function Requests() {
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <EmptyRow
-                cols={6}
-                icon="clock"
-                text={t(list.isPending ? 'common.loading' : 'leave.none')}
-              />
+              <EmptyRow cols={6} icon="clock" loading={list.isPending} text={t('leave.none')} />
             )}
             {rows.map((r) => (
               <tr key={r.id}>
@@ -472,7 +468,8 @@ function Balances() {
               <EmptyRow
                 cols={types.length + 2}
                 icon="user"
-                text={t(data.isPending ? 'common.loading' : 'hr.noStaff')}
+                loading={data.isPending}
+                text={t('hr.noStaff')}
               />
             )}
             {(data.data?.employees ?? []).map((e) => (

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Loader } from '../../components/Loader';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -249,7 +250,7 @@ export function BillsPage() {
           {t('refund.none')}
         </div>
       )}
-      {list.isPending && <p className="text-slate-600">{t('common.loading')}</p>}
+      {list.isPending && <Loader />}
     </div>
   );
 }
