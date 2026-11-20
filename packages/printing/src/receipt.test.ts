@@ -46,28 +46,33 @@ describe('receipt (80 mm)', () => {
       "<INIT><ALIGN:center><BOLD:1><SIZE:2x2>Desi Dera
       <SIZE:1x1><BOLD:0>Main Boulevard, Gulberg, Lahore
       Tel: 042-1234567
-      <ALIGN:left>------------------------------------------------
+      <ALIGN:left>================================================
       <ALIGN:center><BOLD:1><SIZE:3x3>TOKEN 7
-      <SIZE:1x1><BOLD:0><ALIGN:left>Bill #12                        01/08/2026 19:42
-      Table T1
-      Waiter: Ali                        Cashier: Sara
-      ------------------------------------------------
-      3 x Chicken Tikka (Leg)                    1,080
-      1 x Chicken Karahi (Full)                  2,400
+      <SIZE:1x1><BOLD:0><ALIGN:left>------------------------------------------------
+      Bill #12                        01/08/2026 19:42
+      <BOLD:1>Table T1
+      <BOLD:0>Waiter: Ali                        Cashier: Sara
+      ================================================
+      <BOLD:1>QTY ITEM                                  AMOUNT
+      <BOLD:0>  3 Chicken Tikka (Leg)                    1,080
+          @ 360 each
+        1 Chicken Karahi (Full)                  2,400
           + Extra hot
-      750 g Mutton Chops                         3,600
+        1 Mutton Chops (750 g)                   3,600
       ------------------------------------------------
+      Items: 5                                        
       Subtotal                                   7,080
       Discount                                    -708
       Service charge                            318.60
       Round off                                  -0.60
-      <BOLD:1><SIZE:1x2>TOTAL                                   Rs 6,690
-      <SIZE:1x1><BOLD:0>------------------------------------------------
+      <INVERT:1><BOLD:1><SIZE:1x2> TOTAL                                 Rs 6,690 
+      <SIZE:1x1><BOLD:0><INVERT:0>================================================
       Cash                                       7,000
-        Change                                     310
-      ------------------------------------------------
-      <ALIGN:center>Thank you! Visit again
-
+      <BOLD:1>  Change                                     310
+      <BOLD:0>------------------------------------------------
+      <ALIGN:center><BOLD:1>You saved Rs 708
+      <BOLD:0><BOLD:1>Thank you! Visit again
+      <BOLD:0>
       <FEED:3><CUT>"
     `);
   });
@@ -297,5 +302,37 @@ describe('takeaway and delivery slips', () => {
     expect(t).toContain('Table T1');
     expect(t).not.toContain(' TAKEAWAY ');
     expect(t).not.toContain('DELIVERY');
+  });
+});
+
+describe('online and takeaway orders', () => {
+  const text = (d: ReceiptDoc) => describeBytes(renderReceipt(d, 80));
+  it('names the platform and its order number under the type banner', () => {
+    const out = text({
+      ...base,
+      orderType: 'TAKEAWAY',
+      customer: { name: 'Bilal', phone: '0300', channel: 'FOODPANDA', ref: 'A1B2' },
+    });
+    expect(out).toContain('TAKEAWAY');
+    expect(out).toContain('[ FOODPANDA  #A1B2 ]');
+  });
+  it('prints nothing extra for a counter order', () => {
+    expect(text({ ...base, customer: { channel: 'POS' } })).not.toContain('[ ');
+  });
+  it('prints the menu QR only on a paid bill', () => {
+    const paid = text({ ...base, menuUrl: 'https://menu.example/r/x' });
+    expect(paid).toContain('Scan for our menu');
+    expect(text({ ...base, provisional: true, menuUrl: 'https://menu.example/r/x' })).not.toContain(
+      'Scan for our menu',
+    );
+  });
+});
+
+describe('dine-in without a table', () => {
+  it('says Dine-in', () => {
+    const out = describeBytes(
+      renderReceipt({ ...base, orderType: 'DINE_IN', tableCode: null }, 80),
+    );
+    expect(out).toContain('Dine-in');
   });
 });

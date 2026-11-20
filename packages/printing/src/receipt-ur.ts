@@ -1,5 +1,6 @@
 import { BitmapDoc, bitmapWidth } from './bitmap';
 import type { PaperMm } from './escpos';
+import { sourceLine } from './kot';
 import { money, type ReceiptDoc } from './receipt';
 
 /** Receipt wording in Urdu (kept here so a translator can review it in one place). */
@@ -74,6 +75,8 @@ export function renderReceiptBitmap(doc: ReceiptDoc, paperMm: PaperMm = 80): Uin
       : UR[doc.orderType];
   if (doc.orderType === 'DINE_IN') b.row(where, '', R);
   else b.text(`*** ${UR[doc.orderType]} ***`, { size: 36, bold: true, rtl: true }, 'center');
+  const src = sourceLine(doc.customer);
+  if (src) b.text(src, { size: 26, bold: true }, 'center');
   if (doc.customer?.name)
     b.text(`${UR.name}: ${doc.customer.name}`, { ...R, size: 26, bold: true }, 'right');
   if (doc.customer?.phone)

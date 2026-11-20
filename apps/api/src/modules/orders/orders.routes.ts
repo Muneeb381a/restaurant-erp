@@ -24,6 +24,7 @@ const createBody = z
     customerName: z.string().trim().max(80).optional(),
     customerPhone: z.string().trim().max(30).optional(),
     deliveryAddress: z.string().trim().max(300).optional(),
+    externalRef: z.string().trim().max(40).optional(),
     channel: z.enum(['POS', 'PHONE', 'WHATSAPP', 'FOODPANDA', 'WEB', 'OTHER']).optional(),
     priceList: z.string().trim().min(1).max(40).optional(),
   })
@@ -36,6 +37,8 @@ const patchBody = z
     customerName: z.string().trim().max(80).nullable(),
     customerPhone: z.string().trim().max(30).nullable(),
     deliveryAddress: z.string().trim().max(300).nullable(),
+    externalRef: z.string().trim().max(40).nullable(),
+    channel: z.enum(['POS', 'PHONE', 'WHATSAPP', 'FOODPANDA', 'WEB', 'OTHER']),
     customerId: uuid.nullable(),
   })
   .partial()

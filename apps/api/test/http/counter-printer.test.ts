@@ -238,7 +238,7 @@ describe('the bill is printed before the money is taken', () => {
     const tk = received()[0]!;
     expect(tk).toContain('*** BILL - NOT PAID ***');
     expect(tk).toContain(`<SIZE:3x3>TOKEN ${o.orderNo}`);
-    expect(tk).toContain('2 x Chicken Tikka');
+    expect(tk).toMatch(/ 2 Chicken Tikka/);
     expect(tk).toContain('Please pay at the counter');
     expect(tk).not.toContain('<DRAWER');
     expect(tk).not.toContain('Thank you');
@@ -543,6 +543,31 @@ describe('takeaway and delivery: who it is for, on every slip', () => {
     const bill = received().join('\n');
     expect(bill).toContain('BILL - NOT PAID');
     expect(bill).toContain('Address: House 12, Street 4, Gulberg');
+  });
+
+  it('an online order names its platform and the platform order number on every slip', async () => {
+    const o = (
+      await api(captain).post('/orders', {
+        type: 'DELIVERY',
+        channel: 'FOODPANDA',
+        externalRef: 'FP-4821',
+        customerName: 'Hina',
+      })
+    ).body;
+    expect(o).toMatchObject({ channel: 'FOODPANDA', externalRef: 'FP-4821' });
+    await api(captain).post(`/orders/${o.id}/items`, {
+      itemId: items['Naan']!.id,
+      variantId: items['Naan']!.variantId,
+      qty: 1,
+    });
+    for (let i = 0; i < 10; i++) if (!(await run()).printed) break;
+    sim.jobs.length = 0;
+    await send(o.id);
+    await api(captain).post(`/orders/${o.id}/print-token`).set('Idempotency-Key', key());
+    await api(captain).post(`/orders/${o.id}/print-bill`).set('Idempotency-Key', key());
+    await run();
+    const all = received().join('\n');
+    expect(all.match(/\[ FOODPANDA {2}#FP-4821 \]/g)?.length).toBeGreaterThanOrEqual(3);
   });
 
   it('can be edited while the order is open; the address only counts on a delivery', async () => {

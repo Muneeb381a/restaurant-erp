@@ -28,7 +28,8 @@
     "prepare": "husky",
     "tunnel": "node scripts/tunnel.mjs",
     "vercel:build": "node scripts/vercel-build.mjs",
-    "vercel:local": "node scripts/vercel-local.mjs"
+    "vercel:local": "node scripts/vercel-local.mjs",
+    "test:e2e:pwa": "playwright test -c playwright.pwa.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

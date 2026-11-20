@@ -1,6 +1,6 @@
 import { BitmapDoc, bitmapWidth } from './bitmap';
 import { COLUMNS, EscPos, wrap, type PaperMm } from './escpos';
-import { customerLines, typeBanner, type SlipCustomer } from './kot';
+import { customerLines, sourceBanner, sourceLine, typeBanner, type SlipCustomer } from './kot';
 import { UR } from './receipt-ur';
 
 export interface TokenDoc {
@@ -37,6 +37,7 @@ export function renderTokenSlip(doc: TokenDoc, paperMm: PaperMm = 80): Uint8Arra
   p.rule(cols);
   if (doc.orderType === 'DINE_IN') p.bold(true).line(whereOf(doc)).bold(false);
   else typeBanner(p.align('center'), doc.orderType);
+  sourceBanner(p.align('center'), doc.customer);
   p.align('center');
   customerLines(p, doc.customer, cols, false);
   p.line(doc.dateTime);
@@ -54,6 +55,8 @@ export function renderTokenSlipBitmap(doc: TokenDoc, paperMm: PaperMm = 80): Uin
   b.text(UR.token, { size: 44, bold: true, rtl: true }, 'center');
   b.text(String(doc.orderNo), { size: 150, bold: true }, 'center');
   b.rule();
+  const src = sourceLine(doc.customer);
+  if (src) b.text(src, { size: 26, bold: true }, 'center');
   if (doc.customer?.name) b.text(doc.customer.name, { size: 28, bold: true, rtl: true }, 'center');
   if (doc.customer?.phone) b.text(doc.customer.phone, { size: 24 }, 'center');
   b.text(

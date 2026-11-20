@@ -1,5 +1,5 @@
 import { COLUMNS, EscPos, twoColumns, wrap, type PaperMm } from './escpos';
-import { customerLines, tokenBanner, typeBanner, type SlipCustomer } from './kot';
+import { customerLines, sourceBanner, tokenBanner, typeBanner, type SlipCustomer } from './kot';
 
 export interface ReceiptLine {
   qty: number;
@@ -68,6 +68,8 @@ export interface ReceiptDoc {
   openDrawer?: boolean;
   /** Takeaway/delivery: who it is for (the address is printed on a delivery bill). */
   customer?: SlipCustomer | null;
+  /** The restaurant's menu address, printed as a QR code at the bottom ("scan for our menu"). */
+  menuUrl?: string | null;
   /** The bill shown to the customer BEFORE payment: marked "not paid", no payment lines, no drawer. */
   provisional?: boolean;
 }
@@ -83,11 +85,14 @@ export function money(paisa: number): string {
   return `${sign}${whole}${frac === 0 ? '' : `.${String(frac).padStart(2, '0')}`}`;
 }
 
-const TYPE_LABEL = { DINE_IN: 'Dine-in', TAKEAWAY: 'Takeaway', DELIVERY: 'Delivery' } as const;
+/** Items on the bill: weighed dishes count once, others by quantity. */
+const itemCount = (lines: ReceiptDoc['lines']): number =>
+  lines.reduce((n, l) => n + (l.weightG ? 1 : l.qty), 0);
 
 /**
- * Customer bill in text mode (English item names). The Urdu bitmap receipt (ARCHITECTURE §8)
- * replaces this layout later; the data it needs is the same.
+ * Customer bill in text mode (English item names). Laid out to be read at a glance across a counter: the restaurant,
+ * the token huge, where the order came from (table, takeaway, delivery, Foodpanda ...), a ruled item list with a
+ * quantity column, a boxed total, what was paid and what is owed back. The Urdu bitmap receipt carries the same data.
  */
 export function renderReceipt(doc: ReceiptDoc, paperMm: PaperMm = 80): Uint8Array {
   const cols = COLUMNS[paperMm];
@@ -111,16 +116,17 @@ export function renderReceipt(doc: ReceiptDoc, paperMm: PaperMm = 80): Uint8Arra
   if (doc.duplicate && doc.duplicate > 0)
     p.bold(true).line(`*** DUPLICATE #${doc.duplicate} ***`).bold(false);
   if (doc.provisional) p.bold(true).line('*** BILL - NOT PAID ***').bold(false);
-  p.align('left').rule(cols);
+  p.align('left').rule(cols, '=');
   tokenBanner(p, doc.orderNo);
   typeBanner(p, doc.orderType);
+  sourceBanner(p, doc.customer);
+  p.rule(cols);
 
   p.line(twoColumns(`Bill #${doc.billNo}`, doc.dateTime, cols));
-  const where =
-    doc.orderType === 'DINE_IN' && doc.tableCode
-      ? `Table ${doc.tableCode}`
-      : TYPE_LABEL[doc.orderType];
-  if (doc.orderType === 'DINE_IN') p.line(where);
+  if (doc.orderType === 'DINE_IN')
+    p.bold(true)
+      .line(doc.tableCode ? `Table ${doc.tableCode}` : 'Dine-in')
+      .bold(false);
   customerLines(p, doc.customer, cols, doc.orderType === 'DELIVERY');
   if (doc.waiter || doc.cashier) {
     p.line(
@@ -131,36 +137,52 @@ export function renderReceipt(doc: ReceiptDoc, paperMm: PaperMm = 80): Uint8Arra
       ),
     );
   }
-  p.rule(cols);
+  p.rule(cols, '=');
 
+  // a quantity column, the dish, the amount; "@ unit price" under a dish ordered more than once
+  const qtyW = 4;
+  p.bold(true)
+    .line(twoColumns('QTY ITEM'.padEnd(qtyW + 4), 'AMOUNT', cols))
+    .bold(false);
   for (const line of doc.lines) {
     const amount = money(line.amountPaisa);
-    const head = line.weightG ? `${line.weightG} g ${line.name}` : `${line.qty} x ${line.name}`;
-    const parts = wrap(head, cols - amount.length - 1, 4);
-    parts.forEach((part, i) =>
-      p.line(i === parts.length - 1 ? twoColumns(part, amount, cols) : part),
-    );
-    for (const m of line.modifiers ?? []) p.line(`    + ${m}`);
+    const qty = line.weightG ? '1' : String(line.qty);
+    const name = line.weightG ? `${line.name} (${line.weightG} g)` : line.name;
+    const parts = wrap(name, cols - qtyW - amount.length - 1, 0);
+    parts.forEach((part, i) => {
+      const left = `${i === 0 ? qty.padStart(qtyW - 1) : ' '.repeat(qtyW - 1)} ${part}`;
+      p.line(i === parts.length - 1 ? twoColumns(left, amount, cols) : left);
+    });
+    if (!line.weightG && line.qty > 1 && line.amountPaisa % line.qty === 0)
+      p.line(`${' '.repeat(qtyW)}@ ${money(line.amountPaisa / line.qty)} each`);
+    for (const m of line.modifiers ?? []) p.line(`${' '.repeat(qtyW)}+ ${m}`);
   }
   p.rule(cols);
 
   const row = (label: string, paisa: number): EscPos =>
     p.line(twoColumns(label, money(paisa), cols));
+  p.line(twoColumns(`Items: ${itemCount(doc.lines)}`, '', cols));
   row('Subtotal', doc.subtotalPaisa);
   if (doc.discountPaisa > 0) row('Discount', -doc.discountPaisa);
   if (doc.serviceChargePaisa > 0) row('Service charge', doc.serviceChargePaisa);
   if (doc.taxPaisa > 0) row(doc.taxLabel || 'Tax', doc.taxPaisa);
   if (doc.roundOffPaisa !== 0) row('Round off', doc.roundOffPaisa);
-  p.bold(true)
+  // the total in a black band: the one number the customer looks for
+  p.invert(true)
+    .bold(true)
     .size(1, 2)
-    .line(twoColumns('TOTAL', `Rs ${money(doc.totalPaisa)}`, cols))
+    .line(twoColumns(' TOTAL', `Rs ${money(doc.totalPaisa)} `, cols))
     .size(1, 1)
-    .bold(false);
-  p.rule(cols);
+    .bold(false)
+    .invert(false);
+  p.rule(cols, '=');
 
   for (const pay of doc.payments) {
     row(pay.method, pay.tenderedPaisa ?? pay.amountPaisa);
-    if (pay.changePaisa > 0) row('  Change', pay.changePaisa);
+    if (pay.changePaisa > 0)
+      p.bold(true)
+        .line(twoColumns('  Change', money(pay.changePaisa), cols))
+        .bold(false);
   }
   if (doc.tipPaisa && doc.tipPaisa > 0) row('Tip', doc.tipPaisa);
   if (doc.khataCustomer) for (const l of wrap(`Khata a/c: ${doc.khataCustomer}`, cols)) p.line(l);
@@ -172,10 +194,18 @@ export function renderReceipt(doc: ReceiptDoc, paperMm: PaperMm = 80): Uint8Arra
   } else if (doc.fiscalPending) {
     p.rule(cols).align('center').line('Fiscal invoice: pending').align('left');
   }
-  p.rule(cols)
-    .align('center')
+
+  p.rule(cols).align('center');
+  if (!doc.provisional && doc.discountPaisa > 0)
+    p.bold(true)
+      .line(`You saved Rs ${money(doc.discountPaisa)}`)
+      .bold(false);
+  p.bold(true)
     .line(doc.provisional ? 'Please pay at the counter' : 'Thank you! Visit again')
-    .feed(3)
-    .cut();
+    .bold(false);
+  if (doc.menuUrl && !doc.provisional) {
+    p.feed(0).line('Scan for our menu').qr(doc.menuUrl, 5).feed(0);
+  }
+  p.feed(3).cut();
   return p.build();
 }

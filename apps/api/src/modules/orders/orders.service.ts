@@ -159,6 +159,7 @@ export interface CreateOrderInput {
   customerName?: string | undefined;
   customerPhone?: string | undefined;
   deliveryAddress?: string | undefined;
+  externalRef?: string | undefined;
   channel?: 'POS' | 'PHONE' | 'WHATSAPP' | 'FOODPANDA' | 'WEB' | 'OTHER' | undefined;
   /** Price list code; defaults to the one named like the order type (DINE_IN / TAKEAWAY / DELIVERY). */
   priceList?: string | undefined;
@@ -219,6 +220,7 @@ export async function createOrder(ctx: AppContext, a: Actor, input: CreateOrderI
           notes: input.notes ?? null,
           customer_name: input.customerName ?? null,
           customer_phone: input.customerPhone ?? null,
+          external_ref: input.externalRef ?? null,
           delivery_address: input.type === 'DELIVERY' ? (input.deliveryAddress ?? null) : null,
           opened_by: a.userId,
         })
@@ -236,6 +238,8 @@ export interface OrderPatch {
   customerName?: string | null | undefined;
   customerPhone?: string | null | undefined;
   deliveryAddress?: string | null | undefined;
+  externalRef?: string | null | undefined;
+  channel?: 'POS' | 'PHONE' | 'WHATSAPP' | 'FOODPANDA' | 'WEB' | 'OTHER' | undefined;
   customerId?: string | null | undefined;
 }
 
@@ -266,6 +270,8 @@ export function updateOrder(
         ...(patch.notes !== undefined && { notes: patch.notes }),
         ...(patch.customerName !== undefined && { customer_name: patch.customerName }),
         ...(patch.customerPhone !== undefined && { customer_phone: patch.customerPhone }),
+        ...(patch.externalRef !== undefined && { external_ref: patch.externalRef }),
+        ...(patch.channel !== undefined && { channel: patch.channel }),
         ...(patch.deliveryAddress !== undefined && {
           delivery_address: order.type === 'DELIVERY' ? patch.deliveryAddress : null,
         }),

@@ -55,7 +55,13 @@ export interface ReceiptDocView {
   duplicate?: number;
   /** The bill shown before payment: marked "not paid", no payment lines. */
   provisional?: boolean;
-  customer?: { name?: string | null; phone?: string | null; address?: string | null } | null;
+  customer?: {
+    name?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    channel?: string | null;
+    ref?: string | null;
+  } | null;
 }
 
 export interface BusinessDay {
@@ -132,6 +138,8 @@ export interface Order {
   customerName?: string | null;
   customerPhone?: string | null;
   deliveryAddress?: string | null;
+  channel?: string | null;
+  externalRef?: string | null;
   version: number;
   items: OrderLine[];
   subtotalPaisa: number;

@@ -66,6 +66,7 @@ describe('0002_auth_rbac on a database that already has data (upgrade path)', ()
       '0019_archive_config',
       '0020_print_agents',
       '0021_order_customer_details',
+      '0022_order_external_ref',
     ]);
     expect(await migrateUp(db.url, 'core')).toEqual([]);
 
@@ -201,6 +202,7 @@ describe('0003_menu on a database that already has menu data', () => {
       '0019_archive_config',
       '0020_print_agents',
       '0021_order_customer_details',
+      '0022_order_external_ref',
     ]);
 
     const row = (await db.pool.query(`SELECT name_ur, search_terms FROM items WHERE id=$1`, [item]))

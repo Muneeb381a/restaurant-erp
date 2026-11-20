@@ -52,6 +52,39 @@ export interface SlipCustomer {
   name?: string | null;
   phone?: string | null;
   address?: string | null;
+  /** Where the order came from: POS (the counter, the default) or an online/phone source. */
+  channel?: string | null;
+  /** The platform's own order number (Foodpanda, WhatsApp ...), so the paper matches the rider's order. */
+  ref?: string | null;
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  PHONE: 'PHONE ORDER',
+  WHATSAPP: 'WHATSAPP ORDER',
+  FOODPANDA: 'FOODPANDA',
+  WEB: 'ONLINE ORDER',
+  OTHER: 'ONLINE ORDER',
+};
+
+/** "FOODPANDA  #A1B2C3": a plain bold line for an order that did not come in at the counter. */
+export function sourceLine(c: SlipCustomer | null | undefined): string | null {
+  if (!c?.channel || c.channel === 'POS') return null;
+  const label = SOURCE_LABEL[c.channel] ?? c.channel;
+  return c.ref ? `${label}  #${c.ref}` : label;
+}
+
+/** The source of an online/phone order as a boxed line under the type banner. */
+export function sourceBanner(p: EscPos, c: SlipCustomer | null | undefined): EscPos {
+  const line = sourceLine(c);
+  if (!line) return p;
+  return p
+    .align('center')
+    .bold(true)
+    .size(1, 2)
+    .line(`[ ${line} ]`)
+    .size(1, 1)
+    .bold(false)
+    .align('left');
 }
 
 /**
@@ -131,6 +164,7 @@ export function renderKot(doc: KotDoc, paperMm: PaperMm = 80): Uint8Array {
 
   tokenBanner(p, doc.orderNo);
   typeBanner(p, doc.orderType);
+  sourceBanner(p, doc.customer);
   p.align('left')
     .bold(true)
     .size(2, 2)
@@ -194,6 +228,7 @@ export function renderCombinedKot(doc: CombinedKotDoc, paperMm: PaperMm = 80): U
     p.align('center').bold(true).line(`** REPRINT #${doc.reprint} **`).bold(false);
   tokenBanner(p, doc.orderNo);
   typeBanner(p, doc.orderType);
+  sourceBanner(p, doc.customer);
   const where =
     doc.orderType === 'DINE_IN' ? (doc.tableCode ? `Table ${doc.tableCode}` : 'DINE-IN') : '';
   p.bold(true)

@@ -501,6 +501,7 @@ export interface Orders {
   customer_name: string | null;
   customer_phone: string | null;
   delivery_address: string | null;
+  external_ref: string | null;
   guests: number | null;
   held_at: Timestamp | null;
   id: Generated<string>;

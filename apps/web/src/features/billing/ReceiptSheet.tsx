@@ -85,6 +85,12 @@ export function ReceiptSheet({
       )}
       <Row left={`Bill #${doc.billNo}`} right={doc.dateTime} />
       <Row left={`${TYPE[doc.orderType]}${doc.tableCode ? ` · ${doc.tableCode}` : ''}`} right="" />
+      {doc.customer?.channel && doc.customer.channel !== 'POS' && (
+        <div className="rc-small" style={{ fontWeight: 700 }}>
+          {doc.customer.channel}
+          {doc.customer.ref ? ` #${doc.customer.ref}` : ''}
+        </div>
+      )}
       {doc.customer?.name && <div className="rc-small">Name: {doc.customer.name}</div>}
       {doc.customer?.phone && <div className="rc-small">Phone: {doc.customer.phone}</div>}
       {doc.orderType === 'DELIVERY' && doc.customer?.address && (

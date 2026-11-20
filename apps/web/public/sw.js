@@ -1,15 +1,48 @@
-/* Service worker: lets the app OPEN when the internet is down (cloud use on a phone or till).
+/* Service worker: lets the app OPEN and RUN when the internet is down (cloud use on a phone or till).
  *
- *  - Pages: network first (so a new version is picked up at once); if the network fails or is
- *    slower than 4 seconds, the last page shell is used.
+ *  - On install the WHOLE app is cached: the page shell and every file of the build (the list comes from
+ *    /asset-manifest.json, written at build time). So going offline at any moment is safe: a refresh opens the app,
+ *    and a screen nobody visited yet still has its code.
+ *  - Pages: network first (so a new version is picked up at once); if the network fails or is slower than 4 seconds,
+ *    the cached shell is used.
  *  - /assets and /fonts (files named by their content hash) and icons: cache first.
- *  - The API is NEVER touched or stored here: sign-in, orders and money always go straight to the
- *    server, and nothing about a guest or a bill is kept in a cache.
+ *  - The API is NEVER touched or stored here: sign-in, orders and money always go straight to the server, and nothing
+ *    about a guest or a bill is kept in a cache.
  */
-const SHELL = 'erp-shell-v1';
-const FILES = 'erp-files-v1';
+const SHELL = 'erp-shell-v2';
+const FILES = 'erp-files-v2';
 
-self.addEventListener('install', () => self.skipWaiting());
+/** Fetches the shell and every build file now, so none of them has to be visited online first. */
+async function precache() {
+  const shell = await caches.open(SHELL);
+  const files = await caches.open(FILES);
+  try {
+    const res = await fetch('/', { cache: 'reload' });
+    if (res.ok) await shell.put('/shell', res);
+  } catch {
+    /* installed while offline: the next online page load stores it */
+  }
+  try {
+    const manifest = await (await fetch('/asset-manifest.json', { cache: 'reload' })).json();
+    // one by one: a single failed file must not stop the rest from being stored
+    for (const url of manifest.files ?? []) {
+      try {
+        if (!(await files.match(url, { ignoreVary: true }))) {
+          const res = await fetch(url);
+          if (res.ok) await files.put(url, res);
+        }
+      } catch {
+        /* fetched on first use instead */
+      }
+    }
+  } catch {
+    /* no manifest (a dev build): files are cached on first use */
+  }
+}
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(precache().then(() => self.skipWaiting()));
+});
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
@@ -40,7 +73,8 @@ async function page(request) {
 
 async function file(request) {
   const cache = await caches.open(FILES);
-  const hit = await cache.match(request);
+  // ignoreVary: a precached copy was fetched without the Origin header a module script sends
+  const hit = await cache.match(request, { ignoreVary: true });
   if (hit) return hit;
   const res = await fetch(request);
   if (res.ok) await cache.put(request, res.clone());

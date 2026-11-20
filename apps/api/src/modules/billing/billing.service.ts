@@ -745,6 +745,8 @@ async function receiptDoc(
         'orders.customer_name as customer_name',
         'orders.customer_phone as customer_phone',
         'orders.delivery_address as delivery_address',
+        'orders.external_ref as external_ref',
+        'orders.channel as channel',
       ])
       .where('orders.id', '=', bill.orderId)
       .executeTakeFirstOrThrow(),
@@ -781,8 +783,21 @@ async function receiptDoc(
     .select(['raster_58', 'raster_58_height', 'raster_80', 'raster_80_height'])
     .where('branch_id', '=', branchId)
     .executeTakeFirst();
+  const menuRow = await q
+    .selectFrom('settings')
+    .select('value')
+    .where('branch_id', '=', branchId)
+    .where('key', '=', 'menu.public_url')
+    .executeTakeFirst();
+  const menuOn = await q
+    .selectFrom('settings')
+    .select('value')
+    .where('branch_id', '=', branchId)
+    .where('key', '=', 'menu.public_enabled')
+    .executeTakeFirst();
   const at = bill.settledAt ?? new Date();
   const doc: ReceiptDoc = {
+    menuUrl: menuOn?.value === true && typeof menuRow?.value === 'string' ? menuRow.value : null,
     logo: logoRow
       ? {
           58: {
@@ -816,6 +831,8 @@ async function receiptDoc(
       name: order.customer_name,
       phone: order.customer_phone,
       address: order.delivery_address,
+      channel: order.channel,
+      ref: order.external_ref,
     },
     cashier: cashier.cashier,
     dateTime: `${new Intl.DateTimeFormat('en-GB', { timeZone: branch.timezone, day: '2-digit', month: '2-digit', year: 'numeric' }).format(at)} ${clockTime(at, branch.timezone)}`,
@@ -1416,6 +1433,8 @@ export function printTokenSlip(ctx: AppContext, a: Actor, orderId: string, key: 
         'dining_tables.code as table_code',
         'orders.customer_name as customer_name',
         'orders.customer_phone as customer_phone',
+        'orders.external_ref as external_ref',
+        'orders.channel as channel',
       ])
       .where('orders.id', '=', orderId)
       .where('orders.branch_id', '=', a.branchId)
@@ -1445,7 +1464,12 @@ export function printTokenSlip(ctx: AppContext, a: Actor, orderId: string, key: 
       orderNo: order.order_no,
       orderType: order.type as 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY',
       tableCode: order.table_code,
-      customer: { name: order.customer_name, phone: order.customer_phone },
+      customer: {
+        name: order.customer_name,
+        phone: order.customer_phone,
+        channel: order.channel,
+        ref: order.external_ref,
+      },
       dateTime: `${new Intl.DateTimeFormat('en-GB', { timeZone: branch.timezone, day: '2-digit', month: '2-digit', year: 'numeric' }).format(now)} ${clockTime(now, branch.timezone)}`,
     };
     const printers = await receiptPrinters(trx, a.branchId, now);

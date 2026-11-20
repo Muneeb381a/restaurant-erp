@@ -50,3 +50,28 @@ describe('the token slip for takeaway and delivery', () => {
     expect(t).not.toContain('House 12');
   });
 });
+
+describe('the token slip for an online order', () => {
+  it('names the platform and its order number in text and bitmap', () => {
+    const online = {
+      ...doc,
+      orderType: 'TAKEAWAY' as const,
+      tableCode: null,
+      customer: { name: 'Sara', channel: 'WHATSAPP', ref: '77' },
+    };
+    expect(text(online)).toContain('[ WHATSAPP ORDER  #77 ]');
+    expect(renderTokenSlipBitmap(online, 80).length).toBeGreaterThan(0);
+  });
+});
+
+describe('source label fallbacks', () => {
+  it('keeps an unknown channel as written, and omits the number when there is none', () => {
+    expect(text({ ...doc, customer: { channel: 'UBEREATS' } })).toContain('[ UBEREATS ]');
+  });
+});
+
+describe('dine-in token without a table', () => {
+  it('says Dine-in', () => {
+    expect(text({ ...doc, orderType: 'DINE_IN', tableCode: null })).toContain('Dine-in');
+  });
+});

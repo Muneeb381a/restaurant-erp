@@ -20,6 +20,8 @@ export function CustomerDialog({
   const [name, setName] = useState(order.customerName ?? '');
   const [phone, setPhone] = useState(order.customerPhone ?? '');
   const [address, setAddress] = useState(order.deliveryAddress ?? '');
+  const [channel, setChannel] = useState(order.channel ?? 'POS');
+  const [ref, setRef] = useState(order.externalRef ?? '');
   const save = useMutation({
     mutationFn: () =>
       api<Order>(`/orders/${order.id}`, {
@@ -28,6 +30,8 @@ export function CustomerDialog({
         body: {
           customerName: name.trim() || null,
           customerPhone: phone.trim() || null,
+          channel,
+          externalRef: channel === 'POS' ? null : ref.trim() || null,
           ...(delivery ? { deliveryAddress: address.trim() || null } : {}),
         },
       }),
@@ -70,6 +74,29 @@ export function CustomerDialog({
             onChange={(e) => setPhone(e.target.value)}
           />
         </label>
+        <label className="block space-y-1">
+          <span className="label">Order came from</span>
+          <select className="input" value={channel} onChange={(e) => setChannel(e.target.value)}>
+            <option value="POS">Counter</option>
+            <option value="PHONE">Phone call</option>
+            <option value="WHATSAPP">WhatsApp</option>
+            <option value="FOODPANDA">Foodpanda</option>
+            <option value="WEB">Website</option>
+            <option value="OTHER">Other online</option>
+          </select>
+        </label>
+        {channel !== 'POS' && (
+          <label className="block space-y-1">
+            <span className="label">Their order number (optional)</span>
+            <input
+              className="input"
+              dir="ltr"
+              maxLength={40}
+              value={ref}
+              onChange={(e) => setRef(e.target.value)}
+            />
+          </label>
+        )}
         {delivery && (
           <label className="block space-y-1">
             <span className="label">{t('order.custAddress')}</span>

@@ -12,6 +12,8 @@ export interface SlipCustomer {
   name?: string | null;
   phone?: string | null;
   address?: string | null;
+  channel?: string | null;
+  ref?: string | null;
 }
 
 export interface TokenSlipDoc {
@@ -53,6 +55,20 @@ function TypeBanner({ type }: { type: TokenSlipDoc['orderType'] }) {
   return <div className="slip-banner">{TYPE_LABEL[type]}</div>;
 }
 
+const SOURCE_LABEL: Record<string, string> = {
+  PHONE: 'PHONE ORDER',
+  WHATSAPP: 'WHATSAPP ORDER',
+  FOODPANDA: 'FOODPANDA',
+  WEB: 'ONLINE ORDER',
+  OTHER: 'ONLINE ORDER',
+};
+
+export function SourceBanner({ c }: { c?: SlipCustomer | null }) {
+  if (!c?.channel || c.channel === 'POS') return null;
+  const label = SOURCE_LABEL[c.channel] ?? c.channel;
+  return <div className="slip-banner">{c.ref ? `${label}  #${c.ref}` : label}</div>;
+}
+
 function Customer({ c, address = false }: { c?: SlipCustomer | null; address?: boolean }) {
   if (!c) return null;
   return (
@@ -80,6 +96,7 @@ export function TokenSlip({ doc, language }: { doc: TokenSlipDoc; language: 'en'
       <hr />
       <div className="slip-center">
         <TypeBanner type={doc.orderType} />
+        <SourceBanner c={doc.customer} />
         {doc.orderType === 'DINE_IN' && (
           <div className="slip-strong">{doc.tableCode ? `Table ${doc.tableCode}` : 'Dine-in'}</div>
         )}
@@ -109,6 +126,7 @@ export function KotSlip({ doc }: { doc: KotTicketDoc }) {
         TOKEN {doc.orderNo}
       </div>
       <TypeBanner type={doc.orderType} />
+      <SourceBanner c={doc.customer} />
       <div className="slip-row slip-strong">
         <span>
           {doc.orderType === 'DINE_IN'

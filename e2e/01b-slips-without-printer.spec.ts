@@ -24,7 +24,7 @@ test('a takeaway: add the customer, print the token with no printer connected, a
   await page.getByRole('button', { name: 'Customer name / phone' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Name', { exact: true }).fill('Ali Raza');
-  await dialog.getByLabel('Phone').fill('0300-1234567');
+  await dialog.getByLabel('Phone', { exact: true }).fill('0300-1234567');
   await dialog.getByLabel('Delivery address').fill('House 12, Street 4, Gulberg');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('button', { name: /Ali Raza/ })).toBeVisible();
