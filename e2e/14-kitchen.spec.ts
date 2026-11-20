@@ -21,6 +21,15 @@ test('an order sent from the table shows on the kitchen screen, moves to ready, 
   await page.getByRole('button', { name: /L2/ }).click();
   await page.getByRole('button', { name: /^Plain Naan/ }).click();
   await page.getByRole('button', { name: 'Print KOT' }).click();
+  // this dish's station has no printer here: the ticket opens in a print modal; close it and carry on
+  const kotModal = page.getByRole('dialog', { name: 'Kitchen ticket (KOT)' });
+  if (
+    await kotModal.waitFor({ timeout: 4000 }).then(
+      () => true,
+      () => false,
+    )
+  )
+    await kotModal.getByRole('button', { name: 'Close', exact: true }).last().click();
   await expect(page.getByRole('status').filter({ hasText: 'KOT' }).first()).toBeVisible();
   await page.getByRole('link', { name: /Back/ }).click();
 

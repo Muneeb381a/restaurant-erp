@@ -1,4 +1,5 @@
 import type { Express } from 'express';
+import { disableLanPrinting } from '../modules/printing/print.service';
 import { Kysely, PostgresDialect } from 'kysely';
 import type { Logger } from 'pino';
 import type { Env } from '../config/env';
@@ -38,6 +39,8 @@ export interface CloudApp {
 /** Everything cloud mode needs, from the environment. Used by the long-running server and the Vercel function alike. */
 export function buildCloudApp(env: Env, logger: Logger): CloudApp {
   if (!env.CONTROL_DATABASE_URL) throw new Error('CONTROL_DATABASE_URL is not set');
+  // the cloud has no print worker and no route to a restaurant's LAN: only a print helper's printer can print
+  disableLanPrinting();
   if (env.NODE_ENV === 'production' && env.JWT_SECRET.startsWith('dev-only'))
     throw new Error('Refusing to start in production with the dev JWT_SECRET');
   const control = createControlDb(env.CONTROL_DATABASE_URL);

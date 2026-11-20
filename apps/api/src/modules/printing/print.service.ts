@@ -82,6 +82,17 @@ export async function enqueuePrintJob(q: Queryable, j: NewPrintJob): Promise<boo
   return !!res;
 }
 
+let lanPrinting = true;
+/**
+ * The cloud API runs no print worker and cannot reach a restaurant's LAN: a NETWORK printer there would take the
+ * job and never print it ("printed" on screen, nothing on paper). In the cloud only a print helper's AGENT printer
+ * counts; everything else falls back to the browser's print modal. Called once when the cloud app is built.
+ */
+export function disableLanPrinting(): void {
+  lanPrinting = false;
+}
+export const lanPrintingEnabled = (): boolean => lanPrinting;
+
 export async function stationPrinters(
   q: Queryable,
   branchId: string,
@@ -96,6 +107,7 @@ export async function stationPrinters(
     .where('printers.branch_id', '=', branchId)
     .where('printers.is_active', '=', true)
     .where('printers.kind', '=', 'KOT')
+    .$if(!lanPrinting, (qb) => qb.where('printers.conn_type', '=', 'AGENT'))
     .orderBy('printers.name')
     .execute();
   if (chosen.length > 0) return chosen;
@@ -139,6 +151,7 @@ export async function counterPrinters(q: Queryable, branchId: string, at: Date) 
       .where('printers.is_active', '=', true)
       .where('printers.archived_at', 'is', null)
       .where('printers.kind', '=', kind)
+      .$if(!lanPrinting, (qb) => qb.where('printers.conn_type', '=', 'AGENT'))
       .where((eb) =>
         eb.or([
           eb('printers.conn_type', '!=', 'AGENT'),

@@ -11,3 +11,6 @@ Status: accepted. Follows ADR 0034.
 
 ## Addendum: no station set up, still prints
 A restaurant that never mapped a station to a printer (one printer on the counter) gets its tickets anyway: when NO station-to-printer choice exists anywhere in the branch, a ticket goes to the branch's kitchen printer, or when there is none to its receipt printer (a helper's printer only while the helper is online). Station or no station: the dish prints under its station or under KITCHEN. Once ANY station is mapped, the owner's choices are respected: a station left unmapped stays unprinted and the screen's Print modal takes over.
+
+## Addendum 2: "printed" that never printed (cloud)
+The cloud API runs no print worker and has no route to a restaurant's LAN. A NETWORK printer configured there took the job, the screen said "Token printed", and nothing came out. In the cloud (`disableLanPrinting()` when the cloud app is built) only a print helper's AGENT printer, and only while the helper is online, counts as a printer for a station, a bill, a receipt or a token; everything else reports "no printer", queues nothing, and the screen opens the browser print modal.

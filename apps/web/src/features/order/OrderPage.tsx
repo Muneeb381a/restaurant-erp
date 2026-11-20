@@ -207,8 +207,8 @@ export function OrderPage() {
       );
       // in the cloud the kitchen works from its screen, so "no printer" is not a problem to report;
       // without that screen the printed ticket IS the kitchen, so it must be reported
-      // counter mode (no Kitchen screen): a ticket no printer took is printed from here, in a modal
-      if (out.ticket && !kitchenScreen) setSlip({ kind: 'kot', doc: out.ticket });
+      // a ticket no printer took is printed from here, in a modal (and the browser's print dialog), like the bill
+      if (out.ticket) setSlip({ kind: 'kot', doc: out.ticket });
       if (out.unprinted.length && (mode.kind !== 'tenant' || !kitchenScreen))
         setMessage(t('order.noPrinter', { stations: out.unprinted.join(', ') }));
     },

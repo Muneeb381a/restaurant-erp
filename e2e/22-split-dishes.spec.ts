@@ -20,6 +20,15 @@ test('two friends pay for their own dishes: each person gets their dishes, share
   await expect(page.locator('aside')).toContainText('Rs 360');
   await page.getByRole('button', { name: /^Plain Naan/ }).click();
   await page.getByRole('button', { name: 'Print KOT' }).click();
+  // this dish's station has no printer here: the ticket opens in a print modal; close it and carry on
+  const kotModal = page.getByRole('dialog', { name: 'Kitchen ticket (KOT)' });
+  if (
+    await kotModal.waitFor({ timeout: 4000 }).then(
+      () => true,
+      () => false,
+    )
+  )
+    await kotModal.getByRole('button', { name: 'Close', exact: true }).last().click();
   await expect(page.locator('aside')).toContainText('In kitchen');
   await page.getByRole('button', { name: /^Bill/ }).click();
   await expect(page).toHaveURL(/\/pay$/);

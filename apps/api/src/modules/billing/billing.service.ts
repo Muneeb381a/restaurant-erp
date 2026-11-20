@@ -32,7 +32,7 @@ import { enqueueFiscal } from '../fiscal/fiscal.service';
 import { consumeForOrder } from '../inventory/inventory.service';
 import { loadTaxContext, taxFor, type TaxContext } from '../tax/tax.service';
 import { creditNotesOf } from './credit.service';
-import { counterPrinters, enqueuePrintJob } from '../printing/print.service';
+import { counterPrinters, enqueuePrintJob, lanPrintingEnabled } from '../printing/print.service';
 
 const bad = (message: string, extra?: Record<string, unknown>): AppError =>
   new AppError(400, 'VALIDATION_FAILED', message, extra);
@@ -867,6 +867,8 @@ async function receiptPrinters(q: Queryable, branchId: string, at: Date) {
     .where('printers.kind', '=', 'RECEIPT')
     .where('printers.is_active', '=', true)
     .where('printers.archived_at', 'is', null)
+    // the cloud cannot reach a LAN printer: only a helper's printer counts there
+    .$if(!lanPrintingEnabled(), (qb) => qb.where('printers.conn_type', '=', 'AGENT'))
     .where((eb) =>
       eb.or([
         eb('printers.conn_type', '!=', 'AGENT'),
