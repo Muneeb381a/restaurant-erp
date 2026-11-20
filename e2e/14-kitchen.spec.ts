@@ -20,10 +20,8 @@ test('an order sent from the table shows on the kitchen screen, moves to ready, 
   await login(page, 'captain', 'Tables');
   await page.getByRole('button', { name: /L2/ }).click();
   await page.getByRole('button', { name: /^Plain Naan/ }).click();
-  await page.getByRole('button', { name: 'Send to kitchen' }).click();
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
-  ).toBeVisible();
+  await page.getByRole('button', { name: 'Print KOT' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'KOT' }).first()).toBeVisible();
   await page.getByRole('link', { name: /Back/ }).click();
 
   // the cook has a kitchen-only login: it opens straight on the board

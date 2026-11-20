@@ -88,7 +88,7 @@
     "banner": "No internet. You can still add dishes to open orders; they are kept on this device. The kitchen does not see them until the internet is back, so tell the kitchen yourself. Bills and payments need the internet.",
     "cannotSave": "No internet, so this was not saved. Try again when the connection is back.",
     "kept": "Kept on this device (no internet)",
-    "keptSend": "Kept: it goes to the kitchen when the internet is back. Tell the kitchen yourself.",
+    "keptSend": "Kept: the KOT prints when the internet is back. Tell the kitchen yourself.",
     "pendingTitle": "Waiting for internet",
     "pendingHelp": "Not saved yet. These are kept on this device and sent when the internet is back. The kitchen has not received them.",
     "forget": "Remove",
@@ -295,7 +295,7 @@
       "newStation": "New station",
       "noCategoriesYet": "No categories yet: create one",
       "noStation": "No station",
-      "noStationHint": "Orders with this dish cannot be sent to the kitchen until you pick its station (Edit).",
+      "noStationHint": "This dish prints under the default KITCHEN heading until you pick its station (Edit).",
       "noStationsYet": "No stations yet: create one",
       "nameUr": "Name (Urdu)",
       "dishesN_one": "{{count}} dish",
@@ -425,9 +425,9 @@
     "needReason": "This item was already sent. Enter a reason.",
     "conflict": "Someone else changed this order. It was reloaded.",
     "notEditable": "This order can no longer be changed",
-    "send": "Send to kitchen",
+    "send": "Print KOT",
     "rush": "Rush",
-    "sentOk": "Sent to the kitchen: {{stations}}",
+    "sentOk": "KOT sent: {{stations}}",
     "noPrinter": "No printer for: {{stations}}",
     "missingStation": "No kitchen station is set for: {{items}}. Open Admin, Menu, choose the dish and pick its station, then send again.",
     "nothingToSend": "Nothing new to send",
@@ -436,8 +436,8 @@
     "more": "More",
     "helperEmpty": "Tap items on the left to add them to this order.",
     "helperHeld": "This order is on hold. Resume it from More to continue.",
-    "helperUnsent": "{{count}} new item(s) not sent to the kitchen yet.",
-    "helperSent": "Everything is in the kitchen. Make the bill when the guest asks.",
+    "helperUnsent": "{{count}} new item(s) not sent. Press Print KOT to print the kitchen ticket.",
+    "helperSent": "The KOT is printed. Print the bill when the guest asks.",
     "helperBilled": "The bill is ready. Take payment to finish.",
     "helperSettled": "This order is paid.",
     "categories": "Menu categories",
@@ -454,7 +454,7 @@
     "steps": {
       "title": "Order steps",
       "add": "Add items",
-      "send": "Send to kitchen",
+      "send": "Print KOT",
       "bill": "Bill & pay",
       "printKot": "Print KOT"
     },
@@ -482,14 +482,21 @@
     "token": "Token",
     "printBill": "Print bill",
     "billPrinted": "Bill printed · Token {{token}}. The table stays taken until it is paid.",
-    "sentOkPrinted": "Sent to the kitchen: {{stations}} · Token {{token}} · ticket printed",
+    "sentOkPrinted": "KOT printed: {{stations}} · Token {{token}}",
     "printKot": "Print KOT",
     "printToken": "Print token",
     "tokenPrinted": "Token {{token}} printed",
     "noTokenPrinter": "No printer is connected: the token could not be printed.",
-    "helperUnsentCounter": "{{count}} new item(s): press Print KOT to print the kitchen ticket.",
+    "helperUnsentCounter": "{{count}} new item(s) not sent. Press Print KOT to print the kitchen ticket.",
     "sentKotPrinted": "KOT printed: {{stations}} · Token {{token}}",
-    "searchResults": "Search results"
+    "searchResults": "Search results",
+    "customerTitle": "Customer details",
+    "addCustomer": "Customer name / phone",
+    "custName": "Name",
+    "custPhone": "Phone",
+    "custAddress": "Delivery address",
+    "custHint": "Printed on the token, the kitchen ticket and the bill.",
+    "custHintDelivery": "Name and phone are printed on the token and the kitchen ticket; the address goes on the bill the rider carries."
   },
   "bill": {
     "bill": "Bill",
@@ -1396,7 +1403,7 @@
       "what": "Build the guests' order here: dishes on the left, the order on the right.",
       "steps": [
         "Tap a dish to add it. Tap again to add one more.",
-        "Press Send to kitchen. The kitchen gets the ticket and the items show \"In kitchen\".",
+        "Press Print KOT. The kitchen ticket prints (with the token) and the items show \"In kitchen\".",
         "When the guests ask for the bill, press Bill, then take the payment."
       ],
       "tips": [
@@ -1985,5 +1992,11 @@
     "afterPayHint": "Switch off when the counter prints the bill first and then takes payment. A receipt can still be printed on request.",
     "kitchenScreen": "Show the Kitchen screen",
     "kitchenScreenHint": "Switch off when nobody uses the Kitchen board: the printed ticket is the kitchen. The Kitchen link disappears and Send to kitchen only prints."
+  },
+  "slip": {
+    "tokenTitle": "Token slip",
+    "kotTitle": "Kitchen ticket (KOT)",
+    "print": "Print",
+    "noPrinter": "No printer is connected, so it was not printed. Press Print to print it from this screen."
   }
 }

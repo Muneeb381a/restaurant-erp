@@ -1,5 +1,5 @@
 import { COLUMNS, EscPos, twoColumns, wrap, type PaperMm } from './escpos';
-import { tokenBanner } from './kot';
+import { customerLines, tokenBanner, typeBanner, type SlipCustomer } from './kot';
 
 export interface ReceiptLine {
   qty: number;
@@ -66,6 +66,8 @@ export interface ReceiptDoc {
   duplicate?: number;
   /** Open the cash drawer (cash tender). */
   openDrawer?: boolean;
+  /** Takeaway/delivery: who it is for (the address is printed on a delivery bill). */
+  customer?: SlipCustomer | null;
   /** The bill shown to the customer BEFORE payment: marked "not paid", no payment lines, no drawer. */
   provisional?: boolean;
 }
@@ -111,13 +113,15 @@ export function renderReceipt(doc: ReceiptDoc, paperMm: PaperMm = 80): Uint8Arra
   if (doc.provisional) p.bold(true).line('*** BILL - NOT PAID ***').bold(false);
   p.align('left').rule(cols);
   tokenBanner(p, doc.orderNo);
+  typeBanner(p, doc.orderType);
 
   p.line(twoColumns(`Bill #${doc.billNo}`, doc.dateTime, cols));
   const where =
     doc.orderType === 'DINE_IN' && doc.tableCode
       ? `Table ${doc.tableCode}`
       : TYPE_LABEL[doc.orderType];
-  p.line(where);
+  if (doc.orderType === 'DINE_IN') p.line(where);
+  customerLines(p, doc.customer, cols, doc.orderType === 'DELIVERY');
   if (doc.waiter || doc.cashier) {
     p.line(
       twoColumns(

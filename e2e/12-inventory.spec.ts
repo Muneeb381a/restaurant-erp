@@ -61,10 +61,8 @@ test('selling two Tikka takes 200 g out of stock, with the cost kept', async ({ 
   await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
   await page.locator('aside').getByRole('button', { name: 'plus' }).first().click();
   await expect(page.locator('aside')).toContainText('Rs 800');
-  await page.getByRole('button', { name: 'Send to kitchen' }).click();
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
-  ).toContainText('Sent to the kitchen');
+  await page.getByRole('button', { name: 'Print KOT' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'KOT' }).first()).toContainText('KOT');
   await page.getByRole('button', { name: /^Bill/ }).click();
   await page.getByRole('button', { name: 'Cash', exact: true }).click();
   await page.getByRole('button', { name: /^Take payment/ }).click();

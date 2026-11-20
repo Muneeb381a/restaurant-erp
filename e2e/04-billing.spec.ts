@@ -97,10 +97,8 @@ async function orderAndBill(page: Page, table: string): Promise<void> {
 
   // billing is refused until everything is in the kitchen
   await expect(page.getByRole('button', { name: /^Bill/ })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Send to kitchen' }).click();
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
-  ).toContainText('Sent to the kitchen');
+  await page.getByRole('button', { name: 'Print KOT' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'KOT' }).first()).toContainText('KOT');
   await page.getByRole('button', { name: /^Bill/ }).click();
   await expect(page).toHaveURL(/\/pay$/);
   await expect(page.getByTestId('bill-total')).toContainText('Rs 400');
@@ -193,10 +191,8 @@ test('cancelling a bill reopens the order for changes (manager only)', async ({ 
   await login(page, 'manager');
   await page.getByRole('button', { name: /T3/ }).click();
   await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
-  await page.getByRole('button', { name: 'Send to kitchen' }).click();
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
-  ).toContainText('Sent to the kitchen');
+  await page.getByRole('button', { name: 'Print KOT' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'KOT' }).first()).toContainText('KOT');
   await page.getByRole('button', { name: /^Bill/ }).click();
   await expect(page).toHaveURL(/\/pay$/);
 

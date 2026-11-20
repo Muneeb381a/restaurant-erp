@@ -217,3 +217,36 @@ describe('one combined ticket for a single printer', () => {
     expect(w).toMatch(/ITEMS\s+1\n/);
   });
 });
+
+describe('takeaway and delivery kitchen tickets', () => {
+  const customer = { name: 'Ali Raza', phone: '0300-1234567', address: 'House 12, Gulberg' };
+  it('say TAKEAWAY or DELIVERY in big type under the token, with the name and phone but not the address', () => {
+    for (const orderType of ['TAKEAWAY', 'DELIVERY'] as const) {
+      const t = text({ ...base, orderType, tableCode: null, customer });
+      expect(t).toContain(` ${orderType} `);
+      expect(t.indexOf('TOKEN')).toBeLessThan(t.indexOf(` ${orderType} `));
+      expect(t).toContain('Name: Ali Raza');
+      expect(t).toContain('Phone: 0300-1234567');
+      expect(t).not.toContain('Address');
+      expect(t).not.toContain('Table');
+    }
+  });
+  it('the combined ticket does the same', () => {
+    const t = describeBytes(
+      renderCombinedKot(
+        {
+          orderNo: 5,
+          orderType: 'DELIVERY',
+          time: '19:42',
+          customer,
+          sections: [
+            { station: 'BBQ', kotNo: 1, lines: [{ qty: 1, name: 'Tikka', modifiers: [] }] },
+          ],
+        },
+        80,
+      ),
+    );
+    expect(t).toContain(' DELIVERY ');
+    expect(t).toContain('Name: Ali Raza');
+  });
+});

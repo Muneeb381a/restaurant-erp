@@ -242,3 +242,19 @@ test('a table: send prints the ticket, one tap on the table prints the bill, pay
   await page.getByRole('link', { name: 'Done' }).click();
   await expect(page.getByRole('button', { name: /^T2 / })).toContainText('Free');
 });
+
+test('a dish from a station with no printer: Print KOT opens a modal with the ticket so it can be printed from the screen', async ({
+  page,
+}) => {
+  await login(page, 'cashier');
+  await page.getByRole('button', { name: 'New takeaway' }).click();
+  await expect(page).toHaveURL(/\/order\//);
+  await page.getByRole('button', { name: /^Plain Naan/ }).click(); // its station has no printer in this spec
+  await page.getByRole('button', { name: 'Print KOT' }).click();
+  const slip = page.getByRole('dialog', { name: 'Kitchen ticket (KOT)' });
+  await expect(slip).toBeVisible();
+  await expect(slip).toContainText('TOKEN');
+  await expect(slip).toContainText('TAKEAWAY');
+  await expect(slip).toContainText('1 x Plain Naan');
+  await expect(slip.getByRole('button', { name: 'Print' })).toBeVisible();
+});

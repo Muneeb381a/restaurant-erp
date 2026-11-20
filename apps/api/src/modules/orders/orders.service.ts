@@ -156,6 +156,9 @@ export interface CreateOrderInput {
   guests?: number | undefined;
   customerId?: string | undefined;
   notes?: string | undefined;
+  customerName?: string | undefined;
+  customerPhone?: string | undefined;
+  deliveryAddress?: string | undefined;
   channel?: 'POS' | 'PHONE' | 'WHATSAPP' | 'FOODPANDA' | 'WEB' | 'OTHER' | undefined;
   /** Price list code; defaults to the one named like the order type (DINE_IN / TAKEAWAY / DELIVERY). */
   priceList?: string | undefined;
@@ -214,6 +217,9 @@ export async function createOrder(ctx: AppContext, a: Actor, input: CreateOrderI
           price_list_id: list.id,
           waiter_id: a.userId,
           notes: input.notes ?? null,
+          customer_name: input.customerName ?? null,
+          customer_phone: input.customerPhone ?? null,
+          delivery_address: input.type === 'DELIVERY' ? (input.deliveryAddress ?? null) : null,
           opened_by: a.userId,
         })
         .returning('id')
@@ -227,6 +233,9 @@ export async function createOrder(ctx: AppContext, a: Actor, input: CreateOrderI
 export interface OrderPatch {
   guests?: number | null | undefined;
   notes?: string | null | undefined;
+  customerName?: string | null | undefined;
+  customerPhone?: string | null | undefined;
+  deliveryAddress?: string | null | undefined;
   customerId?: string | null | undefined;
 }
 
@@ -255,6 +264,11 @@ export function updateOrder(
       .set({
         ...(patch.guests !== undefined && { guests: patch.guests }),
         ...(patch.notes !== undefined && { notes: patch.notes }),
+        ...(patch.customerName !== undefined && { customer_name: patch.customerName }),
+        ...(patch.customerPhone !== undefined && { customer_phone: patch.customerPhone }),
+        ...(patch.deliveryAddress !== undefined && {
+          delivery_address: order.type === 'DELIVERY' ? patch.deliveryAddress : null,
+        }),
         ...(patch.customerId !== undefined && { customer_id: patch.customerId }),
       })
       .where('id', '=', orderId)

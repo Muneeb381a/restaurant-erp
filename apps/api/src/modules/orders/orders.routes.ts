@@ -21,6 +21,9 @@ const createBody = z
     guests: z.number().int().min(1).max(500).optional(),
     customerId: uuid.optional(),
     notes: z.string().trim().max(500).optional(),
+    customerName: z.string().trim().max(80).optional(),
+    customerPhone: z.string().trim().max(30).optional(),
+    deliveryAddress: z.string().trim().max(300).optional(),
     channel: z.enum(['POS', 'PHONE', 'WHATSAPP', 'FOODPANDA', 'WEB', 'OTHER']).optional(),
     priceList: z.string().trim().min(1).max(40).optional(),
   })
@@ -30,6 +33,9 @@ const patchBody = z
   .object({
     guests: z.number().int().min(1).max(500).nullable(),
     notes: z.string().trim().max(500).nullable(),
+    customerName: z.string().trim().max(80).nullable(),
+    customerPhone: z.string().trim().max(30).nullable(),
+    deliveryAddress: z.string().trim().max(300).nullable(),
     customerId: uuid.nullable(),
   })
   .partial()

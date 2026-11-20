@@ -41,7 +41,9 @@ describe('payments are append-only', () => {
     await expect(
       db.pool.query(`UPDATE payments SET amount_paisa = 1 WHERE bill_id = $1`, [billId]),
     ).rejects.toMatchObject({ code: SQLSTATE.restrictViolation });
-    await expect(db.pool.query(`DELETE FROM payments WHERE bill_id = $1`, [billId])).rejects.toMatchObject({
+    await expect(
+      db.pool.query(`DELETE FROM payments WHERE bill_id = $1`, [billId]),
+    ).rejects.toMatchObject({
       code: SQLSTATE.restrictViolation,
     });
   });
@@ -86,7 +88,10 @@ describe('settled bills are immutable', () => {
       `UPDATE bills SET fiscal_status='SUBMITTED', fiscal_invoice_no='PRA-1', print_count=print_count+1 WHERE id=$1`,
       [billId],
     );
-    const { rows } = await db.pool.query(`SELECT fiscal_status, fiscal_invoice_no FROM bills WHERE id=$1`, [billId]);
+    const { rows } = await db.pool.query(
+      `SELECT fiscal_status, fiscal_invoice_no FROM bills WHERE id=$1`,
+      [billId],
+    );
     expect(rows[0]).toEqual({ fiscal_status: 'SUBMITTED', fiscal_invoice_no: 'PRA-1' });
   });
 
@@ -95,7 +100,9 @@ describe('settled bills are immutable', () => {
     await expect(
       db.pool.query(`UPDATE bill_lines SET net_paisa = 1 WHERE bill_id = $1`, [billId]),
     ).rejects.toMatchObject({ code: SQLSTATE.restrictViolation });
-    await expect(db.pool.query(`DELETE FROM bill_lines WHERE bill_id = $1`, [billId])).rejects.toMatchObject({
+    await expect(
+      db.pool.query(`DELETE FROM bill_lines WHERE bill_id = $1`, [billId]),
+    ).rejects.toMatchObject({
       code: SQLSTATE.restrictViolation,
     });
     await expect(
@@ -154,13 +161,17 @@ describe('floor and day rules', () => {
   it('allows only one OPEN/BILLED order per table, frees it after settle/cancel', async () => {
     const table = b.tableIds[0]!;
     const first = await createOrder(db.pool, b, { orderNo: ++orderSeq, tableId: table });
-    await expect(createOrder(db.pool, b, { orderNo: ++orderSeq, tableId: table })).rejects.toMatchObject({
+    await expect(
+      createOrder(db.pool, b, { orderNo: ++orderSeq, tableId: table }),
+    ).rejects.toMatchObject({
       code: SQLSTATE.uniqueViolation,
     });
     // a different table is independent
     await createOrder(db.pool, b, { orderNo: ++orderSeq, tableId: b.tableIds[1]! });
     await db.pool.query(`UPDATE orders SET status='BILLED' WHERE id=$1`, [first]);
-    await expect(createOrder(db.pool, b, { orderNo: ++orderSeq, tableId: table })).rejects.toMatchObject({
+    await expect(
+      createOrder(db.pool, b, { orderNo: ++orderSeq, tableId: table }),
+    ).rejects.toMatchObject({
       code: SQLSTATE.uniqueViolation,
     });
     await db.pool.query(`UPDATE orders SET status='CANCELLED' WHERE id=$1`, [first]);
@@ -170,7 +181,9 @@ describe('floor and day rules', () => {
   it('allows only one OPEN business day per branch', async () => {
     // seedBase already opened one day for this branch.
     await expect(
-      db.pool.query(`INSERT INTO business_days(branch_id,business_date) VALUES ($1,'2026-08-02')`, [b.branchId]),
+      db.pool.query(`INSERT INTO business_days(branch_id,business_date) VALUES ($1,'2026-08-02')`, [
+        b.branchId,
+      ]),
     ).rejects.toMatchObject({ code: SQLSTATE.uniqueViolation });
     await db.pool.query(
       `UPDATE shifts SET status='CLOSED', closed_at=now(), closed_by=$2, expected_cash_paisa=0, counted_cash_paisa=0 WHERE business_day_id=$1`,
@@ -180,9 +193,10 @@ describe('floor and day rules', () => {
       `UPDATE business_days SET status='CLOSED', closed_at=now(), closed_by=$2 WHERE id=$1`,
       [b.dayId, b.userId],
     );
-    await db.pool.query(`INSERT INTO business_days(branch_id,business_date) VALUES ($1,'2026-08-02')`, [
-      b.branchId,
-    ]); // allowed after close
+    await db.pool.query(
+      `INSERT INTO business_days(branch_id,business_date) VALUES ($1,'2026-08-02')`,
+      [b.branchId],
+    ); // allowed after close
     // a different branch is unaffected
     const other = await seedBase(db.pool);
     expect(other.branchId).not.toBe(b.branchId);
@@ -196,7 +210,9 @@ describe('other append-only ledgers', () => {
       [b.branchId, b.userId],
     );
     const id = ins.rows[0].id as string;
-    await expect(db.pool.query(`UPDATE audit_log SET action='X' WHERE id=$1`, [id])).rejects.toMatchObject({
+    await expect(
+      db.pool.query(`UPDATE audit_log SET action='X' WHERE id=$1`, [id]),
+    ).rejects.toMatchObject({
       code: SQLSTATE.restrictViolation,
     });
     await expect(db.pool.query(`DELETE FROM audit_log WHERE id=$1`, [id])).rejects.toMatchObject({
@@ -218,7 +234,9 @@ describe('other append-only ledgers', () => {
     await expect(
       db.pool.query(`UPDATE khata_entries SET amount_paisa=1 WHERE id=$1`, [id]),
     ).rejects.toMatchObject({ code: SQLSTATE.restrictViolation });
-    await expect(db.pool.query(`DELETE FROM khata_entries WHERE id=$1`, [id])).rejects.toMatchObject({
+    await expect(
+      db.pool.query(`DELETE FROM khata_entries WHERE id=$1`, [id]),
+    ).rejects.toMatchObject({
       code: SQLSTATE.restrictViolation,
     });
   });

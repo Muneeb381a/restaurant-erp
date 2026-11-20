@@ -82,7 +82,12 @@ export async function enqueuePrintJob(q: Queryable, j: NewPrintJob): Promise<boo
   return !!res;
 }
 
-export async function stationPrinters(q: Queryable, branchId: string, stationId: string) {
+export async function stationPrinters(
+  q: Queryable,
+  branchId: string,
+  stationId: string,
+  at: Date = new Date(),
+) {
   const chosen = await q
     .selectFrom('station_printers')
     .innerJoin('printers', 'printers.id', 'station_printers.printer_id')
@@ -95,7 +100,7 @@ export async function stationPrinters(q: Queryable, branchId: string, stationId:
     .execute();
   if (chosen.length > 0) return chosen;
   // nothing chosen for this station: the print helper's kitchen printer takes it, so nobody has to map stations
-  return q
+  const viaHelper = await q
     .selectFrom('printers')
     .select(['id', 'paper_mm'])
     .where('branch_id', '=', branchId)
@@ -105,6 +110,46 @@ export async function stationPrinters(q: Queryable, branchId: string, stationId:
     .where('conn_type', '=', 'AGENT')
     .orderBy('name')
     .execute();
+  if (viaHelper.length > 0) return viaHelper;
+  return counterPrinters(q, branchId, at);
+}
+
+/**
+ * A restaurant that never mapped a station to a printer (one printer on the counter) must still get its tickets:
+ * with no station-to-printer choice anywhere in the branch, a ticket goes to the branch's kitchen printer, or when
+ * there is none, to its receipt printer. Once ANY station is mapped the choices are respected and a station left
+ * unmapped stays unprinted (it may work from the screen). A helper's printer counts only while the helper is online.
+ */
+export async function counterPrinters(q: Queryable, branchId: string, at: Date) {
+  const mapped = await q
+    .selectFrom('station_printers')
+    .innerJoin('printers', 'printers.id', 'station_printers.printer_id')
+    .select('station_printers.station_id')
+    .where('printers.branch_id', '=', branchId)
+    .where('printers.is_active', '=', true)
+    .limit(1)
+    .executeTakeFirst();
+  if (mapped) return [];
+  for (const kind of ['KOT', 'RECEIPT'] as const) {
+    const found = await q
+      .selectFrom('printers')
+      .leftJoin('print_agents', 'print_agents.id', 'printers.agent_id')
+      .select(['printers.id as id', 'printers.paper_mm as paper_mm'])
+      .where('printers.branch_id', '=', branchId)
+      .where('printers.is_active', '=', true)
+      .where('printers.archived_at', 'is', null)
+      .where('printers.kind', '=', kind)
+      .where((eb) =>
+        eb.or([
+          eb('printers.conn_type', '!=', 'AGENT'),
+          eb('print_agents.last_seen_at', '>', new Date(at.getTime() - 90_000)),
+        ]),
+      )
+      .orderBy('printers.name')
+      .execute();
+    if (found.length > 0) return found;
+  }
+  return [];
 }
 
 // ────────────────────────────────── the worker ──────────────────────────────────

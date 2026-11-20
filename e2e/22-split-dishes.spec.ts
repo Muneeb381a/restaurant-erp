@@ -19,7 +19,7 @@ test('two friends pay for their own dishes: each person gets their dishes, share
   await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
   await expect(page.locator('aside')).toContainText('Rs 360');
   await page.getByRole('button', { name: /^Plain Naan/ }).click();
-  await page.getByRole('button', { name: 'Send to kitchen' }).click();
+  await page.getByRole('button', { name: 'Print KOT' }).click();
   await expect(page.locator('aside')).toContainText('In kitchen');
   await page.getByRole('button', { name: /^Bill/ }).click();
   await expect(page).toHaveURL(/\/pay$/);

@@ -498,6 +498,9 @@ export interface Orders {
   channel: Generated<string>;
   closed_at: Timestamp | null;
   customer_id: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  delivery_address: string | null;
   guests: number | null;
   held_at: Timestamp | null;
   id: Generated<string>;

@@ -7,6 +7,8 @@ export const UR = {
   bill: 'بل',
   order: 'آرڈر',
   token: 'ٹوکن',
+  name: 'نام',
+  address: 'پتہ',
   notPaid: 'بل — ادائیگی باقی',
   payAtCounter: 'براہ کرم کاؤنٹر پر ادائیگی کریں',
   table: 'ٹیبل',
@@ -70,7 +72,14 @@ export function renderReceiptBitmap(doc: ReceiptDoc, paperMm: PaperMm = 80): Uin
     doc.orderType === 'DINE_IN' && doc.tableCode
       ? `${UR.table} ${lri(doc.tableCode)}`
       : UR[doc.orderType];
-  b.row(where, '', R);
+  if (doc.orderType === 'DINE_IN') b.row(where, '', R);
+  else b.text(`*** ${UR[doc.orderType]} ***`, { size: 36, bold: true, rtl: true }, 'center');
+  if (doc.customer?.name)
+    b.text(`${UR.name}: ${doc.customer.name}`, { ...R, size: 26, bold: true }, 'right');
+  if (doc.customer?.phone)
+    b.text(`${UR.tel}: ${lri(doc.customer.phone)}`, { ...R, size: 24 }, 'right');
+  if (doc.orderType === 'DELIVERY' && doc.customer?.address)
+    b.text(`${UR.address}: ${doc.customer.address}`, { ...R, size: 24 }, 'right');
   if (doc.waiter) b.row(`${UR.waiter}: ${doc.waiter}`, '', { ...R, size: 22 });
   if (doc.cashier) b.row(`${UR.cashier}: ${doc.cashier}`, '', { ...R, size: 22 });
   b.rule();

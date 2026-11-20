@@ -55,6 +55,7 @@ export interface ReceiptDocView {
   duplicate?: number;
   /** The bill shown before payment: marked "not paid", no payment lines. */
   provisional?: boolean;
+  customer?: { name?: string | null; phone?: string | null; address?: string | null } | null;
 }
 
 export interface BusinessDay {
@@ -128,6 +129,9 @@ export interface Order {
   tableCode: string | null;
   guests: number | null;
   notes: string | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  deliveryAddress?: string | null;
   version: number;
   items: OrderLine[];
   subtotalPaisa: number;
@@ -137,6 +141,8 @@ export interface SendResult {
   order: Order;
   kots: { id: string; kotNo: number; station: string; lineCount: number; printers: number }[];
   unprinted: string[];
+  /** the whole Send as one ticket, present when something could not go to a printer (the screen prints it) */
+  ticket?: import('../features/order/Slips').KotTicketDoc | null;
 }
 
 export interface PrinterHealth {

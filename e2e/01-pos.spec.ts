@@ -134,11 +134,11 @@ test('cashier opens the day and a shift, then takes an order at table T1', async
   await expect(page.locator('aside')).toContainText('Rs 3,120');
 
   // send to the kitchen: lines become "Sent", and the tickets arrive at the (fake) printer
-  await page.getByRole('button', { name: 'Send to kitchen' }).click();
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
-  ).toContainText('Sent to the kitchen: BBQ, KARAHI');
-  await expect(page.getByRole('button', { name: 'Send to kitchen' })).toHaveCount(0); // nothing new left
+  await page.getByRole('button', { name: 'Print KOT' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'KOT' }).first()).toContainText(
+    'KOT printed: BBQ, KARAHI',
+  );
+  await expect(page.getByRole('button', { name: 'Print KOT' })).toHaveCount(0); // nothing new left
   await expect.poll(() => tickets.length, { timeout: 15_000 }).toBe(2); // one KOT per station
   const all = tickets.join('\n');
   expect(all).toContain('2 x Chicken Tikka (Leg)');

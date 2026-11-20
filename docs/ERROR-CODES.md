@@ -88,3 +88,5 @@ Errors are RFC 7807 `application/problem+json` with a stable `code`. Codes are n
 Domain rule violations (bad deal pick, modifier min/max, missing weight, …) return `VALIDATION_FAILED` (400) with a `reason` such as `DEAL_SLOT_COUNT`, `MODIFIER_GROUP_MIN`, `LINE_WEIGHT_REQUIRED`, `TENDER_SUM_MISMATCH` or `DRAWER_INSUFFICIENT_CASH` (paid-out/drop or cash refund larger than the cash in the drawer) or `REFUND_QTY_EXCEEDS` / `REFUND_UNKNOWN_LINE` (credit notes).
 
 Planned (added with their milestones): `TAX_RULE_MISSING`, `TAX_RULE_AMBIGUOUS`, `DISCOUNT_LIMIT`, `IDEMPOTENCY_CONFLICT`.
+
+`STATION_MISSING` is no longer returned: a dish without a station is sent under the default `KITCHEN` station (created on first use) and prints there; the Send response carries a `ticket` (the whole Send as one ticket) whenever a station had no printer, so the screen can print it from the browser (ADR 0036).

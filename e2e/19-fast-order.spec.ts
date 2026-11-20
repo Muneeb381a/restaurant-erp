@@ -41,7 +41,7 @@ test('a waiter finds a dish by any words, adds a note in one tap, and repeats it
   await expect(page.locator('aside')).toContainText('Less spicy');
 
   // once it is in the kitchen, "One more" repeats it with the same size and note
-  await page.getByRole('button', { name: 'Send to kitchen' }).click();
+  await page.getByRole('button', { name: 'Print KOT' }).click();
   await expect(page.locator('aside')).toContainText('In kitchen');
   await page
     .locator('aside')

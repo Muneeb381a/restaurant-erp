@@ -32,7 +32,7 @@ import { enqueueFiscal } from '../fiscal/fiscal.service';
 import { consumeForOrder } from '../inventory/inventory.service';
 import { loadTaxContext, taxFor, type TaxContext } from '../tax/tax.service';
 import { creditNotesOf } from './credit.service';
-import { enqueuePrintJob } from '../printing/print.service';
+import { counterPrinters, enqueuePrintJob } from '../printing/print.service';
 
 const bad = (message: string, extra?: Record<string, unknown>): AppError =>
   new AppError(400, 'VALIDATION_FAILED', message, extra);
@@ -740,7 +740,12 @@ async function receiptDoc(
     q
       .selectFrom('orders')
       .leftJoin('users', 'users.id', 'orders.waiter_id')
-      .select(['users.full_name as waiter'])
+      .select([
+        'users.full_name as waiter',
+        'orders.customer_name as customer_name',
+        'orders.customer_phone as customer_phone',
+        'orders.delivery_address as delivery_address',
+      ])
       .where('orders.id', '=', bill.orderId)
       .executeTakeFirstOrThrow(),
     q
@@ -807,6 +812,11 @@ async function receiptDoc(
     orderType: bill.orderType as ReceiptDoc['orderType'],
     tableCode: bill.tableCode,
     waiter: order.waiter,
+    customer: {
+      name: order.customer_name,
+      phone: order.customer_phone,
+      address: order.delivery_address,
+    },
     cashier: cashier.cashier,
     dateTime: `${new Intl.DateTimeFormat('en-GB', { timeZone: branch.timezone, day: '2-digit', month: '2-digit', year: 'numeric' }).format(at)} ${clockTime(at, branch.timezone)}`,
     lines: bill.lines.map((l) => ({
@@ -849,7 +859,7 @@ async function receiptDoc(
 
 /** Active receipt printers; a helper's printer counts only while the helper is online (see queueReceipts). */
 async function receiptPrinters(q: Queryable, branchId: string, at: Date) {
-  return q
+  const found = await q
     .selectFrom('printers')
     .leftJoin('print_agents', 'print_agents.id', 'printers.agent_id')
     .select(['printers.id as id', 'printers.paper_mm as paper_mm'])
@@ -865,6 +875,10 @@ async function receiptPrinters(q: Queryable, branchId: string, at: Date) {
     )
     .orderBy('printers.name')
     .execute();
+  if (found.length > 0) return found;
+  // a counter with ONE printer that is set up as the kitchen printer (or a receipt printer that is off) still prints
+  // its bills and tokens: with no station-to-printer choice anywhere, the branch's printer takes them
+  return counterPrinters(q, branchId, at);
 }
 
 async function queueReceipts(
@@ -1398,6 +1412,8 @@ export function printTokenSlip(ctx: AppContext, a: Actor, orderId: string, key: 
         'orders.type as type',
         'orders.status as status',
         'dining_tables.code as table_code',
+        'orders.customer_name as customer_name',
+        'orders.customer_phone as customer_phone',
       ])
       .where('orders.id', '=', orderId)
       .where('orders.branch_id', '=', a.branchId)
@@ -1427,6 +1443,7 @@ export function printTokenSlip(ctx: AppContext, a: Actor, orderId: string, key: 
       orderNo: order.order_no,
       orderType: order.type as 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY',
       tableCode: order.table_code,
+      customer: { name: order.customer_name, phone: order.customer_phone },
       dateTime: `${new Intl.DateTimeFormat('en-GB', { timeZone: branch.timezone, day: '2-digit', month: '2-digit', year: 'numeric' }).format(now)} ${clockTime(now, branch.timezone)}`,
     };
     const printers = await receiptPrinters(trx, a.branchId, now);
@@ -1446,6 +1463,14 @@ export function printTokenSlip(ctx: AppContext, a: Actor, orderId: string, key: 
         createdBy: a.userId,
         at: now,
       });
-    return { token: order.order_no, printers: printers.length };
+    // no thermal printer: the screen opens a modal with the slip and a Print button (the browser prints it)
+    return {
+      token: order.order_no,
+      printers: printers.length,
+      browser:
+        printers.length === 0
+          ? { doc, language: lang?.value === 'ur' ? ('ur' as const) : ('en' as const) }
+          : null,
+    };
   });
 }

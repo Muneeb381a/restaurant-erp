@@ -10,7 +10,9 @@ export interface TestDb {
 
 /** Starts a throwaway real Postgres 16 and applies the requested migration sets. */
 export async function startDb(sets: MigrationSet[] = ['core']): Promise<TestDb> {
-  const container: StartedPostgreSqlContainer = await new PostgreSqlContainer('postgres:16-alpine').start();
+  const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(
+    'postgres:16-alpine',
+  ).start();
   const url = container.getConnectionUri();
   for (const set of sets) await migrateUp(url, set);
   const pool = new pg.Pool({ connectionString: url, max: 4 });
@@ -45,15 +47,25 @@ export interface Base {
 let counter = 0;
 const uniq = (p: string): string => `${p}${++counter}`;
 
-async function one<T = { id: string }>(pool: pg.Pool, text: string, values: unknown[] = []): Promise<T> {
+async function one<T = { id: string }>(
+  pool: pg.Pool,
+  text: string,
+  values: unknown[] = [],
+): Promise<T> {
   const res = await pool.query(text, values);
   return res.rows[0] as T;
 }
 
 /** Minimal graph of reference rows every money test needs. */
 export async function seedBase(pool: pg.Pool): Promise<Base> {
-  const branch = await one(pool, `INSERT INTO branches(code,name) VALUES ($1,'Test') RETURNING id`, [uniq('B')]);
-  const role = await one(pool, `INSERT INTO roles(code,name) VALUES ($1,'R') RETURNING id`, [uniq('R')]);
+  const branch = await one(
+    pool,
+    `INSERT INTO branches(code,name) VALUES ($1,'Test') RETURNING id`,
+    [uniq('B')],
+  );
+  const role = await one(pool, `INSERT INTO roles(code,name) VALUES ($1,'R') RETURNING id`, [
+    uniq('R'),
+  ]);
   const user = await one(
     pool,
     `INSERT INTO users(role_id,username,full_name) VALUES ($1,$2,'U') RETURNING id`,
@@ -79,15 +91,18 @@ export async function seedBase(pool: pg.Pool): Promise<Base> {
     `INSERT INTO payment_methods(branch_id,code,name,tender_class) VALUES ($1,'CASH','Cash','CASH_OTHER') RETURNING id`,
     [branch.id],
   );
-  const taxCat = await one(pool, `INSERT INTO tax_categories(code,name) VALUES ($1,'Food') RETURNING id`, [
-    uniq('TC'),
-  ]);
+  const taxCat = await one(
+    pool,
+    `INSERT INTO tax_categories(code,name) VALUES ($1,'Food') RETURNING id`,
+    [uniq('TC')],
+  );
   const tableIds: string[] = [];
   for (const code of ['T1', 'T2']) {
-    const t = await one(pool, `INSERT INTO dining_tables(branch_id,code) VALUES ($1,$2) RETURNING id`, [
-      branch.id,
-      code,
-    ]);
+    const t = await one(
+      pool,
+      `INSERT INTO dining_tables(branch_id,code) VALUES ($1,$2) RETURNING id`,
+      [branch.id, code],
+    );
     tableIds.push(t.id);
   }
   return {
@@ -126,7 +141,12 @@ export async function createOrder(
 }
 
 /** Creates a PRE_BILLED bill: subtotal 1000, tax 160, total 1160 (all paisa). */
-export async function createPreBilledBill(pool: pg.Pool, b: Base, orderId: string, billNo: number): Promise<string> {
+export async function createPreBilledBill(
+  pool: pg.Pool,
+  b: Base,
+  orderId: string,
+  billNo: number,
+): Promise<string> {
   const bill = await one(
     pool,
     `INSERT INTO bills(branch_id,business_day_id,order_id,bill_no,created_by) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
@@ -145,7 +165,13 @@ export async function createPreBilledBill(pool: pg.Pool, b: Base, orderId: strin
   return bill.id;
 }
 
-export async function pay(pool: pg.Pool, b: Base, billId: string, amount: number, key: string): Promise<void> {
+export async function pay(
+  pool: pg.Pool,
+  b: Base,
+  billId: string,
+  amount: number,
+  key: string,
+): Promise<void> {
   await pool.query(
     `INSERT INTO payments(bill_id,shift_id,method_id,tender_class,amount_paisa,idempotency_key,received_by)
      VALUES ($1,$2,$3,'CASH_OTHER',$4,$5,$6)`,

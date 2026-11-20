@@ -444,7 +444,7 @@ describe('the token slip: a separate small print, handed to the customer', () =>
       .post(`/orders/${o.id}/print-token`)
       .set('Idempotency-Key', key());
     expect(res.status, JSON.stringify(res.body)).toBe(201);
-    expect(res.body).toEqual({ token: o.orderNo, printers: 1 });
+    expect(res.body).toEqual({ token: o.orderNo, printers: 1, browser: null });
     await run();
     // count only THIS order's token slips (earlier tests may still have papers queued behind it)
     const slips = (): string[] =>
@@ -452,7 +452,7 @@ describe('the token slip: a separate small print, handed to the customer', () =>
         (x) => x.includes('Show it when you pay.') && x.includes(`<SIZE:4x4>${o.orderNo}`),
       );
     expect(slips()).toHaveLength(1);
-    expect(slips()[0]).toContain('Takeaway');
+    expect(slips()[0]).toContain(' TAKEAWAY ');
     expect(slips()[0]).not.toContain('Naan');
     expect(slips()[0]).not.toMatch(/Rs |TOTAL/);
     // the same key twice prints once; a new press prints again
@@ -503,5 +503,66 @@ describe('the token slip: a separate small print, handed to the customer', () =>
       .set({ is_active: true })
       .where('kind', '=', 'RECEIPT')
       .execute();
+  });
+});
+
+describe('takeaway and delivery: who it is for, on every slip', () => {
+  it('an order keeps a name and phone (and a delivery address); the slips carry them', async () => {
+    const d = (
+      await api(captain).post('/orders', {
+        type: 'DELIVERY',
+        customerName: 'Ali Raza',
+        customerPhone: '0300-1234567',
+        deliveryAddress: 'House 12, Street 4, Gulberg',
+      })
+    ).body;
+    expect(d).toMatchObject({
+      customerName: 'Ali Raza',
+      customerPhone: '0300-1234567',
+      deliveryAddress: 'House 12, Street 4, Gulberg',
+    });
+    await api(captain).post(`/orders/${d.id}/items`, {
+      itemId: items['Naan']!.id,
+      variantId: items['Naan']!.variantId,
+      qty: 2,
+    });
+    for (let i = 0; i < 10; i++) if (!(await run()).printed) break;
+    sim.jobs.length = 0;
+    await send(d.id);
+    await api(captain).post(`/orders/${d.id}/print-token`).set('Idempotency-Key', key());
+    await run();
+    const all = received().join('\n');
+    expect(all).toContain(' DELIVERY ');
+    expect(all).toContain('Name: Ali Raza');
+    expect(all).toContain('Phone: 0300-1234567');
+    expect(all).not.toContain('Address: House'); // not on the kitchen ticket or the token slip
+    // the bill a rider carries has the address
+    sim.jobs.length = 0;
+    await api(captain).post(`/orders/${d.id}/print-bill`).set('Idempotency-Key', key());
+    await run();
+    const bill = received().join('\n');
+    expect(bill).toContain('BILL - NOT PAID');
+    expect(bill).toContain('Address: House 12, Street 4, Gulberg');
+  });
+
+  it('can be edited while the order is open; the address only counts on a delivery', async () => {
+    const tk = (await api(captain).post('/orders', { type: 'TAKEAWAY' })).body;
+    const patched = await api(captain)
+      .patch(`/orders/${tk.id}`, {
+        customerName: 'Sara',
+        customerPhone: '0321-0000000',
+        deliveryAddress: 'ignored',
+      })
+      .set('If-Match', String(tk.version));
+    expect(patched.status, JSON.stringify(patched.body)).toBe(200);
+    expect(patched.body).toMatchObject({
+      customerName: 'Sara',
+      customerPhone: '0321-0000000',
+      deliveryAddress: null,
+    });
+    const bad = await api(captain)
+      .patch(`/orders/${tk.id}`, { customerName: 'x'.repeat(81) })
+      .set('If-Match', String(patched.body.version));
+    expect(bad.status).toBe(400);
   });
 });

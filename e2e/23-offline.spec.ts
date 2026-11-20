@@ -34,7 +34,7 @@ test('no internet: dishes are kept on the device, the kitchen is not told, and e
   await expect(cart.getByRole('button', { name: /^Bill/ })).toHaveCount(0);
 
   // "send to kitchen" is kept too, with a warning that the kitchen has not heard
-  await cart.getByRole('button', { name: 'Send to kitchen' }).click();
+  await cart.getByRole('button', { name: 'Print KOT' }).click();
   await expect(cart).toContainText('Not sent to the kitchen yet');
   await expect(page.getByRole('status').filter({ hasText: 'NOT received' })).toBeVisible();
 

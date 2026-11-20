@@ -51,10 +51,8 @@ test('a sale shows "pending" at once and the fiscal number a few seconds later',
   }
   await page.getByRole('button', { name: /M1/ }).click();
   await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
-  await page.getByRole('button', { name: 'Send to kitchen' }).click();
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
-  ).toContainText('Sent to the kitchen');
+  await page.getByRole('button', { name: 'Print KOT' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'KOT' }).first()).toContainText('KOT');
   await page.getByRole('button', { name: /^Bill/ }).click();
   await page.getByRole('button', { name: 'Cash', exact: true }).click();
   await page.getByRole('button', { name: /^Take payment/ }).click();

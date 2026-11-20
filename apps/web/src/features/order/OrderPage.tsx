@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { CategoryTabs, ItemCard, hueAt, type CategoryTile } from './MenuParts';
+import { CustomerDialog } from './CustomerDialog';
+import { KotSlip, SlipModal, TokenSlip, type KotTicketDoc, type TokenSlipDoc } from './Slips';
 import { Modal } from '../../components/Modal';
 import { toast } from '../../components/Toast';
 import { localName } from '../../i18n';
@@ -163,6 +165,13 @@ export function OrderPage() {
   });
 
   const [rush, setRush] = useState(false);
+  // a slip the browser prints when no thermal printer took it (modal with a Print button)
+  const [slip, setSlip] = useState<
+    | { kind: 'token'; doc: TokenSlipDoc; language: 'en' | 'ur' }
+    | { kind: 'kot'; doc: KotTicketDoc }
+    | null
+  >(null);
+  const [customerOpen, setCustomerOpen] = useState(false);
   const kitchenScreen = useKitchenScreen();
   const send = useMutation({
     mutationFn: async (): Promise<SendResult | null> => {
@@ -198,14 +207,14 @@ export function OrderPage() {
       );
       // in the cloud the kitchen works from its screen, so "no printer" is not a problem to report;
       // without that screen the printed ticket IS the kitchen, so it must be reported
+      // counter mode (no Kitchen screen): a ticket no printer took is printed from here, in a modal
+      if (out.ticket && !kitchenScreen) setSlip({ kind: 'kot', doc: out.ticket });
       if (out.unprinted.length && (mode.kind !== 'tenant' || !kitchenScreen))
         setMessage(t('order.noPrinter', { stations: out.unprinted.join(', ') }));
     },
     onError: (e) => {
       if (e instanceof ApiError && e.code === 'NOTHING_TO_SEND')
         setMessage(t('order.nothingToSend'));
-      else if (e instanceof ApiError && e.code === 'STATION_MISSING')
-        setMessage(t('order.missingStation', { items: String(e.body.items ?? '') }));
       else onError(e);
     },
   });
@@ -242,20 +251,23 @@ export function OrderPage() {
   });
   // "counter mode" (the Kitchen screen is switched off): the printed ticket IS the kitchen, so the button says what it
   // does (Print KOT) and a separate "Print token" slip is offered for the customer
-  const counterMode = !kitchenScreen;
+  const counterMode = true; // Print KOT + Print token in every mode: the button never says "Send to kitchen"
   const printToken = useMutation({
     mutationFn: () =>
-      api<{ token: number; printers: number }>(`/orders/${id}/print-token`, {
+      api<{
+        token: number;
+        printers: number;
+        browser: { doc: TokenSlipDoc; language: 'en' | 'ur' } | null;
+      }>(`/orders/${id}/print-token`, {
         method: 'POST',
         body: {},
         headers: { 'idempotency-key': `ui-${crypto.randomUUID()}` },
       }),
-    onSuccess: (out) =>
-      toast(
-        out.printers > 0
-          ? t('order.tokenPrinted', { token: out.token })
-          : t('order.noTokenPrinter'),
-      ),
+    onSuccess: (out) => {
+      if (out.browser)
+        setSlip({ kind: 'token', doc: out.browser.doc, language: out.browser.language });
+      else toast(t('order.tokenPrinted', { token: out.token }));
+    },
     onError,
   });
   const makeBill = useMutation({
@@ -607,6 +619,20 @@ export function OrderPage() {
                         : 'order.stateOpen',
                   )}
                 </span>
+                {o.type !== 'DINE_IN' && o.status === 'OPEN' && (
+                  <button
+                    type="button"
+                    className="inline-flex max-w-full items-center gap-1 truncate rounded-md border border-white/25 px-2 py-0.5 text-xs font-semibold text-slate-100 hover:bg-white/10"
+                    onClick={() => setCustomerOpen(true)}
+                  >
+                    <Icon name="user" size={12} />
+                    <span className="truncate">
+                      {o.customerName || o.customerPhone
+                        ? [o.customerName, o.customerPhone].filter(Boolean).join(' · ')
+                        : t('order.addCustomer')}
+                    </span>
+                  </button>
+                )}
                 {o.held && (
                   <span className="inline-flex items-center gap-1 rounded-md bg-slate-700 px-2 py-0.5 text-xs font-bold text-slate-100">
                     <Icon name="pause" size={12} /> {t('order.held')}
@@ -961,6 +987,29 @@ export function OrderPage() {
         </div>
       </aside>
 
+      {slip && (
+        <SlipModal
+          title={t(slip.kind === 'token' ? 'slip.tokenTitle' : 'slip.kotTitle')}
+          hint={t('slip.noPrinter')}
+          onClose={() => setSlip(null)}
+        >
+          {slip.kind === 'token' ? (
+            <TokenSlip doc={slip.doc} language={slip.language} />
+          ) : (
+            <KotSlip doc={slip.doc} />
+          )}
+        </SlipModal>
+      )}
+      {customerOpen && (
+        <CustomerDialog
+          order={o}
+          onClose={() => setCustomerOpen(false)}
+          onSaved={(updated) => {
+            apply(updated);
+            setCustomerOpen(false);
+          }}
+        />
+      )}
       {sheet && (
         <ItemSheet
           item={sheet}

@@ -23,6 +23,8 @@ export interface TicketContext {
   tableCode: string | null;
   waiter: string | null;
   timeZone: string;
+  /** who a takeaway/delivery is for (printed on the slips) */
+  customer: { name: string | null; phone: string | null; address: string | null };
 }
 
 export async function loadTicketContext(
@@ -38,6 +40,9 @@ export async function loadTicketContext(
       'orders.order_no as order_no',
       'orders.type as type',
       'dining_tables.code as table_code',
+      'orders.customer_name as customer_name',
+      'orders.customer_phone as customer_phone',
+      'orders.delivery_address as delivery_address',
       'branches.timezone as tz',
     ])
     .where('orders.id', '=', orderId)
@@ -51,6 +56,7 @@ export async function loadTicketContext(
     tableCode: o.table_code,
     waiter: waiter?.full_name ?? null,
     timeZone: o.tz,
+    customer: { name: o.customer_name, phone: o.customer_phone, address: o.delivery_address },
   };
 }
 
@@ -142,6 +148,7 @@ export async function queueCancelTickets(
         orderType: ctxInfo.orderType,
         tableCode: ctxInfo.tableCode,
         waiter: ctxInfo.waiter,
+        customer: ctxInfo.customer,
         time: clockTime(at, ctxInfo.timeZone),
         reason,
         lines: ticketLines,

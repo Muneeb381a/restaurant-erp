@@ -105,11 +105,11 @@ describe('receipt (80 mm)', () => {
       waiter: null,
       cashier: null,
     });
-    expect(out).toContain('Takeaway');
+    expect(out).toContain(' TAKEAWAY ');
     expect(out).not.toContain('Tel:');
     expect(out).not.toContain('Waiter');
     expect(out).not.toContain('Cashier');
-    expect(text({ ...base, orderType: 'DELIVERY', tableCode: null })).toContain('Delivery');
+    expect(text({ ...base, orderType: 'DELIVERY', tableCode: null })).toContain(' DELIVERY ');
     expect(text({ ...base, waiter: null })).toContain('Cashier: Sara');
     expect(text({ ...base, cashier: null })).toContain('Waiter: Ali');
   });
@@ -269,5 +269,33 @@ describe('token and the bill shown before payment', () => {
     expect(t).not.toContain('<DRAWER');
     expect(t).toContain('TOKEN 7');
     expect(t).toContain('Rs 6,690'); // the amount due is still printed
+  });
+});
+
+describe('takeaway and delivery slips', () => {
+  const customer = {
+    name: 'Ali Raza',
+    phone: '0300-1234567',
+    address: 'House 12, Street 4, Gulberg',
+  };
+  it('a delivery bill carries the big DELIVERY banner, the name, the phone and the address the rider needs', () => {
+    const t = text({ ...base, orderType: 'DELIVERY', tableCode: null, customer });
+    expect(t).toContain(' DELIVERY ');
+    expect(t).toContain('Name: Ali Raza');
+    expect(t).toContain('Phone: 0300-1234567');
+    expect(t).toContain('Address: House 12, Street 4, Gulberg');
+    expect(t.indexOf('TOKEN')).toBeLessThan(t.indexOf(' DELIVERY '));
+  });
+  it('a takeaway bill has name and phone but never an address', () => {
+    const t = text({ ...base, orderType: 'TAKEAWAY', tableCode: null, customer });
+    expect(t).toContain(' TAKEAWAY ');
+    expect(t).toContain('Name: Ali Raza');
+    expect(t).not.toContain('Address:');
+  });
+  it('a dine-in bill shows its table, no banner and no customer lines', () => {
+    const t = text({ ...base, customer });
+    expect(t).toContain('Table T1');
+    expect(t).not.toContain(' TAKEAWAY ');
+    expect(t).not.toContain('DELIVERY');
   });
 });

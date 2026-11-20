@@ -18,10 +18,8 @@ test('the cashier sells two tikka for cash', async ({ page }) => {
   await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
   await page.locator('aside').getByRole('button', { name: 'plus' }).first().click();
   await expect(page.locator('aside')).toContainText('Rs 800');
-  await page.getByRole('button', { name: 'Send to kitchen' }).click();
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
-  ).toContainText('Sent to the kitchen');
+  await page.getByRole('button', { name: 'Print KOT' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'KOT' }).first()).toContainText('KOT');
   await page.getByRole('button', { name: /^Bill/ }).click();
   await page.getByRole('button', { name: 'Cash', exact: true }).click();
   await page.getByRole('button', { name: /^Take payment/ }).click();
@@ -85,10 +83,8 @@ test('a refund cannot be paid out of a drawer without a shift', async ({ page })
   await login(page, 'owner');
   await page.getByRole('button', { name: /T4/ }).click();
   await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
-  await page.getByRole('button', { name: 'Send to kitchen' }).click();
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
-  ).toContainText('Sent to the kitchen');
+  await page.getByRole('button', { name: 'Print KOT' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'KOT' }).first()).toContainText('KOT');
   await page.getByRole('button', { name: /^Bill/ }).click();
   // the owner has no shift, so even taking payment is refused by the server
   await page.getByRole('button', { name: 'Cash', exact: true }).click();

@@ -40,7 +40,7 @@ test('the order works like a shopping cart: stepper on the dish, undo, note, gro
   await expect(cart).toContainText('Less spicy');
 
   // after sending, the cart splits into "To send" and "Already in kitchen"
-  await page.getByRole('button', { name: 'Send to kitchen' }).click();
+  await page.getByRole('button', { name: 'Print KOT' }).click();
   await expect(cart).toContainText('In kitchen');
   await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
   await expect(cart).toContainText('To send');

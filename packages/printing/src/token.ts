@@ -1,5 +1,6 @@
 import { BitmapDoc, bitmapWidth } from './bitmap';
 import { COLUMNS, EscPos, wrap, type PaperMm } from './escpos';
+import { customerLines, typeBanner, type SlipCustomer } from './kot';
 import { UR } from './receipt-ur';
 
 export interface TokenDoc {
@@ -11,6 +12,8 @@ export interface TokenDoc {
   tableCode?: string | null;
   /** Already formatted in the branch timezone, e.g. "01/08/2026 19:42". */
   dateTime: string;
+  /** Takeaway/delivery: who it is for (name and phone; the address stays off a slip the customer keeps). */
+  customer?: SlipCustomer | null;
 }
 
 const TYPE_LABEL = { DINE_IN: 'Dine-in', TAKEAWAY: 'Takeaway', DELIVERY: 'Delivery' } as const;
@@ -31,7 +34,12 @@ export function renderTokenSlip(doc: TokenDoc, paperMm: PaperMm = 80): Uint8Arra
   for (const l of wrap(doc.restaurant, Math.floor(cols / 2))) p.line(l);
   p.size(1, 1).rule(cols);
   p.size(2, 2).line('TOKEN').size(4, 4).line(String(doc.orderNo)).size(1, 1);
-  p.rule(cols).bold(true).line(whereOf(doc)).bold(false).line(doc.dateTime);
+  p.rule(cols);
+  if (doc.orderType === 'DINE_IN') p.bold(true).line(whereOf(doc)).bold(false);
+  else typeBanner(p.align('center'), doc.orderType);
+  p.align('center');
+  customerLines(p, doc.customer, cols, false);
+  p.line(doc.dateTime);
   p.rule(cols).line('Keep this slip.').line('Show it when you pay.');
   p.feed(3).cut();
   return p.build();
@@ -46,6 +54,8 @@ export function renderTokenSlipBitmap(doc: TokenDoc, paperMm: PaperMm = 80): Uin
   b.text(UR.token, { size: 44, bold: true, rtl: true }, 'center');
   b.text(String(doc.orderNo), { size: 150, bold: true }, 'center');
   b.rule();
+  if (doc.customer?.name) b.text(doc.customer.name, { size: 28, bold: true, rtl: true }, 'center');
+  if (doc.customer?.phone) b.text(doc.customer.phone, { size: 24 }, 'center');
   b.text(
     doc.orderType === 'DINE_IN' && doc.tableCode
       ? `${UR.table} ${doc.tableCode}`

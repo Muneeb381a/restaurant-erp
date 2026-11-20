@@ -36,7 +36,8 @@ describe('closing a shift', () => {
       db.pool.query(`UPDATE shifts SET status='CLOSED', closed_at=now() WHERE id=$1`, [b.shiftId]),
     ).rejects.toMatchObject({ code: SQLSTATE.checkViolation });
     await closeShift(b, 1000, 900);
-    const row = (await db.pool.query(`SELECT variance_paisa FROM shifts WHERE id=$1`, [b.shiftId])).rows[0];
+    const row = (await db.pool.query(`SELECT variance_paisa FROM shifts WHERE id=$1`, [b.shiftId]))
+      .rows[0];
     expect(Number(row.variance_paisa)).toBe(-100);
   });
 
@@ -63,7 +64,9 @@ describe('closing a shift', () => {
       `UPDATE shifts SET status='OPEN', closed_at=NULL, closed_by=NULL, counted_cash_paisa=NULL, expected_cash_paisa=NULL WHERE id=$1`,
       [b.shiftId],
     );
-    await expect(db.pool.query(`DELETE FROM shifts WHERE id=$1`, [b.shiftId])).rejects.toMatchObject({
+    await expect(
+      db.pool.query(`DELETE FROM shifts WHERE id=$1`, [b.shiftId]),
+    ).rejects.toMatchObject({
       code: SQLSTATE.restrictViolation,
     });
   });
@@ -117,9 +120,13 @@ describe('closing the business day', () => {
       [b.dayId, b.userId],
     );
     await expect(
-      db.pool.query(`UPDATE business_days SET status='OPEN', closed_at=NULL WHERE id=$1`, [b.dayId]),
+      db.pool.query(`UPDATE business_days SET status='OPEN', closed_at=NULL WHERE id=$1`, [
+        b.dayId,
+      ]),
     ).rejects.toMatchObject({ code: SQLSTATE.restrictViolation });
-    await expect(db.pool.query(`DELETE FROM business_days WHERE id=$1`, [b.dayId])).rejects.toMatchObject({
+    await expect(
+      db.pool.query(`DELETE FROM business_days WHERE id=$1`, [b.dayId]),
+    ).rejects.toMatchObject({
       code: SQLSTATE.restrictViolation,
     });
     await expect(createOrder(db.pool, b, { orderNo: 77 })).rejects.toMatchObject({

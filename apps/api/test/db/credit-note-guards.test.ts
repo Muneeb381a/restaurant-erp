@@ -30,7 +30,8 @@ async function settledBill(): Promise<{ bill: string; line: string }> {
   await db.pool.query(`UPDATE bill_lines SET qty=2 WHERE bill_id=$1`, [bill]);
   await pay(db.pool, b, bill, 1160, `cn-pay-${n}`);
   await settle(db.pool, b, bill);
-  const line = (await db.pool.query(`SELECT id FROM bill_lines WHERE bill_id=$1`, [bill])).rows[0].id;
+  const line = (await db.pool.query(`SELECT id FROM bill_lines WHERE bill_id=$1`, [bill])).rows[0]
+    .id;
   return { bill, line };
 }
 let cnSeq = 0;
@@ -66,8 +67,12 @@ describe('credit notes', () => {
     const cn = (await note(bill, 100)).rows[0].id;
     await noteLine(cn, line, 1);
     await noteLine(cn, line, 1); // 2 of 2
-    await expect(noteLine(cn, line, 0.001)).rejects.toMatchObject({ code: SQLSTATE.checkViolation });
-    await expect(noteLine(cn, other.line, 1)).rejects.toMatchObject({ code: SQLSTATE.checkViolation });
+    await expect(noteLine(cn, line, 0.001)).rejects.toMatchObject({
+      code: SQLSTATE.checkViolation,
+    });
+    await expect(noteLine(cn, other.line, 1)).rejects.toMatchObject({
+      code: SQLSTATE.checkViolation,
+    });
   });
 
   it('two simultaneous returns of the same line cannot both succeed', async () => {
@@ -81,22 +86,30 @@ describe('credit notes', () => {
   it('are immutable (not even deletable); only fiscal fields can change; the shift must be open', async () => {
     const { bill } = await settledBill();
     const id = (await note(bill, 100)).rows[0].id;
-    await expect(db.pool.query(`UPDATE credit_notes SET total_paisa=1, net_paisa=1 WHERE id=$1`, [id])).rejects.toMatchObject({
+    await expect(
+      db.pool.query(`UPDATE credit_notes SET total_paisa=1, net_paisa=1 WHERE id=$1`, [id]),
+    ).rejects.toMatchObject({
       code: SQLSTATE.restrictViolation,
     });
-    await expect(db.pool.query(`UPDATE credit_notes SET reason='changed' WHERE id=$1`, [id])).rejects.toMatchObject({
+    await expect(
+      db.pool.query(`UPDATE credit_notes SET reason='changed' WHERE id=$1`, [id]),
+    ).rejects.toMatchObject({
       code: SQLSTATE.restrictViolation,
     });
     await db.pool.query(`UPDATE credit_notes SET fiscal_status='PENDING' WHERE id=$1`, [id]); // M7 may do this
-    await expect(db.pool.query(`DELETE FROM credit_notes WHERE id=$1`, [id])).rejects.toMatchObject({
-      code: SQLSTATE.restrictViolation,
-    });
+    await expect(db.pool.query(`DELETE FROM credit_notes WHERE id=$1`, [id])).rejects.toMatchObject(
+      {
+        code: SQLSTATE.restrictViolation,
+      },
+    );
 
     const b2 = await seedBase(db.pool);
     await db.pool.query(
       `UPDATE shifts SET status='CLOSED', closed_at=now(), closed_by=$2, expected_cash_paisa=0, counted_cash_paisa=0 WHERE id=$1`,
       [b2.shiftId, b2.userId],
     );
-    await expect(note(bill, 10, b2.shiftId)).rejects.toMatchObject({ code: SQLSTATE.restrictViolation });
+    await expect(note(bill, 10, b2.shiftId)).rejects.toMatchObject({
+      code: SQLSTATE.restrictViolation,
+    });
   });
 });

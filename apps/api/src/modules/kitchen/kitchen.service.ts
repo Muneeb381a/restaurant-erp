@@ -64,7 +64,7 @@ async function printOnSend(q: Queryable, branchId: string): Promise<boolean> {
  * "Send to kitchen": ONE transaction that turns the order's NEW lines into one KOT per station,
  * marks them SENT, and queues a print job per station printer. Deal components go to the
  * stations of their own items. Nothing is half-sent: a line without a station aborts the whole
- * send (STATION_MISSING). Sending twice finds nothing new (NOTHING_TO_SEND).
+ * send. Sending twice finds nothing new (NOTHING_TO_SEND).
  */
 export function sendToKitchen(
   ctx: AppContext,
@@ -119,15 +119,20 @@ export function sendToKitchen(
       }
     }
 
+    // A dish nobody gave a station to must not block the sale or stay out of the kitchen: it goes to the
+    // default KITCHEN station (created on first use) and prints there. Giving the dish a real station in the
+    // menu sends it there from the next order on.
     const missing = printable.filter((l) => !l.station_id);
     if (missing.length) {
-      const names = [...new Set(missing.map((l) => l.name_snapshot))];
-      throw new AppError(
-        409,
-        'STATION_MISSING',
-        `These dishes have no kitchen station: ${names.join(', ')}. Open Admin, Menu, choose the dish and pick its station (Karahi, Grill, ...), then send again.`,
-        { items: names },
-      );
+      const fallback = await defaultStation(trx, a.branchId);
+      for (const l of missing) {
+        await trx
+          .updateTable('order_items')
+          .set({ station_id: fallback })
+          .where('id', '=', l.id)
+          .execute();
+        l.station_id = fallback;
+      }
     }
 
     const byStation = new Map<string, typeof printable>();
@@ -179,15 +184,16 @@ export function sendToKitchen(
         )
         .execute();
 
+      const kotLines = await toKotLines(trx, lines);
+      sections.push({
+        station: station.code,
+        stationId,
+        kotNo,
+        kotId: kot.id,
+        lines: kotLines,
+      });
       if (single) {
         // printed together after the loop: one ticket for the whole Send
-        sections.push({
-          station: station.code,
-          stationId,
-          kotNo,
-          kotId: kot.id,
-          lines: await toKotLines(trx, lines),
-        });
         sent.push({
           id: kot.id,
           kotNo,
@@ -207,6 +213,7 @@ export function sendToKitchen(
         orderType: info.orderType,
         tableCode: info.tableCode,
         waiter: info.waiter,
+        customer: info.customer,
         time: clockTime(now, info.timeZone),
         rush: !!input.rush,
         lines: await toKotLines(trx, lines),
@@ -250,6 +257,7 @@ export function sendToKitchen(
         orderType: info.orderType,
         tableCode: info.tableCode,
         waiter: info.waiter,
+        customer: info.customer,
         time: clockTime(now, info.timeZone),
         rush: !!input.rush,
         sections: sections.map((x) => ({ station: x.station, kotNo: x.kotNo, lines: x.lines })),
@@ -294,7 +302,22 @@ export function sendToKitchen(
         )
         .execute();
     await bumpVersion(trx, orderId);
-    return { order: await getOrderFull(trx, a.branchId, orderId), kots: sent, unprinted };
+    // when a ticket could not go to a printer, the whole Send comes back as one ticket so the screen can print it
+    // from the browser (a modal with a Print button): nothing is ever left unprinted without a way to print it
+    const ticket: CombinedKotDoc | null =
+      unprinted.length > 0
+        ? {
+            orderNo: info.orderNo,
+            orderType: info.orderType,
+            tableCode: info.tableCode,
+            waiter: info.waiter,
+            customer: info.customer,
+            time: clockTime(now, info.timeZone),
+            rush: !!input.rush,
+            sections: sections.map((x) => ({ station: x.station, kotNo: x.kotNo, lines: x.lines })),
+          }
+        : null;
+    return { order: await getOrderFull(trx, a.branchId, orderId), kots: sent, unprinted, ticket };
   });
 }
 
@@ -347,6 +370,7 @@ export function reprintKot(ctx: AppContext, a: Actor, kotId: string, reason: str
       orderType: info.orderType,
       tableCode: info.tableCode,
       waiter: info.waiter,
+      customer: info.customer,
       time: clockTime(now, info.timeZone),
       rush: kot.is_rush,
       reprint: reprintNo,
@@ -661,6 +685,7 @@ async function reprintCombined(
     orderType: info.orderType,
     tableCode: info.tableCode,
     waiter: info.waiter,
+    customer: info.customer,
     time: clockTime(now, info.timeZone),
     rush: kot.is_rush,
     reprint: reprintNo,
@@ -713,4 +738,22 @@ async function reprintCombined(
     reprint: reprintNo,
     printers: printers.length,
   };
+}
+
+/** The branch's default station for dishes that have none: created on first use, reused (and un-archived is not needed) after. */
+async function defaultStation(q: Queryable, branchId: string): Promise<string> {
+  const existing = await q
+    .selectFrom('stations')
+    .select('id')
+    .where('branch_id', '=', branchId)
+    .where('code', '=', 'KITCHEN')
+    .where('archived_at', 'is', null)
+    .executeTakeFirst();
+  if (existing) return existing.id;
+  const made = await q
+    .insertInto('stations')
+    .values({ branch_id: branchId, code: 'KITCHEN', name: 'Kitchen' })
+    .returning('id')
+    .executeTakeFirstOrThrow();
+  return made.id;
 }

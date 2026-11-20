@@ -23,7 +23,7 @@ describe('the token slip', () => {
   });
   it('shows the order type when there is no table, and carries no amounts', () => {
     const t = text({ ...doc, orderType: 'TAKEAWAY', tableCode: null });
-    expect(t).toContain('Takeaway');
+    expect(t).toContain(' TAKEAWAY ');
     expect(t).not.toMatch(/Rs |TOTAL/);
   });
   it('fits narrow paper: 5 digits at 4x width are 20 columns of 32', () => {
@@ -33,5 +33,20 @@ describe('the token slip', () => {
   it('has an Urdu bitmap version that prints', () => {
     const bytes = renderTokenSlipBitmap({ ...doc, restaurantUr: 'دیسی ڈیرہ' }, 80);
     expect(bytes.length).toBeGreaterThan(100);
+  });
+});
+
+describe('the token slip for takeaway and delivery', () => {
+  it('has the banner and the customer name and phone, but not the address', () => {
+    const t = text({
+      ...doc,
+      orderType: 'DELIVERY',
+      tableCode: null,
+      customer: { name: 'Ali Raza', phone: '0300-1234567', address: 'House 12' },
+    });
+    expect(t).toContain(' DELIVERY ');
+    expect(t).toContain('Name: Ali Raza');
+    expect(t).toContain('Phone: 0300-1234567');
+    expect(t).not.toContain('House 12');
   });
 });

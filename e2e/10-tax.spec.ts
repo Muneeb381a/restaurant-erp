@@ -89,10 +89,8 @@ test('the bill total follows how it is paid: 16 % for cash, 8 % for card', async
     await page.getByRole('button', { name: new RegExp(table) }).click();
     await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
     await expect(page.locator('aside')).toContainText('Rs 400');
-    await page.getByRole('button', { name: 'Send to kitchen' }).click();
-    await expect(
-      page.getByRole('status').filter({ hasText: 'Sent to the kitchen' }).first(),
-    ).toContainText('Sent to the kitchen');
+    await page.getByRole('button', { name: 'Print KOT' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'KOT' }).first()).toContainText('KOT');
     await page.getByRole('button', { name: /^Bill/ }).click();
     await expect(page).toHaveURL(/\/pay$/);
   };

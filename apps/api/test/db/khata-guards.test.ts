@@ -22,7 +22,8 @@ afterAll(async () => {
 });
 
 async function account(limit: number, active = true): Promise<string> {
-  const c = (await db.pool.query(`INSERT INTO customers(name) VALUES ('Haji') RETURNING id`)).rows[0].id;
+  const c = (await db.pool.query(`INSERT INTO customers(name) VALUES ('Haji') RETURNING id`))
+    .rows[0].id;
   return (
     await db.pool.query(
       `INSERT INTO khata_accounts(branch_id,customer_id,credit_limit_paisa,is_active) VALUES ($1,$2,$3,$4) RETURNING id`,
@@ -128,10 +129,16 @@ describe('ledger shape and history', () => {
     await expect(ins('kind,amount_paisa', ['ADJUST_UP', 10])).rejects.toMatchObject({
       code: SQLSTATE.checkViolation,
     });
-    await expect(ins('kind,amount_paisa,note', ['ADJUST_SIDEWAYS', 10, 'x'])).rejects.toMatchObject({
-      code: SQLSTATE.checkViolation,
-    });
-    await ins('kind,amount_paisa,note', ['ADJUST_UP', 10, 'opening balance from the old ledger book']);
+    await expect(ins('kind,amount_paisa,note', ['ADJUST_SIDEWAYS', 10, 'x'])).rejects.toMatchObject(
+      {
+        code: SQLSTATE.checkViolation,
+      },
+    );
+    await ins('kind,amount_paisa,note', [
+      'ADJUST_UP',
+      10,
+      'opening balance from the old ledger book',
+    ]);
     expect(await balance(a)).toBe(10);
   });
 
@@ -147,7 +154,9 @@ describe('ledger shape and history', () => {
     const e = (
       await db.pool.query(`SELECT bill_id, payment_id FROM khata_entries WHERE account_id=$1`, [a])
     ).rows[0];
-    await expect(db.pool.query(chargeSql, [a, 1, e.bill_id, e.payment_id, b.userId])).rejects.toMatchObject({
+    await expect(
+      db.pool.query(chargeSql, [a, 1, e.bill_id, e.payment_id, b.userId]),
+    ).rejects.toMatchObject({
       code: SQLSTATE.uniqueViolation,
     });
   });
@@ -161,6 +170,8 @@ describe('ledger shape and history', () => {
         [a, b.methodCashId, b.shiftId, b.userId, k],
       );
     await withKey('same-key-0001');
-    await expect(withKey('same-key-0001')).rejects.toMatchObject({ code: SQLSTATE.uniqueViolation });
+    await expect(withKey('same-key-0001')).rejects.toMatchObject({
+      code: SQLSTATE.uniqueViolation,
+    });
   });
 });

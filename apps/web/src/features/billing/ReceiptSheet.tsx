@@ -80,8 +80,16 @@ export function ReceiptSheet({
       <div className="rc-token">
         {ur ? 'ٹوکن' : 'TOKEN'} {doc.orderNo}
       </div>
+      {doc.orderType !== 'DINE_IN' && (
+        <div className="rc-banner">{doc.orderType === 'DELIVERY' ? 'DELIVERY' : 'TAKEAWAY'}</div>
+      )}
       <Row left={`Bill #${doc.billNo}`} right={doc.dateTime} />
       <Row left={`${TYPE[doc.orderType]}${doc.tableCode ? ` · ${doc.tableCode}` : ''}`} right="" />
+      {doc.customer?.name && <div className="rc-small">Name: {doc.customer.name}</div>}
+      {doc.customer?.phone && <div className="rc-small">Phone: {doc.customer.phone}</div>}
+      {doc.orderType === 'DELIVERY' && doc.customer?.address && (
+        <div className="rc-small">Address: {doc.customer.address}</div>
+      )}
       {(doc.cashier || doc.waiter) && (
         <div className="rc-small">
           {doc.cashier ? `Cashier: ${doc.cashier}` : ''}

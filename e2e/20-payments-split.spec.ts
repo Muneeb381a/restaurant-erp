@@ -34,7 +34,7 @@ test('a cashier gives a rupee discount with a one-tap reason, then splits the bi
   await page.getByRole('button', { name: 'New takeaway' }).click();
   await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
   await expect(page.locator('aside')).toContainText('Rs 360');
-  await page.getByRole('button', { name: 'Send to kitchen' }).click();
+  await page.getByRole('button', { name: 'Print KOT' }).click();
   await expect(page.locator('aside')).toContainText('In kitchen');
   await page.getByRole('button', { name: /^Bill/ }).click();
   await expect(page).toHaveURL(/\/pay$/);

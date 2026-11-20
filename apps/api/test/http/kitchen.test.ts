@@ -243,31 +243,42 @@ describe('send to kitchen', () => {
     ).toEqual([true, false]);
   });
 
-  it('is atomic: an item without a station aborts the whole send', async () => {
+  it('a dish without a station does not block the send: it prints under the default KITCHEN station', async () => {
     const o = await newOrder();
     await add(o.id, tikka);
     await add(o.id, noStation);
-    const kotsBefore = (await t.kdb.selectFrom('kots').select('id').execute()).length;
-    const jobsBefore = (await jobs()).length;
     const res = await send(o.id);
-    expect(res.status).toBe(409);
-    expect(res.body).toMatchObject({ code: 'STATION_MISSING', items: ['Mystery Dish'] });
-    expect((await t.kdb.selectFrom('kots').select('id').execute()).length).toBe(kotsBefore);
-    expect((await jobs()).length).toBe(jobsBefore);
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body.kots.map((k: Json) => k.station)).toEqual(['BBQ', 'KITCHEN']);
+    // KITCHEN has no printer in this test: it is reported, and the whole Send comes back as one ticket the
+    // screen can print from the browser
+    expect(res.body.unprinted).toEqual(['KITCHEN']);
+    expect(res.body.ticket.sections.map((x: Json) => x.station)).toEqual(['BBQ', 'KITCHEN']);
+    expect(res.body.ticket.sections[1].lines[0].name).toBe('Mystery Dish');
+    const stations = await t.kdb
+      .selectFrom('stations')
+      .select('code')
+      .where('code', '=', 'KITCHEN')
+      .execute();
+    expect(stations).toHaveLength(1); // created once, reused
     expect(
-      (await api(captain).get(`/orders/${o.id}`)).body.items.every((i: Json) => i.status === 'NEW'),
+      (await api(captain).get(`/orders/${o.id}`)).body.items.every(
+        (i: Json) => i.status === 'SENT',
+      ),
     ).toBe(true);
+    // a second order with such a dish reuses the same station
+    const o2 = await newOrder();
+    await add(o2.id, noStation);
+    expect((await send(o2.id)).body.kots.map((k: Json) => k.station)).toEqual(['KITCHEN']);
+    expect(
+      await t.kdb.selectFrom('stations').select('id').where('code', '=', 'KITCHEN').execute(),
+    ).toHaveLength(1);
   });
 
-  it('a dish given its station AFTER it was added to the order is sent to that station (no stale snapshot)', async () => {
+  it('a dish given its station AFTER it was added to the order is sent to that station, not to KITCHEN', async () => {
     const late = await mkItem({ name: 'Late Station Karahi' }); // no station yet
     const o = await newOrder();
     await add(o.id, late);
-    const first = await send(o.id);
-    expect(first.status).toBe(409);
-    expect(first.body.code).toBe('STATION_MISSING');
-    expect(first.body.items).toEqual(['Late Station Karahi']);
-    expect(first.body.title).toContain('Admin, Menu');
     // the owner fixes the menu; the order line was added before, but sending looks the dish up again
     const fix = await api(owner).patch(`/items/${late.id}`, { stationId: S.BBQ });
     expect(fix.status, JSON.stringify(fix.body)).toBe(200);
