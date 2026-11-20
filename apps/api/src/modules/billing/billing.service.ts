@@ -12,7 +12,13 @@ import {
   type TaxClass,
   type TaxResult,
 } from '@erp/domain';
-import { renderReceipt, renderReceiptBitmap, type ReceiptDoc } from '@erp/printing';
+import {
+  renderReceipt,
+  renderReceiptBitmap,
+  renderTokenSlip,
+  renderTokenSlipBitmap,
+  type ReceiptDoc,
+} from '@erp/printing';
 import type { AppContext } from '../../http/context';
 import { AppError } from '../../http/errors';
 import { withTx, type Queryable } from '../../shared/tx';
@@ -1371,5 +1377,75 @@ export function printBillForOrder(
       created,
       ...printed,
     };
+  });
+}
+
+// ─────────────────────────────── the token slip ───────────────────────────────
+
+/**
+ * A separate small slip with the order's token, huge: handed to the customer so the counter finds the order again
+ * when they come to pay. It goes to the counter's receipt printer(s), can be printed any number of times while the
+ * order is open or billed, and carries no amounts.
+ */
+export function printTokenSlip(ctx: AppContext, a: Actor, orderId: string, key: string) {
+  return withTx(ctx.db, async (trx) => {
+    const order = await trx
+      .selectFrom('orders')
+      .leftJoin('dining_tables', 'dining_tables.id', 'orders.table_id')
+      .select([
+        'orders.id as id',
+        'orders.order_no as order_no',
+        'orders.type as type',
+        'orders.status as status',
+        'dining_tables.code as table_code',
+      ])
+      .where('orders.id', '=', orderId)
+      .where('orders.branch_id', '=', a.branchId)
+      .executeTakeFirst();
+    if (!order) throw new AppError(404, 'NOT_FOUND', 'order not found');
+    if (order.status !== 'OPEN' && order.status !== 'BILLED')
+      throw new AppError(
+        409,
+        'ORDER_NOT_EDITABLE',
+        'This order is closed: there is no token to hand out',
+      );
+    const now = ctx.clock.now();
+    const branch = await trx
+      .selectFrom('branches')
+      .select(['name', 'name_ur', 'timezone'])
+      .where('id', '=', a.branchId)
+      .executeTakeFirstOrThrow();
+    const lang = await trx
+      .selectFrom('settings')
+      .select('value')
+      .where('branch_id', '=', a.branchId)
+      .where('key', '=', 'receipt.language')
+      .executeTakeFirst();
+    const doc = {
+      restaurant: branch.name,
+      restaurantUr: branch.name_ur,
+      orderNo: order.order_no,
+      orderType: order.type as 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY',
+      tableCode: order.table_code,
+      dateTime: `${new Intl.DateTimeFormat('en-GB', { timeZone: branch.timezone, day: '2-digit', month: '2-digit', year: 'numeric' }).format(now)} ${clockTime(now, branch.timezone)}`,
+    };
+    const printers = await receiptPrinters(trx, a.branchId, now);
+    for (const p of printers)
+      await enqueuePrintJob(trx, {
+        branchId: a.branchId,
+        printerId: p.id,
+        kind: 'RECEIPT',
+        refType: 'order',
+        refId: orderId,
+        title: `Token ${order.order_no}`,
+        payload:
+          lang?.value === 'ur'
+            ? renderTokenSlipBitmap(doc, p.paper_mm as 58 | 80)
+            : renderTokenSlip(doc, p.paper_mm as 58 | 80),
+        idempotencyKey: `token:${orderId}:${key}:${p.id}`,
+        createdBy: a.userId,
+        at: now,
+      });
+    return { token: order.order_no, printers: printers.length };
   });
 }

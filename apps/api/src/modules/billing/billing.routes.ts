@@ -17,6 +17,7 @@ import {
   browserReceipt,
   printBillForOrder,
   printPreBill,
+  printTokenSlip,
   reprintBill,
   settleBill,
   voidBill,
@@ -138,6 +139,23 @@ export function billingRouter(ctx: AppContext): Router {
         dryRun ? null : key!,
       );
       res.status(dryRun || out.replayed ? 200 : 201).json(out);
+    }),
+  );
+  r.post(
+    '/orders/:id/print-token',
+    ...read,
+    requirePermission(ctx, 'order.create'),
+    asyncHandler(async (req, res) => {
+      const k = req.header('idempotency-key');
+      if (!k || !/^[A-Za-z0-9._:-]{8,80}$/.test(k))
+        throw new AppError(
+          400,
+          'VALIDATION_FAILED',
+          'Send an Idempotency-Key header (8–80 characters: letters, digits, . _ : -)',
+        );
+      res
+        .status(201)
+        .json(await printTokenSlip(ctx, await actor(req), idParam.parse(req.params).id, k));
     }),
   );
   r.post(

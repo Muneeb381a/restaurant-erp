@@ -455,7 +455,8 @@
       "title": "Order steps",
       "add": "Add items",
       "send": "Send to kitchen",
-      "bill": "Bill & pay"
+      "bill": "Bill & pay",
+      "printKot": "Print KOT"
     },
     "stateOpen": "Taking the order",
     "stateBilled": "Bill ready: collect payment",
@@ -481,7 +482,14 @@
     "token": "Token",
     "printBill": "Print bill",
     "billPrinted": "Bill printed · Token {{token}}. The table stays taken until it is paid.",
-    "sentOkPrinted": "Sent to the kitchen: {{stations}} · Token {{token}} · ticket printed"
+    "sentOkPrinted": "Sent to the kitchen: {{stations}} · Token {{token}} · ticket printed",
+    "printKot": "Print KOT",
+    "printToken": "Print token",
+    "tokenPrinted": "Token {{token}} printed",
+    "noTokenPrinter": "No printer is connected: the token could not be printed.",
+    "helperUnsentCounter": "{{count}} new item(s): press Print KOT to print the kitchen ticket.",
+    "sentKotPrinted": "KOT printed: {{stations}} · Token {{token}}",
+    "searchResults": "Search results"
   },
   "bill": {
     "bill": "Bill",

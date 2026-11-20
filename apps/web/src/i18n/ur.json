@@ -455,7 +455,8 @@
       "title": "آرڈر کے مراحل",
       "add": "آئٹم ڈالیں",
       "send": "کچن بھیجیں",
-      "bill": "بل اور ادائیگی"
+      "bill": "بل اور ادائیگی",
+      "printKot": "KOT پرنٹ کریں"
     },
     "stateOpen": "آرڈر لیا جا رہا ہے",
     "stateBilled": "بل تیار: رقم وصول کریں",
@@ -481,7 +482,14 @@
     "token": "ٹوکن",
     "printBill": "بل پرنٹ کریں",
     "billPrinted": "بل پرنٹ ہو گیا · ٹوکن {{token}}۔ ادائیگی تک ٹیبل مصروف رہے گی۔",
-    "sentOkPrinted": "کچن بھیج دیا: {{stations}} · ٹوکن {{token}} · پرچی پرنٹ ہو گئی"
+    "sentOkPrinted": "کچن بھیج دیا: {{stations}} · ٹوکن {{token}} · پرچی پرنٹ ہو گئی",
+    "printKot": "KOT پرنٹ کریں",
+    "printToken": "ٹوکن پرنٹ کریں",
+    "tokenPrinted": "ٹوکن {{token}} پرنٹ ہو گیا",
+    "noTokenPrinter": "کوئی پرنٹر جڑا ہوا نہیں: ٹوکن پرنٹ نہیں ہو سکا۔",
+    "helperUnsentCounter": "{{count}} نئی چیزیں: کچن کی پرچی کے لیے KOT پرنٹ کریں دبائیں۔",
+    "sentKotPrinted": "KOT پرنٹ ہو گیا: {{stations}} · ٹوکن {{token}}",
+    "searchResults": "تلاش کے نتائج"
   },
   "bill": {
     "bill": "بل",

@@ -28,3 +28,9 @@ Most restaurants give the bill first and take the money afterwards. The sequence
 5. A customer who adds something after the bill is printed: open the table's pay screen and void the bill with a reason (existing, audited); the order opens again.
 
 **Hiding the Kitchen screen**: `kitchen.screen_enabled` (default on). Off removes the Kitchen link, stops the board polling, and sends `/kitchen` back to the tables; Send to kitchen only prints. The "One printer at the counter" preset now switches on all three: single combined ticket, bill before payment (no auto receipt), Kitchen screen hidden.
+
+## Addendum 2: "Print KOT" and a separate "Print token"
+In counter mode (the Kitchen screen is switched off) the order screen no longer says "Send to kitchen": the button is **Print KOT** (it still sends the items and prints the ticket) and next to it, **Print token** prints a separate small slip: the restaurant, `TOKEN` and the number in the biggest type, the table or order type, the date and time, "Keep this slip. Show it when you pay." No amounts, so it is not a bill.
+- `POST /orders/:id/print-token` (permission `order.create`, `Idempotency-Key` required): to the counter's receipt printer(s); allowed while the order is OPEN or BILLED, as often as needed; the same key prints once; with no thermal printer it returns `printers: 0` and the screen says so.
+- The KOT keeps the token on top too: the kitchen needs it as much as the customer.
+- Outside counter mode the screens and wording are unchanged ("Send to kitchen").

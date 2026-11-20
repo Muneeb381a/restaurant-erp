@@ -4,7 +4,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
-import { ItemPhoto } from '../../components/ItemPhoto';
+import { CategoryTabs, ItemCard, hueAt, type CategoryTile } from './MenuParts';
 import { Modal } from '../../components/Modal';
 import { toast } from '../../components/Toast';
 import { localName } from '../../i18n';
@@ -26,19 +26,6 @@ const PRICE_LIST: Record<Order['type'], string> = {
 };
 
 const POPULAR = '__popular';
-
-/** Each main category gets its own accent colour, in menu order (the name is always shown too: colour is never the only signal). */
-const HUES = [
-  { edge: 'border-s-emerald-500', dot: 'bg-emerald-500' },
-  { edge: 'border-s-orange-500', dot: 'bg-orange-500' },
-  { edge: 'border-s-sky-500', dot: 'bg-sky-500' },
-  { edge: 'border-s-violet-500', dot: 'bg-violet-500' },
-  { edge: 'border-s-rose-500', dot: 'bg-rose-500' },
-  { edge: 'border-s-teal-500', dot: 'bg-teal-500' },
-  { edge: 'border-s-pink-500', dot: 'bg-pink-500' },
-  { edge: 'border-s-amber-500', dot: 'bg-amber-500' },
-] as const;
-const hueAt = (n: number): (typeof HUES)[number] => HUES[n % HUES.length]!;
 
 const needsSheet = (i: MenuItem): boolean =>
   i.kind !== 'STANDARD' || i.variants.length > 1 || i.modifierGroups.length > 0;
@@ -203,7 +190,10 @@ export function OrderPage() {
       const printed = out.kots.some((k) => k.printers > 0);
       toast(
         printed
-          ? t('order.sentOkPrinted', { stations, token: out.order.orderNo })
+          ? t(kitchenScreen ? 'order.sentOkPrinted' : 'order.sentKotPrinted', {
+              stations,
+              token: out.order.orderNo,
+            })
           : t('order.sentOk', { stations }),
       );
       // in the cloud the kitchen works from its screen, so "no printer" is not a problem to report;
@@ -250,6 +240,24 @@ export function OrderPage() {
       else onError(e);
     },
   });
+  // "counter mode" (the Kitchen screen is switched off): the printed ticket IS the kitchen, so the button says what it
+  // does (Print KOT) and a separate "Print token" slip is offered for the customer
+  const counterMode = !kitchenScreen;
+  const printToken = useMutation({
+    mutationFn: () =>
+      api<{ token: number; printers: number }>(`/orders/${id}/print-token`, {
+        method: 'POST',
+        body: {},
+        headers: { 'idempotency-key': `ui-${crypto.randomUUID()}` },
+      }),
+    onSuccess: (out) =>
+      toast(
+        out.printers > 0
+          ? t('order.tokenPrinted', { token: out.token })
+          : t('order.noTokenPrinter'),
+      ),
+    onError,
+  });
   const makeBill = useMutation({
     mutationFn: () =>
       api<{ id: string }>(`/orders/${id}/bill`, {
@@ -285,6 +293,25 @@ export function OrderPage() {
     }
     return cur;
   };
+  // the category rail: each main category with its dish count and a photo of one of its dishes
+  const itemsByTop = new Map<string, MenuItem[]>();
+  for (const it of menu.data?.items ?? []) {
+    const top = topOf(it.categoryId);
+    if (top) itemsByTop.set(top, [...(itemsByTop.get(top) ?? []), it]);
+  }
+  const categoryTiles: CategoryTile[] = topCategories.map((c, n) => {
+    const mine = itemsByTop.get(c.id) ?? [];
+    const cover = mine.find((i) => i.imageVer);
+    return {
+      id: c.id,
+      name: localName(lang, c.name, c.nameUr),
+      count: mine.length,
+      hue: hueAt(n),
+      cover: cover ? { itemId: cover.id, ver: cover.imageVer! } : null,
+    };
+  });
+  // photo cards only when the restaurant has photos: without any, compact cards show more dishes at once
+  const hasPhotos = (menu.data?.items ?? []).some((i) => !!i.imageVer);
   // only dishes that are on today's menu count; a short or empty list is not worth a tab
   const onMenu = new Set((menu.data?.items ?? []).map((i) => i.id));
   const popularIds = (popular.data?.items ?? [])
@@ -302,6 +329,9 @@ export function OrderPage() {
       }
       return false;
     };
+    // a search looks through the whole menu: nobody should have to guess which category a dish is in
+    if (search.trim())
+      return items.filter((i) => matchesQuery([i.name, i.nameUr, i.searchTerms, i.code], search));
     if (category === POPULAR) {
       const rank = new Map(popularIds.map((id, k) => [id, k]));
       return items.filter((i) => rank.has(i.id)).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
@@ -390,7 +420,10 @@ export function OrderPage() {
   else if (o.status === 'SETTLED') helper = t('order.helperSettled');
   else if (pending.length > 0) helper = t('offline.pendingHelp');
   else if (liveLines.length === 0) helper = t('order.helperEmpty');
-  else if (unsentCount > 0) helper = t('order.helperUnsent', { count: unsentCount });
+  else if (unsentCount > 0)
+    helper = t(counterMode ? 'order.helperUnsentCounter' : 'order.helperUnsent', {
+      count: unsentCount,
+    });
   else helper = t('order.helperSent');
 
   return (
@@ -420,154 +453,116 @@ export function OrderPage() {
             />
           </div>
         </div>
-        <div
-          className="flex gap-1.5 overflow-x-auto px-3 pb-2"
-          role="tablist"
-          aria-label={t('order.categories')}
-        >
-          <button
-            role="tab"
-            aria-selected={category === null}
-            className="seg-item shrink-0 whitespace-nowrap border border-slate-300 bg-white"
-            onClick={() => setCategory(null)}
-          >
-            {t('common.all')}
-          </button>
-          {popularIds.length >= 3 && (
-            <button
-              role="tab"
-              aria-selected={category === POPULAR}
-              className="seg-item shrink-0 whitespace-nowrap border border-amber-400 bg-amber-50 text-amber-900"
-              onClick={() => setCategory(POPULAR)}
-            >
-              {t('order.popular')}
-            </button>
-          )}
-          {topCategories.map((c, n) => (
-            <button
-              key={c.id}
-              role="tab"
-              aria-selected={activeTop === c.id}
-              className="seg-item shrink-0 whitespace-nowrap border border-slate-300 bg-white"
-              onClick={() => setCategory(c.id)}
-            >
-              <span
-                aria-hidden="true"
-                className={`me-2 inline-block size-2 rounded-full ${hueAt(n).dot}`}
-              />
-              {localName(lang, c.name, c.nameUr)}
-            </button>
-          ))}
-        </div>
-        {subTabs.length > 0 && (
-          <div
-            className="flex gap-1.5 overflow-x-auto px-3 pb-2 ps-6"
-            role="tablist"
-            aria-label={t('admin.menuPage.subCategory')}
-          >
-            <button
-              role="tab"
-              aria-selected={category === activeTop}
-              className="seg-item shrink-0 whitespace-nowrap border border-slate-200 bg-slate-100 text-sm"
-              onClick={() => setCategory(activeTop)}
-            >
-              {t('common.all')}
-            </button>
-            {subTabs.map((c) => (
-              <button
-                key={c.id}
-                role="tab"
-                aria-selected={category === c.id}
-                className="seg-item shrink-0 whitespace-nowrap border border-slate-200 bg-slate-100 text-sm"
-                onClick={() => setCategory(c.id)}
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+          <CategoryTabs
+            tiles={categoryTiles}
+            active={category === POPULAR ? POPULAR : activeTop}
+            popular={{ count: popularIds.length, key: POPULAR }}
+            labels={{
+              all: t('common.all'),
+              popular: t('order.popular'),
+              aria: t('order.categories'),
+            }}
+            allCount={(menu.data?.items ?? []).length}
+            onSelect={(id) => setCategory(id)}
+          />
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="flex items-baseline gap-2 px-3 pb-1 pt-1 md:pt-3">
+              <h2 className="truncate text-xl font-bold">
+                {search.trim()
+                  ? t('order.searchResults')
+                  : category === POPULAR
+                    ? t('order.popular')
+                    : category === null
+                      ? t('common.all')
+                      : localName(
+                          lang,
+                          (menu.data?.categories ?? []).find((c) => c.id === category)?.name ?? '',
+                          (menu.data?.categories ?? []).find((c) => c.id === category)?.nameUr ??
+                            null,
+                        )}
+              </h2>
+              <span className="shrink-0 text-sm text-slate-500">
+                {t('floor.items', { count: visibleItems.length })}
+              </span>
+            </div>
+            {subTabs.length > 0 && !search.trim() && (
+              <div
+                className="flex gap-1.5 overflow-x-auto px-3 pb-2"
+                role="tablist"
+                aria-label={t('admin.menuPage.subCategory')}
               >
-                {localName(lang, c.name, c.nameUr)}
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="grid min-h-0 flex-1 grid-cols-2 content-start gap-2 overflow-auto p-3 pt-1 sm:grid-cols-3 lg:grid-cols-4">
-          {visibleItems.length === 0 && (
-            <p className="col-span-full p-6 text-center text-slate-600">{t('order.noMatch')}</p>
-          )}
-          {visibleItems.map((item) => {
-            const inCart = unsent
-              .filter((l) => l.itemId === item.id)
-              .reduce((n, l) => n + l.qty, 0);
-            // a plain dish already in the cart gets a − 2 + stepper right on its tile, like a shopping app
-            const plainLine = needsSheet(item)
-              ? undefined
-              : unsent.find(
-                  (l) =>
-                    l.itemId === item.id &&
-                    l.variantId === item.variants[0]!.id &&
-                    !l.weightG &&
-                    l.modifiers.length === 0 &&
-                    !l.note,
-                );
-            return (
-              <div key={item.id} className="relative flex">
                 <button
-                  disabled={!item.available || !editable}
-                  onClick={() => pick(item)}
-                  className={`card relative flex min-h-24 w-full flex-col items-start justify-between overflow-hidden p-3 text-start transition-colors border-s-4 ${hueAt(hueIndex.get(topOf(item.categoryId) ?? '') ?? 0).edge} hover:shadow-md active:bg-slate-50 disabled:opacity-40 ${plainLine && editable ? 'pb-16' : ''}`}
+                  role="tab"
+                  aria-selected={category === activeTop}
+                  className="seg-item shrink-0 whitespace-nowrap border border-slate-200 bg-white text-sm"
+                  onClick={() => setCategory(activeTop)}
                 >
-                  {item.imageVer ? (
-                    <ItemPhoto
-                      itemId={item.id}
-                      version={item.imageVer}
-                      className="-mx-3 -mt-3 mb-2 h-24 w-[calc(100%+1.5rem)] shrink-0"
-                    />
-                  ) : null}
-                  <span className="font-semibold leading-snug">
-                    {localName(lang, item.name, item.nameUr)}
-                  </span>
-                  <span className="money text-sm text-slate-700">
-                    {item.available
-                      ? item.variants.length > 1
-                        ? ltr(`${formatRs(Math.min(...item.variants.map((v) => v.pricePaisa)))}+`)
-                        : ltr(
-                            formatRs(item.variants[0]!.pricePaisa) +
-                              (item.kind === 'WEIGHT' ? '/kg' : ''),
-                          )
-                      : t('order.soldOut')}
-                  </span>
-                  {inCart > 0 && !plainLine && (
-                    <span className="absolute end-2 top-2 flex size-6 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">
-                      {inCart}
-                    </span>
-                  )}
+                  {t('common.all')}
                 </button>
-                {plainLine && editable && (
-                  <div className="absolute bottom-1.5 end-1.5 inline-flex items-center rounded-lg border border-emerald-600 bg-white shadow-sm">
-                    <button
-                      className="btn-quiet min-w-touch px-0 text-emerald-800"
-                      aria-label={`${t('order.removeOne')} ${item.name}`}
-                      disabled={changeQty.isPending || voidLine.isPending}
-                      onClick={() =>
-                        plainLine.qty <= 1
-                          ? voidLine.mutate({ line: plainLine })
-                          : changeQty.mutate({ line: plainLine, qty: plainLine.qty - 1 })
-                      }
-                    >
-                      <Icon name="minus" size={18} />
-                    </button>
-                    <span className="money w-7 text-center font-bold text-emerald-900">
-                      {plainLine.qty}
-                    </span>
-                    <button
-                      className="btn-quiet min-w-touch px-0 text-emerald-800"
-                      aria-label={`${t('order.addOne')} ${item.name}`}
-                      disabled={changeQty.isPending}
-                      onClick={() => changeQty.mutate({ line: plainLine, qty: plainLine.qty + 1 })}
-                    >
-                      <Icon name="plus" size={18} />
-                    </button>
-                  </div>
-                )}
+                {subTabs.map((c) => (
+                  <button
+                    key={c.id}
+                    role="tab"
+                    aria-selected={category === c.id}
+                    className="seg-item shrink-0 whitespace-nowrap border border-slate-200 bg-white text-sm"
+                    onClick={() => setCategory(c.id)}
+                  >
+                    {localName(lang, c.name, c.nameUr)}
+                  </button>
+                ))}
               </div>
-            );
-          })}
+            )}
+            <div className="grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(8.25rem,1fr))] content-start gap-2.5 overflow-auto p-3 pt-1">
+              {visibleItems.length === 0 && (
+                <p className="col-span-full p-6 text-center text-slate-600">{t('order.noMatch')}</p>
+              )}
+              {visibleItems.map((item) => {
+                const inCart = unsent
+                  .filter((l) => l.itemId === item.id)
+                  .reduce((n, l) => n + l.qty, 0);
+                // a plain dish already in the cart gets a − 2 + stepper right on its card, like a shopping app
+                const plainLine = needsSheet(item)
+                  ? undefined
+                  : unsent.find(
+                      (l) =>
+                        l.itemId === item.id &&
+                        l.variantId === item.variants[0]!.id &&
+                        !l.weightG &&
+                        l.modifiers.length === 0 &&
+                        !l.note,
+                    );
+                return (
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                    lang={lang}
+                    hue={hueAt(hueIndex.get(topOf(item.categoryId) ?? '') ?? 0)}
+                    showPhoto={hasPhotos}
+                    editable={editable}
+                    inCart={inCart}
+                    plainLine={plainLine}
+                    busy={changeQty.isPending || voidLine.isPending}
+                    labels={{
+                      soldOut: t('order.soldOut'),
+                      removeOne: t('order.removeOne'),
+                      addOne: t('order.addOne'),
+                    }}
+                    onPick={() => pick(item)}
+                    onMinus={() =>
+                      plainLine &&
+                      (plainLine.qty <= 1
+                        ? voidLine.mutate({ line: plainLine })
+                        : changeQty.mutate({ line: plainLine, qty: plainLine.qty - 1 }))
+                    }
+                    onPlus={() =>
+                      plainLine && changeQty.mutate({ line: plainLine, qty: plainLine.qty + 1 })
+                    }
+                  />
+                );
+              })}
+            </div>
+          </div>
         </div>
         {liveLines.length > 0 && (
           <div className="border-t border-slate-300 bg-white p-2 md:hidden">
@@ -678,7 +673,9 @@ export function OrderPage() {
                       >
                         {state === 'done' ? <Icon name="check" size={12} /> : n + 1}
                       </span>
-                      {t(`order.steps.${k}`)}
+                      {k === 'send' && counterMode
+                        ? t('order.steps.printKot')
+                        : t(`order.steps.${k}`)}
                     </li>
                   </Fragment>
                 );
@@ -903,12 +900,22 @@ export function OrderPage() {
                   <Icon name="flame" size={18} />
                   {t('order.rush')}
                 </button>
+                {counterMode && (
+                  <button
+                    className="btn-secondary btn-lg flex-1"
+                    disabled={printToken.isPending}
+                    onClick={() => printToken.mutate()}
+                  >
+                    <Icon name="printer" size={20} />
+                    {t('order.printToken')}
+                  </button>
+                )}
                 <button
                   className="btn-send btn-lg flex-1"
                   disabled={send.isPending}
                   onClick={() => send.mutate()}
                 >
-                  {t('order.send')}
+                  {counterMode ? t('order.printKot') : t('order.send')}
                 </button>
               </div>
             )}
@@ -919,6 +926,16 @@ export function OrderPage() {
             liveLines.length > 0 &&
             can(me.data, 'bill.create') && (
               <div className="flex flex-wrap gap-2">
+                {counterMode && (
+                  <button
+                    className="btn-secondary w-full"
+                    disabled={printToken.isPending}
+                    onClick={() => printToken.mutate()}
+                  >
+                    <Icon name="printer" size={18} />
+                    {t('order.printToken')}
+                  </button>
+                )}
                 <button
                   className={`btn-lg ${o.type === 'DINE_IN' ? 'btn-secondary' : 'btn-bill flex-1'}`}
                   disabled={makeBill.isPending || printBill.isPending}

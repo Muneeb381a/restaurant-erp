@@ -121,10 +121,26 @@ test('an order prints ONE ticket with the token; the bill is printed before paym
   await page.getByRole('button', { name: /^Chicken Karahi/ }).click(); // station KARAHI
   await page.getByRole('button', { name: /Full.*Rs 2,400/ }).click();
   await page.getByRole('button', { name: /^Add/ }).click();
-  await page.getByRole('button', { name: 'Send to kitchen' }).click();
+  // counter mode: no "Send to kitchen" button; a KOT button and a separate token button instead
+  await expect(page.getByRole('button', { name: 'Send to kitchen' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Print token' }).click();
   await expect(
-    page.getByRole('status').filter({ hasText: 'ticket printed' }).first(),
+    page
+      .getByRole('status')
+      .filter({ hasText: /Token \d+ printed/ })
+      .first(),
   ).toBeVisible();
+  await expect
+    .poll(
+      () => received.some((r) => r.includes('Show it when you pay.') && r.includes(String(token))),
+      {
+        timeout: 20_000,
+      },
+    )
+    .toBe(true);
+
+  await page.getByRole('button', { name: 'Print KOT' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'KOT printed' }).first()).toBeVisible();
 
   // ONE ticket for both stations, the token on top
   await expect
@@ -185,10 +201,10 @@ test('a table: send prints the ticket, one tap on the table prints the bill, pay
   await page.getByRole('button', { name: /T2/ }).click();
   await expect(page).toHaveURL(/\/order\//);
   await page.getByRole('button', { name: /^Chicken Tikka \(Leg\)/ }).click();
-  await page.getByRole('button', { name: 'Send to kitchen' }).click();
-  await expect(
-    page.getByRole('status').filter({ hasText: 'ticket printed' }).first(),
-  ).toContainText('Token');
+  await page.getByRole('button', { name: 'Print KOT' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'KOT printed' }).first()).toContainText(
+    'Token',
+  );
   const afterSend = received.length;
 
   // back on the floor: ONE tap on the table's "Print bill" prints it for the customer

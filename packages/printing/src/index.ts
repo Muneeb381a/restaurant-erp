@@ -5,3 +5,4 @@ export * from './test-page';
 export * from './report';
 export * from './bitmap';
 export * from './receipt-ur';
+export * from './token';

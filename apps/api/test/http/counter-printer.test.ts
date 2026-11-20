@@ -434,3 +434,74 @@ describe('"print the bill for this table" in one tap, pay later, the table frees
     await setting('kitchen.screen_enabled', true);
   });
 });
+
+describe('the token slip: a separate small print, handed to the customer', () => {
+  it('prints a small slip with the token huge, apart from the kitchen ticket; no amounts; as often as needed', async () => {
+    await setting('kot.single_ticket', false);
+    const o = await order('TAKEAWAY', [['Naan', 2]]);
+    sim.jobs.length = 0;
+    const res = await api(captain)
+      .post(`/orders/${o.id}/print-token`)
+      .set('Idempotency-Key', key());
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body).toEqual({ token: o.orderNo, printers: 1 });
+    await run();
+    // count only THIS order's token slips (earlier tests may still have papers queued behind it)
+    const slips = (): string[] =>
+      received().filter(
+        (x) => x.includes('Show it when you pay.') && x.includes(`<SIZE:4x4>${o.orderNo}`),
+      );
+    expect(slips()).toHaveLength(1);
+    expect(slips()[0]).toContain('Takeaway');
+    expect(slips()[0]).not.toContain('Naan');
+    expect(slips()[0]).not.toMatch(/Rs |TOTAL/);
+    // the same key twice prints once; a new press prints again
+    const k = key();
+    await api(captain).post(`/orders/${o.id}/print-token`).set('Idempotency-Key', k);
+    await api(captain).post(`/orders/${o.id}/print-token`).set('Idempotency-Key', k);
+    await run();
+    expect(slips()).toHaveLength(2);
+    expect((await api(captain).post(`/orders/${o.id}/print-token`)).status).toBe(400);
+  });
+
+  it('works while the order is billed, not after it is paid; needs order.create', async () => {
+    const o = await order('TAKEAWAY', [['Naan', 1]]);
+    await send(o.id);
+    const b = (await api(cashier).post(`/orders/${o.id}/bill`)).body;
+    expect(
+      (await api(cashier).post(`/orders/${o.id}/print-token`).set('Idempotency-Key', key())).status,
+    ).toBe(201);
+    await api(cashier)
+      .post(`/bills/${b.id}/settle`, {
+        tenders: [{ methodId: cashId, amountPaisa: b.totalPaisa, tenderedPaisa: b.totalPaisa }],
+      })
+      .set('Idempotency-Key', key());
+    const late = await api(cashier)
+      .post(`/orders/${o.id}/print-token`)
+      .set('Idempotency-Key', key());
+    expect(late.status).toBe(409);
+    const kitchen = (await t.login('KITCHEN')).token;
+    expect(
+      (await api(kitchen).post(`/orders/${o.id}/print-token`).set('Idempotency-Key', key())).status,
+    ).toBe(403);
+  });
+
+  it('without a thermal receipt printer it says so (0 printers) instead of failing', async () => {
+    await t.kdb
+      .updateTable('printers')
+      .set({ is_active: false })
+      .where('kind', '=', 'RECEIPT')
+      .execute();
+    const o = await order('TAKEAWAY', [['Naan', 1]]);
+    const res = await api(captain)
+      .post(`/orders/${o.id}/print-token`)
+      .set('Idempotency-Key', key());
+    expect(res.status).toBe(201);
+    expect(res.body.printers).toBe(0);
+    await t.kdb
+      .updateTable('printers')
+      .set({ is_active: true })
+      .where('kind', '=', 'RECEIPT')
+      .execute();
+  });
+});
