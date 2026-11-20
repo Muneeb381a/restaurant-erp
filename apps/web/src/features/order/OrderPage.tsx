@@ -384,7 +384,7 @@ export function OrderPage() {
   }, [menu.data, category, search, popularIds]);
 
   if (order.isPending) return <Loader />;
-  if (order.isError || !order.data) return <p className="p-4 text-rose-700">{t('common.error')}</p>;
+  if (!order.data) return <p className="p-4 text-rose-700">{t('common.error')}</p>;
   const o = order.data;
   const editable = o.status === 'OPEN' && !o.held;
   const lines = o.items.filter((l) => !l.parentId);

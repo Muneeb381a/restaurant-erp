@@ -93,6 +93,8 @@ test('with no internet a table can be opened, a dish added, and it all reaches t
   await page.getByRole('button', { name: /^T3 / }).click();
   await expect(page).toHaveURL(/\/order\//);
   await expect(page.getByText('Token: when online')).toBeVisible();
+  await page.waitForTimeout(8000); // longer than the reads' retries: the order must stay on screen after they give up
+  await expect(page.getByText('Token: when online')).toBeVisible();
   await page.getByRole('button', { name: /^Plain Naan/ }).click();
   await expect(page.getByText(/Kept|Waiting/i).first()).toBeVisible();
 
