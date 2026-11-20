@@ -1,5 +1,6 @@
 import i18n from 'i18next';
 import { useAuth, type Tokens } from './auth-store';
+import { isDown, markDown, markUp } from './net';
 import { apiBase, useTenantState } from './tenant';
 
 /** RFC 7807 problem+json from the API, with its stable `code`. */
@@ -105,9 +106,13 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
     });
 
   const sendOrExplain = async (tokens: Tokens | null): Promise<Response> => {
+    if (isDown()) throw new ApiError(0, 'OFFLINE', i18n.t('offline.cannotSave'), {});
     try {
-      return await send(tokens);
+      const r = await send(tokens);
+      markUp();
+      return r;
     } catch (e) {
+      if (e instanceof TypeError) markDown();
       // fetch only throws when the request never reached the server (no internet, server down)
       if (e instanceof TypeError)
         throw new ApiError(0, 'OFFLINE', i18n.t('offline.cannotSave'), {});

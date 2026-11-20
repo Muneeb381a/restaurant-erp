@@ -28,7 +28,10 @@ const queryClient = new QueryClient({
     mutations: { networkMode: 'always' },
     queries: {
       retry: (count, error) =>
-        !(error instanceof ApiError && error.status > 0 && error.status < 500) && count < 2,
+        !(
+          error instanceof ApiError &&
+          (error.code === 'OFFLINE' || (error.status > 0 && error.status < 500))
+        ) && count < 2,
       refetchOnWindowFocus: true,
     },
   },

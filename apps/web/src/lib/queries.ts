@@ -86,7 +86,7 @@ export const useMenu = (priceList: string | undefined) =>
     queryKey: ['menu', priceList],
     queryFn: () => api<Menu>(`/menu?priceList=${encodeURIComponent(priceList ?? 'DINE_IN')}`),
     enabled: !!priceList,
-    staleTime: 30_000,
+    staleTime: 0, // the copy on the device shows at once; a fresh one (a 304 when unchanged) follows
     refetchInterval: 30_000,
   });
 

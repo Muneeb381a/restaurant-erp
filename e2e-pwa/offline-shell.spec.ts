@@ -90,13 +90,17 @@ test('with no internet a table can be opened, a dish added, and it all reaches t
   await page.waitForTimeout(4000); // the cache of the menu and the floor is written
 
   await context.setOffline(true);
+  const t0 = Date.now();
   await page.getByRole('button', { name: /^T3 / }).click();
   await expect(page).toHaveURL(/\/order\//);
+  expect(Date.now() - t0, 'opening a table offline is instant').toBeLessThan(2500);
   await expect(page.getByText('Token: when online')).toBeVisible();
   await page.waitForTimeout(8000); // longer than the reads' retries: the order must stay on screen after they give up
   await expect(page.getByText('Token: when online')).toBeVisible();
+  const t1 = Date.now();
   await page.getByRole('button', { name: /^Plain Naan/ }).click();
   await expect(page.getByText(/Kept|Waiting/i).first()).toBeVisible();
+  expect(Date.now() - t1, 'adding a dish offline is instant').toBeLessThan(2500);
 
   await context.setOffline(false);
   // the order and its dish are sent by themselves; the order now has a real token

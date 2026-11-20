@@ -59,7 +59,7 @@ export function persistCache(qc: QueryClient): void {
     if (ev.type !== 'updated' || ev.action.type !== 'success') return;
     if (!KEYS.has(String(ev.query.queryKey[0]))) return;
     clearTimeout(timer);
-    timer = setTimeout(save, 500);
+    timer = setTimeout(save, 2000);
   });
 }
 

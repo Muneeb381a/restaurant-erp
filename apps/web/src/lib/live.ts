@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
+import { isDown } from './net';
 import { create } from 'zustand';
 import { api } from './api';
 import { useAuth } from './auth-store';
@@ -13,6 +14,7 @@ export const useLive = create<{ connected: boolean; polling: boolean }>(() => ({
 export const pollMs = (fast: number, slow = 30_000): number => {
   const s = useLive.getState();
   if (s.connected) return slow;
+  if (isDown()) return Math.max(fast, 10_000); // no server to ask: do not hammer it
   // no live stream on this server (serverless): refresh at a calmer pace than the offline retry
   return s.polling ? Math.max(fast, POLLING_MIN_MS) : fast;
 };
