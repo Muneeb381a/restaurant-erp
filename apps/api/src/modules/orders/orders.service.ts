@@ -151,6 +151,8 @@ async function guardTable<T>(
 // ───────────────────────────── create / header ─────────────────────────────
 
 export interface CreateOrderInput {
+  /** Order id chosen by the till (an order taken offline); the same id again returns the order already made. */
+  id?: string | undefined;
   type: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
   tableId?: string | undefined;
   guests?: number | undefined;
@@ -168,6 +170,15 @@ export interface CreateOrderInput {
 export async function createOrder(ctx: AppContext, a: Actor, input: CreateOrderInput) {
   if (input.type === 'DINE_IN' && !input.tableId) throw bad('A dine-in order needs a tableId');
   if (input.type !== 'DINE_IN' && input.tableId) throw bad('Only dine-in orders have a table');
+  if (input.id) {
+    const again = await ctx.db
+      .selectFrom('orders')
+      .select('id')
+      .where('id', '=', input.id)
+      .where('branch_id', '=', a.branchId)
+      .executeTakeFirst();
+    if (again) return getOrderFull(ctx.db, a.branchId, again.id);
+  }
 
   const id = await guardTable(ctx, a.branchId, input.tableId, () =>
     withTx(ctx.db, async (trx) => {
@@ -207,6 +218,7 @@ export async function createOrder(ctx: AppContext, a: Actor, input: CreateOrderI
       const row = await trx
         .insertInto('orders')
         .values({
+          ...(input.id ? { id: input.id } : {}),
           branch_id: a.branchId,
           business_day_id: day.id,
           order_no: orderNo,

@@ -6,6 +6,8 @@ import { useOnline } from './online';
 import { nextWaiting, useOutbox, waitingCount, type QueuedCommand } from './outbox';
 
 function sendCommand(c: QueuedCommand): Promise<unknown> {
+  if (c.kind === 'CREATE')
+    return api('/orders', { method: 'POST', body: c.body, headers: { 'Idempotency-Key': c.id } });
   return c.kind === 'ADD'
     ? api(`/orders/${c.orderId}/items`, {
         method: 'POST',

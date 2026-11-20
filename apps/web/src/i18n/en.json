@@ -88,6 +88,8 @@
     "banner": "No internet. You can still add dishes to open orders; they are kept on this device. The kitchen does not see them until the internet is back, so tell the kitchen yourself. Bills and payments need the internet.",
     "cannotSave": "No internet, so this was not saved. Try again when the connection is back.",
     "kept": "Kept on this device (no internet)",
+    "keptOrder": "No internet: order started on this device. It is sent (and gets its token) when the internet is back.",
+    "tokenPending": "Token: when online",
     "keptSend": "Kept: the KOT prints when the internet is back. Tell the kitchen yourself.",
     "pendingTitle": "Waiting for internet",
     "pendingHelp": "Not saved yet. These are kept on this device and sent when the internet is back. The kitchen has not received them.",

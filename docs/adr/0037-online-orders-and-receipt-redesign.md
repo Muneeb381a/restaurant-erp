@@ -19,3 +19,10 @@ Takeaway and online orders (Foodpanda, WhatsApp, phone) looked the same as count
 ## Offline
 The service worker now precaches the whole build (`asset-manifest.json`) on install so a refresh with no internet
 opens the app. Creating new orders, billing and payment still need the server (ADR 0026).
+
+## Addendum: a new order can be started offline
+`POST /orders` accepts an optional client-chosen `id`; sending the same id again returns the order already made.
+Without internet the floor makes the order on the device (token shown as "when online"), queues a CREATE command
+(ahead of its dishes in the outbox) and opens it. When the connection returns the outbox sends CREATE, then the dishes;
+the real token number is assigned then. Print KOT offline opens a local ticket in the print modal. Menus of all three
+price lists are prefetched on the floor so they are on the device. Bills and payments still need the server (ADR 0026).

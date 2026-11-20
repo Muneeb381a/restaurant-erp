@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
 // Runs against the PRODUCTION build (the service worker only exists there). See playwright.pwa.config.ts.
@@ -41,4 +42,63 @@ test('with no internet the app still opens on a refresh, and so does a screen no
   await page.goto('/bills');
   await expect(page.getByRole('heading', { name: 'Bills', exact: true })).toBeVisible();
   await expect(page.getByText('Something went wrong')).toHaveCount(0);
+});
+
+test('with no internet a table can be opened, a dish added, and it all reaches the server when the internet is back', async ({
+  page,
+  context,
+  request,
+}) => {
+  const API = 'http://127.0.0.1:18082/api/v1';
+  const tok = (
+    await (
+      await request.post(`${API}/auth/login`, {
+        data: { username: 'cashier', password: 'Dev#Passw0rd' },
+      })
+    ).json()
+  ).accessToken as string;
+  const auth = { Authorization: `Bearer ${tok}` };
+  const ownerTok = (
+    await (
+      await request.post(`${API}/auth/login`, {
+        data: { username: 'owner', password: 'Dev#Passw0rd' },
+      })
+    ).json()
+  ).accessToken as string;
+  const own = { Authorization: `Bearer ${ownerTok}` };
+  const imp = await request.post(`${API}/menu/import?dryRun=false`, {
+    headers: { ...own, 'content-type': 'text/csv; charset=utf-8' },
+    data: readFileSync('docs/samples/desi-menu.csv'),
+  });
+  expect(imp.ok(), await imp.text()).toBe(true);
+  const area = await (
+    await request.post(`${API}/areas`, { headers: own, data: { name: 'Main Hall' } })
+  ).json();
+  for (const code of ['T3'])
+    await request.post(`${API}/tables`, {
+      headers: own,
+      data: { code, seats: 4, area_id: area.id },
+    });
+  await request.post(`${API}/business-days/open`, { headers: auth, data: {} });
+  await request.post(`${API}/shifts/open`, { headers: auth, data: { openingFloatPaisa: 500000 } });
+
+  await login(page, 'cashier');
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  await expect(page.getByRole('button', { name: /T3/ })).toBeVisible();
+  await page.waitForTimeout(4000); // the cache of the menu and the floor is written
+
+  await context.setOffline(true);
+  await page.getByRole('button', { name: /^T3 / }).click();
+  await expect(page).toHaveURL(/\/order\//);
+  await expect(page.getByText('Token: when online')).toBeVisible();
+  await page.getByRole('button', { name: /^Plain Naan/ }).click();
+  await expect(page.getByText(/Kept|Waiting/i).first()).toBeVisible();
+
+  await context.setOffline(false);
+  // the order and its dish are sent by themselves; the order now has a real token
+  await expect(page.getByText('Token: when online')).toHaveCount(0, { timeout: 40_000 });
+  const orders = await (await request.get(`${API}/orders?status=active`, { headers: auth })).json();
+  expect(orders.items.some((o: { tableCode?: string }) => o.tableCode === 'T3')).toBe(true);
 });

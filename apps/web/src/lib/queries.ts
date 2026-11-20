@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useOutbox } from './outbox';
 import { api } from './api';
 import { pollMs, useLive } from './live';
 import { mode } from './tenant';
@@ -70,7 +71,12 @@ export const useCounterOrders = () =>
 export const useOrder = (id: string) =>
   useQuery({
     queryKey: ['order', id],
-    queryFn: () => api<Order>(`/orders/${id}`),
+    queryFn: () => {
+      // an order taken offline does not exist on the server until its CREATE is sent: keep showing the local one
+      if (useOutbox.getState().items.some((c) => c.kind === 'CREATE' && c.orderId === id))
+        throw new Error('waiting to be sent');
+      return api<Order>(`/orders/${id}`);
+    },
     refetchInterval: () => pollMs(LIVE_MS + 1000),
   });
 

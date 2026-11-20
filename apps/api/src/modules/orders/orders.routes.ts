@@ -16,6 +16,8 @@ const reason = z.string().trim().min(3).max(300);
 
 const createBody = z
   .object({
+    /** Chosen by a till that took the order while offline; sending it again returns the same order. */
+    id: uuid.optional(),
     type: z.enum(['DINE_IN', 'TAKEAWAY', 'DELIVERY']),
     tableId: uuid.optional(),
     guests: z.number().int().min(1).max(500).optional(),

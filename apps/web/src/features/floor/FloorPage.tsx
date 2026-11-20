@@ -8,9 +8,10 @@ import { Icon } from '../../components/Icon';
 import { toast } from '../../components/Toast';
 import { ApiError, api } from '../../lib/api';
 import { formatRs, ltr } from '../../lib/money';
+import { useOutbox } from '../../lib/outbox';
 import { can, useCounterOrders, useDay, useFloor, useMe, useShift } from '../../lib/queries';
 import { formatAge } from '../../lib/age';
-import type { FloorTable, Order } from '../../lib/types';
+import type { FloorTable, Menu, Order } from '../../lib/types';
 
 type Filter = 'ALL' | FloorTable['status'];
 
@@ -109,8 +110,14 @@ export function FloorPage() {
   const [filter, setFilter] = useState<Filter>('ALL');
 
   const create = useMutation({
-    mutationFn: (body: { type: Order['type']; tableId?: string }) =>
-      api<Order>('/orders', { method: 'POST', body }),
+    mutationFn: async (body: { type: Order['type']; tableId?: string }): Promise<Order> => {
+      try {
+        return await api<Order>('/orders', { method: 'POST', body });
+      } catch (e) {
+        if (!(e instanceof ApiError) || e.code !== 'OFFLINE') throw e;
+        return startOffline(body);
+      }
+    },
     onSuccess: (order) => {
       void qc.cancelQueries({ queryKey: ['order', order.id] });
       qc.setQueryData(['order', order.id], order);
@@ -157,12 +164,58 @@ export function FloorPage() {
       ),
   });
 
+  /**
+   * No internet: the order is made on this device with an id of its own, shown at once, and sent to the server when
+   * the connection is back (the token number is given then). Only the day being open is assumed (the cached day).
+   */
+  function startOffline(body: { type: Order['type']; tableId?: string }): Order {
+    const id = crypto.randomUUID();
+    const table = floor.data?.tables.find((x) => x.id === body.tableId);
+    useOutbox.getState().enqueue({
+      orderId: id,
+      kind: 'CREATE',
+      body: { id, ...body },
+      label: table ? table.code : t(body.type === 'TAKEAWAY' ? 'order.takeaway' : 'order.delivery'),
+      qty: 0,
+    });
+    toast(t('offline.keptOrder'), 'warn');
+    return {
+      id,
+      orderNo: 0,
+      type: body.type,
+      status: 'OPEN',
+      held: false,
+      tableId: body.tableId ?? null,
+      tableCode: table?.code ?? null,
+      guests: null,
+      notes: null,
+      version: 1,
+      items: [],
+      subtotalPaisa: 0,
+    };
+  }
+
+  // keep every menu on this device while online, so an order can be taken after the internet goes
+  useEffect(() => {
+    if (!floor.isSuccess) return;
+    for (const list of ['DINE_IN', 'TAKEAWAY', 'DELIVERY'])
+      void qc.prefetchQuery({
+        queryKey: ['menu', list],
+        queryFn: () => api<Menu>(`/menu?priceList=${list}`),
+        staleTime: 5 * 60_000,
+      });
+  }, [floor.isSuccess, qc]);
+
   const dayClosed = day.isSuccess && !day.data;
   const statusLabel = (s: FloorTable['status']): string => t(`floor.${s.toLowerCase()}`);
 
   function open(table: FloorTable): void {
     // a table whose bill is printed is waiting for payment: go straight to it
-    if (table.order)
+    const queued = useOutbox
+      .getState()
+      .items.find((c) => c.kind === 'CREATE' && c.body.tableId === table.id);
+    if (queued) nav(`/order/${queued.orderId}`);
+    else if (table.order)
       nav(table.status === 'BILLED' ? `/order/${table.order.id}/pay` : `/order/${table.order.id}`);
     else create.mutate({ type: 'DINE_IN', tableId: table.id });
   }

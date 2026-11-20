@@ -123,7 +123,7 @@ export function KotSlip({ doc }: { doc: KotTicketDoc }) {
     <div className="slip-print">
       {doc.rush && <div className="slip-banner">*** RUSH ***</div>}
       <div className="slip-center slip-strong slip-token-sm" dir="ltr">
-        TOKEN {doc.orderNo}
+        {doc.orderNo > 0 ? `TOKEN ${doc.orderNo}` : 'TOKEN -'}
       </div>
       <TypeBanner type={doc.orderType} />
       <SourceBanner c={doc.customer} />

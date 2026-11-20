@@ -570,6 +570,15 @@ describe('takeaway and delivery: who it is for, on every slip', () => {
     expect(all.match(/\[ FOODPANDA {2}#FP-4821 \]/g)?.length).toBeGreaterThanOrEqual(3);
   });
 
+  it('an order started offline keeps the id the till chose; sending it twice gives the same order', async () => {
+    const id = crypto.randomUUID();
+    const first = await api(captain).post('/orders', { id, type: 'TAKEAWAY' });
+    expect(first.status).toBe(201);
+    expect(first.body.id).toBe(id);
+    const again = await api(captain).post('/orders', { id, type: 'TAKEAWAY' });
+    expect(again.body).toMatchObject({ id, orderNo: first.body.orderNo });
+  });
+
   it('can be edited while the order is open; the address only counts on a delivery', async () => {
     const tk = (await api(captain).post('/orders', { type: 'TAKEAWAY' })).body;
     const patched = await api(captain)

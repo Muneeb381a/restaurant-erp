@@ -13,8 +13,8 @@ import { storageKey } from './tenant';
 export interface QueuedCommand {
   id: string;
   orderId: string;
-  kind: 'ADD' | 'SEND';
-  /** The request body (ADD: the dish, variant, quantity, extras, note). */
+  kind: 'CREATE' | 'ADD' | 'SEND';
+  /** The request body (CREATE: the new order incl. its id; ADD: the dish, variant, quantity, extras, note). */
   body: Record<string, unknown>;
   /** What the cashier sees: the dish name, or "Send to kitchen". */
   label: string;

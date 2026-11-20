@@ -185,6 +185,35 @@ export function OrderPage() {
             .getState()
             .enqueue({ orderId: id, kind: 'SEND', body, label: t('order.send'), qty: 0 });
         toast(t('offline.keptSend'), 'warn');
+        // the kitchen still needs a paper: the ticket is made here from the order and the dishes kept on this device
+        const unsent = (order.data?.items ?? [])
+          .filter((l) => l.status === 'NEW' && !l.parentId)
+          .map((l) => ({
+            qty: l.qty,
+            name: l.name,
+            weightG: l.weightG,
+            modifiers: l.modifiers.map((m) => m.name),
+            note: l.note,
+          }));
+        const kept = pending
+          .filter((c) => c.kind === 'ADD' && c.state === 'WAITING')
+          .map((c) => ({ qty: c.qty, name: c.label, modifiers: [] as string[], note: null }));
+        const lines = [...unsent, ...kept];
+        if (order.data && lines.length)
+          setSlip({
+            kind: 'kot',
+            doc: {
+              orderNo: order.data.orderNo,
+              orderType: order.data.type,
+              tableCode: order.data.tableCode,
+              customer: {
+                name: order.data.customerName ?? null,
+                phone: order.data.customerPhone ?? null,
+              },
+              time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+              sections: [{ station: 'KITCHEN', kotNo: 0, lines }],
+            },
+          });
         return null;
       }
     },
@@ -604,7 +633,9 @@ export function OrderPage() {
               <h1 className="flex flex-wrap items-baseline gap-x-2 truncate text-2xl font-semibold leading-tight">
                 {title}
                 <span className="rounded-md bg-white/10 px-2 py-0.5 text-lg font-bold text-emerald-300">
-                  {t('order.token')} {ltr(String(o.orderNo))}
+                  {o.orderNo > 0
+                    ? `${t('order.token')} ${ltr(String(o.orderNo))}`
+                    : t('offline.tokenPending')}
                 </span>
               </h1>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
