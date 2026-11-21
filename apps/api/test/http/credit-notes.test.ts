@@ -426,6 +426,51 @@ describe('the bills list by the day the guest was billed', () => {
   });
 });
 
+describe('the daily sales report', () => {
+  it('lists every bill of the day with totals that match the bills, and downloads as a PDF', async () => {
+    const bill = await paidBill([[naan, 2]]);
+    const row = ((await api(cashier).get(`/bills?billNo=${bill.billNo}`)).body.items as Json[])[0]!;
+    const rep = (await api(cashier).get(`/reports/daily-sales?date=${row.billedOn}`)).body;
+    expect(rep.date).toBe(row.billedOn);
+    const mine = rep.bills.find((b: Json) => b.billNo === bill.billNo);
+    expect(mine).toMatchObject({ status: 'SETTLED', totalPaisa: bill.totalPaisa });
+    expect(mine.methods.toLowerCase()).toContain('cash');
+    // the headline equals the sum of the paid bills listed, and the parts equal the whole
+    const paid = rep.bills.filter((b: Json) => b.status === 'SETTLED');
+    const sum = (xs: Json[], k: string): number => xs.reduce((n, x) => n + x[k], 0);
+    expect(rep.sales.paidBills).toBe(paid.length);
+    expect(rep.sales.collectedPaisa).toBe(sum(paid, 'totalPaisa'));
+    expect(sum(rep.sales.byMethod, 'amountPaisa')).toBe(rep.sales.collectedPaisa);
+    expect(sum(rep.sales.byType, 'amountPaisa')).toBe(rep.sales.collectedPaisa);
+    expect(sum(rep.sales.byHour, 'amountPaisa')).toBe(rep.sales.collectedPaisa);
+    expect(rep.sales.netAfterRefundsPaisa).toBe(rep.sales.collectedPaisa - rep.sales.refundsPaisa);
+
+    const pdf = await api(cashier)
+      .get(`/reports/daily-sales.pdf?date=${row.billedOn}`)
+      .buffer(true)
+      .parse((res, cb) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (c: Buffer) => chunks.push(c));
+        res.on('end', () => cb(null, Buffer.concat(chunks)));
+      });
+    expect(pdf.status).toBe(200);
+    if (process.env.SAVE_PDF)
+      (await import('node:fs')).writeFileSync(process.env.SAVE_PDF, pdf.body as Buffer);
+    expect(pdf.headers['content-type']).toContain('application/pdf');
+    expect(pdf.headers['content-disposition']).toContain(`daily-sales-${row.billedOn}.pdf`);
+    expect((pdf.body as Buffer).subarray(0, 5).toString()).toBe('%PDF-');
+    expect((pdf.body as Buffer).length).toBeGreaterThan(2000);
+
+    // a day with no bills still gives a valid, empty report
+    const empty = (await api(cashier).get('/reports/daily-sales?date=2000-01-01')).body;
+    expect(empty.bills).toEqual([]);
+    expect(empty.sales.collectedPaisa).toBe(0);
+    // only people who may view reports; a bad date is refused
+    expect((await api(captain).get(`/reports/daily-sales?date=${row.billedOn}`)).status).toBe(403);
+    expect((await api(cashier).get('/reports/daily-sales.pdf?date=yesterday')).status).toBe(400);
+  });
+});
+
 describe('cash refunds are limited to what the drawer holds', () => {
   it('refuses a cash refund bigger than the cash in the refunding cashier’s drawer', async () => {
     const bill = await paidBill([[tikka, 2]]); // Rs 2,000

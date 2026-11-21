@@ -1,9 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { Loader } from '../../components/Loader';
+import { toast } from '../../components/Toast';
 import { ApiError, api } from '../../lib/api';
 import { localDate } from '../../lib/dates';
 import { formatRs, ltr } from '../../lib/money';
@@ -100,13 +101,44 @@ export function BillsPage() {
   const clock = (iso: string | null): string =>
     iso ? new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
+  // the day to download: the day picked, yesterday, or today
+  const reportDate =
+    preset === 'PICK' && picked ? picked : preset === 'YESTERDAY' ? daysAgo(1) : daysAgo(0);
+  const download = useMutation({
+    mutationFn: () =>
+      api<Blob>(`/reports/daily-sales.pdf?date=${reportDate}`, { responseType: 'blob' }),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `daily-sales-${reportDate}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    },
+    onError: (e) => toast(e instanceof ApiError ? e.message : t('billsPage.pdfFailed'), 'warn'),
+  });
+
   const offline = list.isError && list.error instanceof ApiError && list.error.code === 'OFFLINE';
 
   return (
     <div className="mx-auto max-w-5xl space-y-4 p-4 md:p-6">
-      <div>
-        <h1 className="page-title">{t('refund.billsTitle')}</h1>
-        <p className="hint">{t('refund.billsHint')}</p>
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="me-auto">
+          <h1 className="page-title">{t('refund.billsTitle')}</h1>
+          <p className="hint">{t('refund.billsHint')}</p>
+        </div>
+        <button
+          className="btn-primary"
+          disabled={download.isPending}
+          onClick={() => download.mutate()}
+        >
+          <Icon name="download" size={18} />
+          {download.isPending
+            ? t('billsPage.pdfMaking')
+            : t('billsPage.pdf', { date: dayLabel(reportDate, i18n.language) })}
+        </button>
       </div>
 
       {/* what the list adds up to */}

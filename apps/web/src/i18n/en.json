@@ -91,7 +91,10 @@
     "token": "Token",
     "clear": "Clear search",
     "shown": "Showing {{count}}",
-    "moreHint": "Only the newest {{count}} are shown. Narrow the dates or search to find an older one."
+    "moreHint": "Only the newest {{count}} are shown. Narrow the dates or search to find an older one.",
+    "pdf": "Download PDF: {{date}}",
+    "pdfMaking": "Making the PDF...",
+    "pdfFailed": "The PDF could not be made. Check the internet and try again."
   },
   "crash": {
     "title": "This screen could not open",

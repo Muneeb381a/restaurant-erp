@@ -39,3 +39,19 @@ test('Bills shows today by its own date, filters by day, status and search, and 
   await page.getByRole('button', { name: 'Show the last 7 days' }).click();
   await expect(rows.first()).toBeVisible();
 });
+
+test('the day report downloads as a PDF with every bill of the day', async ({ page }) => {
+  await login(page, 'manager');
+  await page.getByRole('link', { name: 'Bills', exact: true }).click();
+  await page.getByRole('button', { name: 'Today', exact: true }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: /^Download PDF/ }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^daily-sales-\d{4}-\d{2}-\d{2}\.pdf$/);
+  const path = await download.path();
+  const { readFileSync } = await import('node:fs');
+  const bytes = readFileSync(path);
+  expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
+  expect(bytes.length).toBeGreaterThan(2000);
+});

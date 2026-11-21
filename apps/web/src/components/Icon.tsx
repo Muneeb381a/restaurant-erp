@@ -8,6 +8,7 @@ const PATHS = {
   tables: 'M4 6h16M4 6v12M20 6v12M7 18v-3M17 18v-3M4 11h16',
   bag: 'M6 8h12l-1 12H7L6 8ZM9 8V7a3 3 0 0 1 6 0v1',
   receipt: 'M6 3h12v18l-3-2-3 2-3-2-3 2V3ZM9 8h6M9 12h6',
+  download: 'M12 4v11M7.5 11l4.5 4.5 4.5-4.5M5 20h14',
   book: 'M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4ZM5 17a3 3 0 0 1 3-3h11',
   cash: 'M3 7h18v10H3V7ZM12 10v4M9.5 12h5M6 10v.01M18 14v.01',
   sliders: 'M4 7h9M17 7h3M4 17h3M11 17h9M13 5v4M7 15v4',
