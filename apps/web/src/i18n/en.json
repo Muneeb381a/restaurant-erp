@@ -76,7 +76,22 @@
     "findNo": "Find bill number",
     "dayLine": "{{count}} bills",
     "refunded": "Refunded",
-    "notPaidYet": "Not paid yet"
+    "notPaidYet": "Not paid yet",
+    "last7": "Last 7 days",
+    "all": "All",
+    "search": "Bill no, token, table or name",
+    "average": "Average bill",
+    "unpaidTotal": "Not paid yet",
+    "loadFailed": "The bills could not be loaded.",
+    "retry": "Try again",
+    "offlineNote": "No internet: bills need the server. Reconnect and try again.",
+    "showRecent": "Show the last 7 days",
+    "emptyDay": "No bills on this day.",
+    "cash": "Cash",
+    "token": "Token",
+    "clear": "Clear search",
+    "shown": "Showing {{count}}",
+    "moreHint": "Only the newest {{count}} are shown. Narrow the dates or search to find an older one."
   },
   "crash": {
     "title": "This screen could not open",

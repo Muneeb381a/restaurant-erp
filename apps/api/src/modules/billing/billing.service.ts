@@ -158,13 +158,24 @@ export async function getBillView(q: Queryable, branchId: string, billId: string
 export async function listBills(
   q: Queryable,
   branchId: string,
-  opts: { businessDate?: string | undefined; billNo?: number | undefined; limit: number },
+  opts: {
+    businessDate?: string | undefined;
+    billNo?: number | undefined;
+    /** First and last calendar day (YYYY-MM-DD, in the branch's time zone) the bill was settled, or made if unpaid. */
+    from?: string | undefined;
+    to?: string | undefined;
+    status?: 'SETTLED' | 'PRE_BILLED' | undefined;
+    /** Bill number, token or table code. */
+    search?: string | undefined;
+    limit: number;
+  },
 ) {
   let query = q
     .selectFrom('bills')
     .innerJoin('business_days', 'business_days.id', 'bills.business_day_id')
     .leftJoin('orders', 'orders.id', 'bills.order_id')
     .leftJoin('dining_tables', 'dining_tables.id', 'orders.table_id')
+    .innerJoin('branches', 'branches.id', 'bills.branch_id')
     .select([
       'bills.id as id',
       'bills.order_id as orderId',
@@ -173,6 +184,12 @@ export async function listBills(
       'bills.total_paisa as totalPaisa',
       'bills.settled_at as settledAt',
       'business_days.business_date as businessDate',
+      'bills.created_at as createdAt',
+      'orders.customer_name as customerName',
+      // the calendar day the guest was billed, where the shop is (a business day can stay open for days)
+      sql<string>`(coalesce(bills.settled_at, bills.created_at) at time zone branches.timezone)::date::text`.as(
+        'billedOn',
+      ),
       // what the guest sees on the list: which table or counter order, how it was paid, whether any of it was returned
       'orders.order_no as orderNo',
       'orders.type as orderType',
@@ -186,11 +203,28 @@ export async function listBills(
     ])
     .where('bills.branch_id', '=', branchId)
     .where('bills.status', 'in', ['SETTLED', 'PRE_BILLED'])
-    .orderBy('business_days.business_date', 'desc')
+    .orderBy(sql`coalesce(bills.settled_at, bills.created_at)`, 'desc')
     .orderBy('bills.bill_no', 'desc')
     .limit(opts.limit);
   if (opts.businessDate) query = query.where('business_days.business_date', '=', opts.businessDate);
   if (opts.billNo !== undefined) query = query.where('bills.bill_no', '=', opts.billNo);
+  const day = sql<string>`(coalesce(bills.settled_at, bills.created_at) at time zone branches.timezone)::date`;
+  if (opts.from) query = query.where(day, '>=', sql<string>`${opts.from}::date`);
+  if (opts.to) query = query.where(day, '<=', sql<string>`${opts.to}::date`);
+  if (opts.status) query = query.where('bills.status', '=', opts.status);
+  const s = opts.search?.trim();
+  if (s) {
+    const n = /^\d+$/.test(s) ? Number(s) : null;
+    query = query.where((eb) =>
+      eb.or([
+        ...(n !== null && n < 2_000_000_000
+          ? [eb('bills.bill_no', '=', n), eb('orders.order_no', '=', n)]
+          : []),
+        eb('dining_tables.code', 'ilike', `%${s.replace(/[%_]/g, '')}%`),
+        eb('orders.customer_name', 'ilike', `%${s.replace(/[%_]/g, '')}%`),
+      ]),
+    );
+  }
   return query.execute();
 }
 

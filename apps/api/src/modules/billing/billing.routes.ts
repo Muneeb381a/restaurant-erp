@@ -80,7 +80,17 @@ export function billingRouter(ctx: AppContext): Router {
             .regex(/^\d{4}-\d{2}-\d{2}$/)
             .optional(),
           billNo: z.coerce.number().int().positive().optional(),
-          limit: z.coerce.number().int().min(1).max(200).default(50),
+          from: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/)
+            .optional(),
+          to: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/)
+            .optional(),
+          status: z.enum(['SETTLED', 'PRE_BILLED']).optional(),
+          search: z.string().trim().max(40).optional(),
+          limit: z.coerce.number().int().min(1).max(500).default(50),
         })
         .parse(req.query);
       res.json({ items: await listBills(ctx.db, req.branchId!, q) });

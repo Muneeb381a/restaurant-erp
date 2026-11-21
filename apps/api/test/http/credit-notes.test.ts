@@ -402,6 +402,30 @@ describe('look-up and reports', () => {
   });
 });
 
+describe('the bills list by the day the guest was billed', () => {
+  it('finds a bill by its own date even when the business day is older; filters by status and token', async () => {
+    const bill = await paidBill([[naan, 1]]);
+    const get = async (qs: string): Promise<Json[]> =>
+      (await api(cashier).get(`/bills?${qs}`)).body.items as Json[];
+    const ids = async (qs: string): Promise<string[]> => (await get(qs)).map((b) => b.id);
+    const row = (await get(`billNo=${bill.billNo}`))[0]!;
+    expect(row.billedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(row).toHaveProperty('createdAt');
+    const next = new Date(`${row.billedOn}T12:00:00Z`);
+    next.setUTCDate(next.getUTCDate() + 1);
+    const after = next.toISOString().slice(0, 10);
+    // the bill's own date: inside a window that covers it, outside one that does not
+    expect(await ids(`from=${row.billedOn}&to=${row.billedOn}`)).toContain(bill.id);
+    expect(await ids(`from=${after}`)).not.toContain(bill.id);
+    expect(await ids(`to=2000-01-02`)).not.toContain(bill.id);
+    // status filter and token search
+    expect(await ids(`status=SETTLED&billNo=${bill.billNo}`)).toContain(bill.id);
+    expect(await ids(`status=PRE_BILLED&billNo=${bill.billNo}`)).not.toContain(bill.id);
+    expect(await ids(`search=${row.orderNo}`)).toContain(bill.id);
+    expect((await api(cashier).get('/bills?from=nope')).status).toBe(400);
+  });
+});
+
 describe('cash refunds are limited to what the drawer holds', () => {
   it('refuses a cash refund bigger than the cash in the refunding cashier’s drawer', async () => {
     const bill = await paidBill([[tikka, 2]]); // Rs 2,000

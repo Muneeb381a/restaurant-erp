@@ -16,6 +16,7 @@ export * from './billing/tax';
 export * from './inventory/stock';
 export * from './menu/guest-labels';
 export * from './reports/day-summary';
+export * from './reports/daily-sales';
 export * from './hr/attendance';
 export * from './hr/leave';
 export * from './hr/payroll';

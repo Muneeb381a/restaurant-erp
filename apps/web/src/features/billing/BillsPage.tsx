@@ -1,16 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
-import { Loader } from '../../components/Loader';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
-import { api } from '../../lib/api';
+import { Loader } from '../../components/Loader';
+import { ApiError, api } from '../../lib/api';
 import { localDate } from '../../lib/dates';
 import { formatRs, ltr } from '../../lib/money';
 import type { BillListItem } from '../../lib/types';
 
-type Preset = 'ALL' | 'TODAY' | 'YESTERDAY' | 'PICK';
+type Preset = 'TODAY' | 'YESTERDAY' | 'WEEK' | 'PICK' | 'ALL';
 type Status = 'ALL' | 'SETTLED' | 'PRE_BILLED';
+
+const LIMIT = 500;
 
 const daysAgo = (n: number): string => {
   const d = new Date();
@@ -18,62 +20,76 @@ const daysAgo = (n: number): string => {
   return localDate(d);
 };
 
-/** "Wed 18 Nov" for a YYYY-MM-DD business date. */
+/** "Wed 18 Nov" for a YYYY-MM-DD date. */
 const dayLabel = (iso: string, lang: string): string =>
   new Date(`${iso}T12:00:00`).toLocaleDateString(lang === 'ur' ? 'ur-PK' : 'en-GB', {
-    weekday: 'short',
+    weekday: 'long',
     day: 'numeric',
     month: 'short',
   });
 
-/** Find a bill (by number and/or business day) to view, reprint or refund it. */
+/** The calendar days a preset covers, in the shop's time (the bill's own day, not the business-day label). */
+function range(preset: Preset, picked: string): { from?: string; to?: string } {
+  switch (preset) {
+    case 'TODAY':
+      return { from: daysAgo(0), to: daysAgo(0) };
+    case 'YESTERDAY':
+      return { from: daysAgo(1), to: daysAgo(1) };
+    case 'WEEK':
+      return { from: daysAgo(6), to: daysAgo(0) };
+    case 'PICK':
+      return picked ? { from: picked, to: picked } : {};
+    default:
+      return {};
+  }
+}
+
+/** Find a bill to view, reprint or refund it: by day, by status, or by bill number / token / table / name. */
 export function BillsPage() {
   const { t, i18n } = useTranslation();
-  const [preset, setPreset] = useState<Preset>('ALL');
-  const [picked, setPicked] = useState('');
+  const [preset, setPreset] = useState<Preset>('WEEK');
+  const [picked, setPicked] = useState(daysAgo(0));
   const [status, setStatus] = useState<Status>('ALL');
-  const [billNo, setBillNo] = useState('');
-  const date =
-    preset === 'TODAY'
-      ? daysAgo(0)
-      : preset === 'YESTERDAY'
-        ? daysAgo(1)
-        : preset === 'PICK'
-          ? picked
-          : '';
+  const [search, setSearch] = useState('');
+  const term = search.trim();
+
+  const { from, to } = range(preset, picked);
   const query = new URLSearchParams({
-    limit: '200',
-    ...(date ? { businessDate: date } : {}),
-    ...(/^\d+$/.test(billNo) ? { billNo } : {}),
+    limit: String(LIMIT),
+    ...(from ? { from } : {}),
+    ...(to ? { to } : {}),
+    ...(status !== 'ALL' ? { status } : {}),
+    ...(term ? { search: term } : {}),
   }).toString();
   const list = useQuery({
     queryKey: ['bills', query],
     queryFn: async () => (await api<{ items: BillListItem[] }>(`/bills?${query}`)).items,
+    placeholderData: (previous) => previous,
   });
 
-  const items = useMemo(
-    () => (list.data ?? []).filter((b) => status === 'ALL' || b.status === status),
-    [list.data, status],
-  );
+  const items = useMemo(() => list.data ?? [], [list.data]);
   const paid = items.filter((b) => b.status === 'SETTLED');
   const waiting = items.filter((b) => b.status === 'PRE_BILLED');
   const paidTotal = paid.reduce((n, b) => n + b.totalPaisa, 0);
+  const waitingTotal = waiting.reduce((n, b) => n + b.totalPaisa, 0);
+  const average = paid.length ? Math.round(paidTotal / paid.length) : 0;
 
-  // one block per business day, newest first (the list already comes in that order)
+  // one block per calendar day, newest first (the list already comes newest first)
   const days = useMemo(() => {
     const out: { date: string; bills: BillListItem[] }[] = [];
     for (const b of items) {
       const last = out[out.length - 1];
-      if (last && last.date === b.businessDate) last.bills.push(b);
-      else out.push({ date: b.businessDate, bills: [b] });
+      if (last && last.date === b.billedOn) last.bills.push(b);
+      else out.push({ date: b.billedOn, bills: [b] });
     }
     return out;
   }, [items]);
 
   const presets: { key: Preset; label: string }[] = [
-    { key: 'ALL', label: t('billsPage.recent') },
     { key: 'TODAY', label: t('billsPage.today') },
     { key: 'YESTERDAY', label: t('billsPage.yesterday') },
+    { key: 'WEEK', label: t('billsPage.last7') },
+    { key: 'ALL', label: t('billsPage.all') },
     { key: 'PICK', label: t('billsPage.pickDate') },
   ];
   const statuses: { key: Status; label: string }[] = [
@@ -84,6 +100,8 @@ export function BillsPage() {
   const clock = (iso: string | null): string =>
     iso ? new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
+  const offline = list.isError && list.error instanceof ApiError && list.error.code === 'OFFLINE';
+
   return (
     <div className="mx-auto max-w-5xl space-y-4 p-4 md:p-6">
       <div>
@@ -92,15 +110,20 @@ export function BillsPage() {
       </div>
 
       {/* what the list adds up to */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="card p-3">
-          <div className="micro">{t('billsPage.bills')}</div>
-          <div className="money mt-1 text-xl font-semibold sm:text-2xl">{items.length}</div>
-        </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="card p-3">
           <div className="micro">{t('billsPage.paidTotal')}</div>
           <div className="money mt-1 text-xl font-semibold text-emerald-700 sm:text-2xl">
             {ltr(formatRs(paidTotal))}
+          </div>
+          <div className="mt-0.5 text-xs text-slate-500">
+            {t('billsPage.dayLine', { count: paid.length })}
+          </div>
+        </div>
+        <div className="card p-3">
+          <div className="micro">{t('billsPage.average')}</div>
+          <div className="money mt-1 text-xl font-semibold sm:text-2xl">
+            {ltr(formatRs(average))}
           </div>
         </div>
         <div className="card p-3">
@@ -110,26 +133,32 @@ export function BillsPage() {
           >
             {waiting.length}
           </div>
+          {waiting.length > 0 && (
+            <div className="mt-0.5 text-xs text-amber-700">{ltr(formatRs(waitingTotal))}</div>
+          )}
+        </div>
+        <div className="card p-3">
+          <div className="micro">{t('billsPage.bills')}</div>
+          <div className="money mt-1 text-xl font-semibold sm:text-2xl">{items.length}</div>
         </div>
       </div>
 
       <div className="space-y-3">
+        <div className="relative">
+          <Icon
+            name="search"
+            size={18}
+            className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-slate-500"
+          />
+          <input
+            className="input ps-10"
+            placeholder={t('billsPage.search')}
+            aria-label={t('billsPage.search')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full sm:w-56">
-            <Icon
-              name="search"
-              size={18}
-              className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-slate-500"
-            />
-            <input
-              className="input ps-10"
-              inputMode="numeric"
-              placeholder={t('billsPage.findNo')}
-              aria-label={t('refund.billNo')}
-              value={billNo}
-              onChange={(e) => setBillNo(e.target.value)}
-            />
-          </div>
           <div className="seg" role="group" aria-label={t('refund.date')}>
             {presets.map((p) => (
               <button
@@ -166,6 +195,21 @@ export function BillsPage() {
         </div>
       </div>
 
+      {list.isError && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-3 rounded-xl bg-rose-50 p-3 text-rose-800"
+        >
+          <Icon name="alert" size={20} />
+          <span className="min-w-0 flex-1 text-sm">
+            {offline ? t('billsPage.offlineNote') : t('billsPage.loadFailed')}
+          </span>
+          <button className="btn-secondary" onClick={() => void list.refetch()}>
+            {t('billsPage.retry')}
+          </button>
+        </div>
+      )}
+
       {days.map((d) => {
         const dayPaid = d.bills
           .filter((b) => b.status === 'SETTLED')
@@ -191,6 +235,7 @@ export function BillsPage() {
                   : b.orderType === 'DELIVERY'
                     ? t('order.delivery')
                     : t('order.takeaway');
+                const when = clock(b.settledAt ?? b.createdAt);
                 return (
                   <li key={b.id}>
                     <Link
@@ -206,17 +251,20 @@ export function BillsPage() {
                         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <span className="text-base font-semibold">{ltr(`#${b.billNo}`)}</span>
                           <span className="chip bg-slate-100 text-slate-700">{where}</span>
+                          {b.orderNo ? (
+                            <span className="chip bg-slate-100 text-slate-700">
+                              {t('billsPage.token')} {ltr(String(b.orderNo))}
+                            </span>
+                          ) : null}
                           {b.refunded && (
                             <span className="chip-bad">{t('billsPage.refunded')}</span>
                           )}
                         </span>
                         <span className="mt-0.5 block truncate text-sm text-slate-500">
-                          {clock(b.settledAt) && (
-                            <span className="money">{ltr(clock(b.settledAt))}</span>
-                          )}
-                          {clock(b.settledAt) && b.methods.length > 0 && ' · '}
-                          {b.methods.join(', ')}
-                          {!paidBill && t('billsPage.notPaidYet')}
+                          {when && <span className="money">{ltr(when)}</span>}
+                          {b.customerName ? ` · ${b.customerName}` : ''}
+                          {b.methods.length > 0 && ` · ${b.methods.join(', ')}`}
+                          {!paidBill && ` · ${t('billsPage.notPaidYet')}`}
                         </span>
                       </span>
                       <span className="text-end">
@@ -242,12 +290,23 @@ export function BillsPage() {
         );
       })}
 
+      {items.length >= LIMIT && (
+        <p className="text-center text-sm text-slate-500">
+          {t('billsPage.moreHint', { count: LIMIT })}
+        </p>
+      )}
+
       {list.isSuccess && items.length === 0 && (
-        <div className="card flex flex-col items-center gap-2 p-10 text-center text-slate-600">
+        <div className="card flex flex-col items-center gap-3 p-10 text-center text-slate-600">
           <span className="flex size-14 items-center justify-center rounded-full bg-slate-100 text-slate-500">
             <Icon name="receipt" size={26} />
           </span>
-          {t('refund.none')}
+          {preset !== 'ALL' && !term ? t('billsPage.emptyDay') : t('refund.none')}
+          {preset !== 'WEEK' && preset !== 'ALL' && (
+            <button className="btn-secondary" onClick={() => setPreset('WEEK')}>
+              {t('billsPage.showRecent')}
+            </button>
+          )}
         </div>
       )}
       {list.isPending && <Loader />}

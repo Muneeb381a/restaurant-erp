@@ -482,6 +482,10 @@ export interface BillListItem {
   methods: string[];
   /** some of it was returned (a credit note exists) */
   refunded: boolean;
+  createdAt: string;
+  customerName: string | null;
+  /** the calendar day it was billed (YYYY-MM-DD, shop time) */
+  billedOn: string;
 }
 
 export interface BillQuoteTotals {
