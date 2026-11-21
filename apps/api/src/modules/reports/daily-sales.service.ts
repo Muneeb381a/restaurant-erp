@@ -30,6 +30,8 @@ export interface DailyBillRow {
   totalPaisa: number;
   status: 'SETTLED' | 'PRE_BILLED';
   refundedPaisa: number;
+  /** What was actually received for it (the sum of its payments, change excluded). */
+  paidPaisa: number;
 }
 
 export interface DailySalesReport {
@@ -212,6 +214,7 @@ export async function dailySalesReport(
       totalPaisa: r.total,
       status: r.status,
       refundedPaisa: refundedByBill.get(r.bill_no) ?? 0,
+      paidPaisa: (payByBill.get(r.id) ?? []).reduce((n, p) => n + p.amountPaisa, 0),
     })),
     refunds: refundRows.rows.map((r) => ({
       cnNo: r.cn_no,
